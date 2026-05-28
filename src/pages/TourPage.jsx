@@ -30,6 +30,7 @@ import {
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
+import { log } from "three";
 
 const BADGE_STYLES = {
   Хит: "bg-rose-500 text-white border-rose-500",
@@ -50,12 +51,20 @@ const SECTIONS = [
   ["faq", "FAQ"],
 ];
 
-function fmtDateRange(d) {
-  if (!d?.start) return "";
-  if (!d?.end) return d.start;
-  return `${d.start} → ${d.end}`;
+function formatDate(date) {
+  if (!date) return "";
+
+  const [year, month, day] = date.split("-");
+
+  return `${day}.${month}.${year}`;
 }
 
+function fmtDateRange(d) {
+  if (!d?.start) return "";
+  if (!d?.end) return formatDate(d.start);
+
+  return `${formatDate(d.start)} → ${formatDate(d.end)}`;
+}
 export default function TourPage() {
   const { slug } = useParams();
   const [tour, setTour] = useState(null);
@@ -77,7 +86,10 @@ export default function TourPage() {
     return (
       <div className="section-container section-pad text-center">
         <h1 className="font-heading text-3xl">Тур не найден</h1>
-        <Link to="/tours" className="text-[#C2410C] underline mt-4 inline-block">
+        <Link
+          to="/tours"
+          className="text-[#C2410C] underline mt-4 inline-block"
+        >
           Вернуться к каталогу
         </Link>
       </div>

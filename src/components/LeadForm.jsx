@@ -124,14 +124,23 @@ export default function LeadForm({
   const selectedTour = tourOptions?.find(
     (t) => t.title === form.tour || t.slug === form.tour_slug,
   );
+  const formatDate = (date) => {
+    if (!date) return "";
+
+    const [year, month, day] = date.split("-");
+    return `${day}.${month}.${year}`;
+  };
   const availableDates = useMemo(() => {
     if (dates?.length) return dates;
+
     return (selectedTour?.dates || [])
       .filter((d) => d && (d.status === undefined || d.status !== "hidden"))
       .map((d) =>
         typeof d === "string"
-          ? d
-          : [d.start, d.end].filter(Boolean).join(" → "),
+          ? formatDate(d)
+          : [formatDate(d.start), formatDate(d.end)]
+              .filter(Boolean)
+              .join(" → "),
       )
       .filter(Boolean);
   }, [dates, selectedTour]);

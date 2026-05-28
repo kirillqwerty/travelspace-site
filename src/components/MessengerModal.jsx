@@ -104,7 +104,7 @@ export default function MessengerModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-2 -mt-2 mb-2">
+        {/* <div className="flex gap-2 -mt-2 mb-2">
           {Object.entries(MESSENGER_META).map(([t, m]) => (
             <button
               key={t}
@@ -120,7 +120,7 @@ export default function MessengerModal({
               {m.name}
             </button>
           ))}
-        </div>
+        </div> */}
 
         {loading ? (
           <div className="py-10 grid place-items-center text-neutral-400">

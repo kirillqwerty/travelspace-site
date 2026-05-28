@@ -210,14 +210,14 @@ export default function Footer() {
 
   return (
     <footer className="mt-20 bg-black text-white" data-testid="site-footer">
-      <div className="w-full bg-black">
+      {/* <div className="w-full bg-black">
         <img
           src={footerFilm}
           alt="Travel Space"
           className="block w-full h-[92px] sm:h-[130px] lg:h-[180px] object-cover object-center"
           loading="lazy"
         />
-      </div>
+      </div> */}
 
       <div className="section-container py-12 lg:py-16">
         <div className="grid gap-10 lg:grid-cols-[1fr_1px_1.35fr] lg:items-center">
@@ -322,7 +322,7 @@ export default function Footer() {
         <div className="mt-10 border-t border-white/10 pt-5 text-center text-xs font-semibold text-white/80">
           © {currentYear} {settings?.site_url || "travel-space.by"}
           <Link to="/admin/login" className="ml-3 opacity-40 hover:opacity-80">
-            ·
+            admin-panel
           </Link>
         </div>
       </div>
