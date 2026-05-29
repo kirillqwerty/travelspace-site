@@ -189,14 +189,20 @@ export default function TourPage() {
       <div className="sticky top-16 lg:top-20 z-30 bg-white/95 backdrop-blur border-b border-neutral-200">
         <div className="section-container flex gap-1 overflow-x-auto py-2 text-sm font-medium">
           {SECTIONS.map(([id, label]) => (
-            <a
+            <button
               key={id}
-              href={`#${id}`}
+              type="button"
+              onClick={() => {
+                document.getElementById(id)?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }}
               className="whitespace-nowrap rounded-full px-4 py-2 text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
               data-testid={`anchor-${id}`}
             >
               {label}
-            </a>
+            </button>
           ))}
         </div>
       </div>
