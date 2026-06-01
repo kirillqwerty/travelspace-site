@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +34,7 @@ export default function LeadForm({
   tour_slug,
   region,
   date,
+  selectedDate,
   tours,
   dates,
   source_page,
@@ -54,7 +55,14 @@ export default function LeadForm({
   });
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-
+  useEffect(() => {
+    if (selectedDate) {
+      setForm((prev) => ({
+        ...prev,
+        date: selectedDate,
+      }));
+    }
+  }, [selectedDate]);
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const onPhone = (e) => update("phone", maskBelarusPhone(e.target.value));
 

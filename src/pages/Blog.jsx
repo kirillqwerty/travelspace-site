@@ -4,13 +4,26 @@ import { api } from "@/lib/api";
 
 export default function Blog() {
   const [items, setItems] = useState([]);
+  const formatDate = (date) => {
+    if (!date) return "";
+
+    const d = new Date(date);
+
+    return d.toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
   useEffect(() => {
     api.get("/articles").then((r) => setItems(r.data));
   }, []);
 
   return (
-    <div className="section-container section-pad" data-testid="blog-page">
-      <p className="overline text-[#C2410C]">Блог</p>
+<div
+  className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
+  data-testid="blog-page"
+>      <p className="overline text-[#C2410C]">Блог</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">Полезное о путешествиях</h1>
       <p className="text-neutral-600 mt-3 max-w-2xl">
         Чек-листы, советы и истории из дороги, чтобы ваша поездка была комфортнее.
@@ -30,7 +43,7 @@ export default function Blog() {
               </div>
             )}
             <div className="p-5">
-              <p className="text-xs text-neutral-500">{a.published_at}</p>
+              <p className="text-xs text-neutral-500">{formatDate(a.published_at)}</p>
               <h3 className="font-heading text-xl mt-2 group-hover:text-[#C2410C] transition-colors line-clamp-3">{a.title}</h3>
               <p className="text-sm text-neutral-600 mt-2 line-clamp-3">{a.excerpt}</p>
             </div>

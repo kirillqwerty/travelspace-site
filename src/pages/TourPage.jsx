@@ -50,7 +50,8 @@ const SECTIONS = [
   ["price", "Стоимость"],
   ["faq", "FAQ"],
 ];
-
+const glassText =
+  "w-fit bg-black/35 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-2";
 function formatDate(date) {
   if (!date) return "";
 
@@ -71,6 +72,7 @@ export default function TourPage() {
   const [error, setError] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
   const { tours } = useSiteData();
 
   useEffect(() => {
@@ -98,8 +100,8 @@ export default function TourPage() {
 
   if (!tour) {
     return (
-      <div className="section-container section-pad text-neutral-400">
-        Загрузка…
+      <div className="pt-32 lg:pt-36 min-h-screen">
+        <div className="section-container text-neutral-400">Загрузка...</div>
       </div>
     );
   }
@@ -111,50 +113,66 @@ export default function TourPage() {
     <div data-testid="tour-page">
       {/* HERO */}
       <section className="relative">
-        <div className="relative h-[55vh] lg:h-[70vh] overflow-hidden">
+        <div className="relative min-h-[620px] lg:min-h-[680px] overflow-hidden">
           <img
             src={tour.hero_image}
             alt={tour.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/15" />
-          <div className="relative h-full section-container flex flex-col justify-end pb-10 text-white">
+          <div className="relative min-h-[620px] lg:min-h-[680px] section-container flex flex-col justify-end pt-28 lg:pt-36 pb-10 text-white">
+            {" "}
             <div className="flex flex-wrap gap-2 mb-4">
+              {" "}
               {(tour.badges || []).map((b) => (
                 <Badge
                   key={b}
                   className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide border shadow-sm ${
                     BADGE_STYLES[b] ||
-                    "bg-white/20 backdrop-blur text-white border-0"
+                    "bg-black/40 backdrop-blur-md text-white border-white/10"
                   }`}
                 >
                   {b}
                 </Badge>
               ))}
             </div>
-            <p className="overline text-white/80">
-              {tour.region_name || tour.direction_name}
-            </p>
-            <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-2 max-w-4xl">
-              {tour.title}
-            </h1>
-            {tour.tagline && (
-              <p className="mt-3 text-base sm:text-lg text-white/85 max-w-2xl">
-                {tour.tagline}
-              </p>
-            )}
-            <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/90">
-              <span className="inline-flex items-center gap-1.5">
-                <Calendar className="size-4" /> {tour.duration}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Bus className="size-4" /> Из {tour.departure_city || "Минска"}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="size-4" /> {tour.region_name}
+            <div className="mb-3">
+              <span className={glassText}>
+                {tour.region_name || tour.direction_name}
               </span>
             </div>
-
+            <div className="mt-3">
+              <div className={`${glassText} max-w-5xl`}>
+                <h1 className="font-heading text-3xl sm:text-5xl lg:text-6xl">
+                  {tour.title}
+                </h1>
+              </div>
+            </div>
+            {tour.tagline && (
+              <div className="mt-3">
+                <span
+                  className={`${glassText} text-base sm:text-lg text-white/90 max-w-3xl`}
+                >
+                  {tour.tagline}
+                </span>
+              </div>
+            )}
+            <div className="mt-4">
+              <div
+                className={`${glassText} inline-flex flex-wrap gap-x-6 gap-y-2 text-sm text-white`}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="size-4" /> {tour.duration}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Bus className="size-4" /> Из{" "}
+                  {tour.departure_city || "Минска"}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="size-4" /> {tour.region_name}
+                </span>
+              </div>
+            </div>
             <div className="mt-7 flex flex-wrap items-end gap-4">
               <div
                 className="rounded-3xl bg-black/35 px-5 py-4 backdrop-blur-md border border-white/15"
@@ -503,7 +521,10 @@ export default function TourPage() {
             )}
 
             <Button
-              onClick={() => setLeadOpen(true)}
+              onClick={() => {
+                setSelectedDate("");
+                setLeadOpen(true);
+              }}
               className="w-full mt-6 rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white py-6 text-base"
               data-testid="tour-cta-lead"
             >
@@ -563,6 +584,7 @@ export default function TourPage() {
                 key={d.id || fmtDateRange(d)}
                 type="button"
                 onClick={() => {
+                  setSelectedDate(fmtDateRange(d));
                   setPricesOpen(false);
                   setLeadOpen(true);
                 }}
@@ -590,6 +612,7 @@ export default function TourPage() {
         tour_slug={tour.slug}
         region={tour.region_slug}
         dates={dateStrings}
+        selectedDate={selectedDate}
         tours={tours}
         title={`Заявка на тур «${tour.title}»`}
         description="Менеджер свяжется в течение часа и расскажет о ближайших датах."

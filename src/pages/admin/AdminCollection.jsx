@@ -48,7 +48,12 @@ const SCHEMAS = {
       //   placeholder: "dagestan, georgia-kobuleti …",
       // },
       { key: "region_name", label: "Регион (название)", type: "text" },
-      { key: "duration", label: "Длительность", type: "text" },
+      {
+        key: "duration",
+        label: "Длительность",
+        type: "text",
+        placeholder: "например 7 дней / 6 ночей",
+      },
       {
         key: "departure_city",
         label: "Город отправления",
@@ -183,7 +188,7 @@ const normalizeRecord = (record = {}, collectionName) => {
     region_slug: record.region_slug || slugify(record.region_name || ""),
     duration: record.duration || "",
     departure_city: record.departure_city || "Минск",
-    price_from: Number(record.price_from || 0),
+    price_from: record.price_from ?? "",
     price_type: record.price_type || "от",
     currency: record.currency || "BYN",
     short_description: record.short_description || "",
@@ -191,7 +196,7 @@ const normalizeRecord = (record = {}, collectionName) => {
     hero_image: record.hero_image || "",
     seo_title: record.seo_title || "",
     seo_description: record.seo_description || "",
-    order: Number(record.order || 0),
+    order: record.order ?? "",
     active: record.active !== false,
 
     badges: Array.isArray(record.badges) ? record.badges.filter(Boolean) : [],
@@ -497,8 +502,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
 
     schema.fields.forEach((f) => {
       if (known[f.key] === undefined) {
-        known[f.key] =
-          f.type === "switch" ? true : f.type === "number" ? 0 : "";
+        known[f.key] = f.type === "switch" ? true : "";
       }
     });
 
@@ -629,8 +633,14 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                 ) : f.type === "number" ? (
                   <Input
                     type="number"
-                    value={form[f.key] ?? 0}
-                    onChange={(e) => update(f.key, Number(e.target.value))}
+                    value={form[f.key] ?? ""}
+                    placeholder="Введите число"
+                    onChange={(e) =>
+                      update(
+                        f.key,
+                        e.target.value === "" ? "" : Number(e.target.value),
+                      )
+                    }
                     className="mt-1"
                   />
                 ) : f.type === "image" ? (
@@ -932,7 +942,6 @@ function ImageListField({ label, value, onChange }) {
             key={index}
             className="flex flex-col sm:flex-row gap-2 items-start"
           >
-            {" "}
             <ImageInput value={item} onChange={(v) => updateItem(index, v)} />
             <Button
               type="button"
@@ -1096,7 +1105,8 @@ function ProgramField({ value, onChange }) {
             <div className="flex gap-2">
               <Input
                 type="number"
-                value={item.day || index + 1}
+                value={item.day ?? ""}
+                placeholder="День"
                 onChange={(e) =>
                   updateItem(index, { day: Number(e.target.value) })
                 }
@@ -1158,7 +1168,7 @@ function DatesField({ value, onChange }) {
           id: uid(),
           start: "",
           end: "",
-          price: 0,
+          price: "",
           status: "active",
           comment: "",
         },
@@ -1177,7 +1187,7 @@ function DatesField({ value, onChange }) {
         id: uid(),
         start: "",
         end: "",
-        price: 0,
+        price: "",
         status: "active",
         comment: "",
       },
@@ -1222,7 +1232,8 @@ function DatesField({ value, onChange }) {
                 <Label className="text-xs">Цена</Label>
                 <Input
                   type="number"
-                  value={item.price || 0}
+                  value={item.price ?? ""}
+                  placeholder="Цена"
                   onChange={(e) =>
                     updateItem(index, { price: Number(e.target.value) })
                   }

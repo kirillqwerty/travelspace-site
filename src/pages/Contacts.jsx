@@ -7,7 +7,7 @@ export default function Contacts() {
   if (!settings) return null;
 
   return (
-    <div className="section-container section-pad" data-testid="contacts-page">
+    <div className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24" data-testid="contacts-page">
       <p className="overline text-[#C2410C]">Контакты</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
         Свяжитесь с нами

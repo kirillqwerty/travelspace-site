@@ -15,12 +15,18 @@ const BADGES = [
 
 export default function Catalog() {
   const [tours, setTours] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [params, setParams] = useSearchParams();
   const region = params.get("region") || "";
   const badge = params.get("badge") || "";
 
   useEffect(() => {
-    api.get("/tours").then((r) => setTours(r.data));
+    setLoading(true);
+
+    api
+      .get("/tours")
+      .then((r) => setTours(r.data))
+      .finally(() => setLoading(false));
   }, []);
 
   const regions = useMemo(() => {
@@ -48,7 +54,10 @@ export default function Catalog() {
   };
 
   return (
-    <div className="section-container section-pad" data-testid="catalog-page">
+    <div
+      className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
+      data-testid="catalog-page"
+    >
       <p className="overline text-[#C2410C]">Каталог туров</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
         Все автобусные туры из Минска
@@ -58,7 +67,7 @@ export default function Catalog() {
         подберём ближайшую дату.
       </p>
 
-      {/* Region tabs */}
+      {/* Region tabs
       <div
         className="mt-10 flex flex-wrap items-center gap-2"
         data-testid="catalog-region-filter"
@@ -88,7 +97,7 @@ export default function Catalog() {
             {d.name}
           </button>
         ))}
-      </div>
+      </div> */}
 
       <div
         className="mt-4 flex flex-wrap items-center gap-2"
@@ -123,7 +132,11 @@ export default function Catalog() {
       </div>
 
       <div className="mt-12">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="rounded-2xl border border-neutral-200 p-12 text-center text-neutral-500">
+            Загрузка туров…
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center text-neutral-500">
             По вашему запросу ничего не нашли. Попробуйте сменить фильтры.
           </div>

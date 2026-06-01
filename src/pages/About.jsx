@@ -12,7 +12,7 @@ export default function About() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
         <div className="relative h-full section-container flex flex-col justify-end pb-12 text-white">
-          <p className="overline text-white/85">О компании</p>
+          <p className="text-white/85">О компании</p>
           <h1 className="font-heading text-5xl lg:text-7xl mt-2 max-w-3xl">
             Делаем путешествия простыми
           </h1>

@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown, Plus, Minus } from "lucide-react";
+import { Menu, X, ChevronDown, Plus, Minus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MessengerModal from "@/components/MessengerModal";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import logo from "../assets/travelspace-logo.png";
+import { log } from "three";
 
 const PRIMARY_NAV = [
   { to: "/tours", label: "Автобусные туры", dropdown: true },
@@ -17,11 +18,17 @@ const PRIMARY_NAV = [
   { to: "/contacts", label: "Контакты" },
 ];
 
+// const ViberSvg = () => (
+//   <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
+//     <g transform="translate(0.4 0)">
+//       <path d="M12.04 0C5.4 0 0 5.05 0 11.27c0 2.08.62 4.1 1.8 5.86L.62 24l7.05-1.84a12.4 12.4 0 0 0 4.37.8c6.64 0 12.03-5.05 12.03-11.27C24.07 5.05 18.68 0 12.04 0Zm6.99 15.94c-.3.85-1.78 1.63-2.44 1.72-.63.08-1.42.12-4.58-1.18-4.03-1.67-6.63-5.78-6.83-6.05-.2-.27-1.64-2.18-1.64-4.16 0-1.98 1.04-2.95 1.41-3.35.37-.4.8-.5 1.07-.5h.77c.24 0 .56-.09.87.66.3.74 1.03 2.57 1.12 2.75.09.18.15.39.03.63-.12.24-.18.39-.36.6-.18.21-.38.47-.54.63-.18.18-.36.37-.15.72.21.36.94 1.53 2.02 2.47 1.39 1.22 2.56 1.6 2.92 1.78.36.18.57.15.78-.09.21-.24.9-1.05 1.14-1.41.24-.36.48-.3.81-.18.33.12 2.1.98 2.46 1.16.36.18.6.27.69.42.09.15.09.88-.21 1.73Z" />
+//     </g>
+//   </svg>
+// );
+
 const ViberSvg = () => (
-  <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
-    <g transform="translate(0.4 0)">
-      <path d="M12.04 0C5.4 0 0 5.05 0 11.27c0 2.08.62 4.1 1.8 5.86L.62 24l7.05-1.84a12.4 12.4 0 0 0 4.37.8c6.64 0 12.03-5.05 12.03-11.27C24.07 5.05 18.68 0 12.04 0Zm6.99 15.94c-.3.85-1.78 1.63-2.44 1.72-.63.08-1.42.12-4.58-1.18-4.03-1.67-6.63-5.78-6.83-6.05-.2-.27-1.64-2.18-1.64-4.16 0-1.98 1.04-2.95 1.41-3.35.37-.4.8-.5 1.07-.5h.77c.24 0 .56-.09.87.66.3.74 1.03 2.57 1.12 2.75.09.18.15.39.03.63-.12.24-.18.39-.36.6-.18.21-.38.47-.54.63-.18.18-.36.37-.15.72.21.36.94 1.53 2.02 2.47 1.39 1.22 2.56 1.6 2.92 1.78.36.18.57.15.78-.09.21-.24.9-1.05 1.14-1.41.24-.36.48-.3.81-.18.33.12 2.1.98 2.46 1.16.36.18.6.27.69.42.09.15.09.88-.21 1.73Z" />
-    </g>
+  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
+    <path d="M12.011 0C5.373 0 0 5.373 0 12.011c0 2.119.553 4.108 1.52 5.832L0 24l6.36-1.487a11.94 11.94 0 0 0 5.651 1.42c6.638 0 12.011-5.373 12.011-12.011S18.649 0 12.011 0Zm6.43 16.77c-.265.748-1.56 1.43-2.14 1.51-.553.073-1.246.11-4.018-1.03-3.538-1.465-5.819-5.073-5.994-5.31-.176-.237-1.438-1.91-1.438-3.645 0-1.735.91-2.585 1.237-2.935.324-.35.703-.438.938-.438h.675c.21 0 .49-.08.763.58.265.65.903 2.25.983 2.41.08.158.132.342.026.553-.105.21-.158.342-.316.526-.158.184-.333.412-.474.553-.158.158-.316.324-.132.632.184.316.825 1.342 1.773 2.166 1.22 1.07 2.245 1.404 2.56 1.562.316.158.5.132.685-.08.184-.21.79-.922 1-1.237.21-.316.42-.263.71-.158.29.105 1.84.86 2.156 1.017.316.158.526.237.605.368.08.132.08.773-.184 1.52Z" />
   </svg>
 );
 
@@ -31,12 +38,18 @@ const TgSvg = () => (
   </svg>
 );
 
+// const WaSvg = () => (
+//   <svg viewBox="0 0 32 32" className="size-5" fill="currentColor">
+//     <g transform="translate(0.8 0)">
+//       <path d="M19.11 17.2c-.3-.15-1.77-.87-2.05-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.08-.3-.15-1.28-.47-2.43-1.5-.9-.8-1.5-1.8-1.68-2.1-.18-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.03-1.05 2.52s1.08 2.92 1.23 3.12c.15.2 2.1 3.2 5.08 4.48.7.3 1.25.48 1.68.62.7.22 1.33.18 1.83.1.56-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.08-.12-.27-.2-.57-.35Z" />
+//       <path d="M16.03 3C8.85 3 3 8.74 3 15.8c0 2.26.6 4.47 1.74 6.42L3 29l6.98-1.82a13.1 13.1 0 0 0 6.05 1.48h.01C23.2 28.66 29 22.92 29 15.86 29 8.8 23.2 3 16.03 3Zm0 23.3h-.01a10.8 10.8 0 0 1-5.5-1.5l-.4-.23-4.14 1.08 1.1-4.03-.26-.42a10.5 10.5 0 0 1-1.62-5.57c0-5.88 4.84-10.66 10.82-10.66 5.97 0 10.82 4.78 10.82 10.66 0 5.88-4.86 10.67-10.83 10.67Z" />
+//     </g>
+//   </svg>
+// );
+
 const WaSvg = () => (
-  <svg viewBox="0 0 32 32" className="size-5" fill="currentColor">
-    <g transform="translate(0.8 0)">
-      <path d="M19.11 17.2c-.3-.15-1.77-.87-2.05-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.08-.3-.15-1.28-.47-2.43-1.5-.9-.8-1.5-1.8-1.68-2.1-.18-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.03-1.05 2.52s1.08 2.92 1.23 3.12c.15.2 2.1 3.2 5.08 4.48.7.3 1.25.48 1.68.62.7.22 1.33.18 1.83.1.56-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.08-.12-.27-.2-.57-.35Z" />
-      <path d="M16.03 3C8.85 3 3 8.74 3 15.8c0 2.26.6 4.47 1.74 6.42L3 29l6.98-1.82a13.1 13.1 0 0 0 6.05 1.48h.01C23.2 28.66 29 22.92 29 15.86 29 8.8 23.2 3 16.03 3Zm0 23.3h-.01a10.8 10.8 0 0 1-5.5-1.5l-.4-.23-4.14 1.08 1.1-4.03-.26-.42a10.5 10.5 0 0 1-1.62-5.57c0-5.88 4.84-10.66 10.82-10.66 5.97 0 10.82 4.78 10.82 10.66 0 5.88-4.86 10.67-10.83 10.67Z" />
-    </g>
+  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
+    <path d="M20.52 3.48A11.82 11.82 0 0 0 12.07 0C5.5 0 .15 5.35.15 11.93c0 2.1.55 4.16 1.6 5.97L0 24l6.26-1.64a11.92 11.92 0 0 0 5.8 1.48h.01c6.58 0 11.93-5.35 11.93-11.93 0-3.19-1.24-6.19-3.48-8.43Zm-8.45 18.34h-.01a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.72.98.99-3.62-.24-.37a9.9 9.9 0 0 1-1.52-5.3c0-5.47 4.45-9.92 9.92-9.92a9.86 9.86 0 0 1 7.02 2.91 9.86 9.86 0 0 1 2.9 7.01c0 5.47-4.45 9.92-9.92 9.92Zm5.44-7.43c-.3-.15-1.78-.88-2.06-.98-.27-.1-.47-.15-.67.15-.2.3-.77.98-.95 1.18-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.47-.89-.79-1.49-1.77-1.67-2.07-.18-.3-.02-.47.13-.62.13-.13.3-.35.45-.53.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.08-.79.38-.27.3-1.04 1.01-1.04 2.47 0 1.46 1.06 2.87 1.21 3.07.15.2 2.1 3.21 5.08 4.5.7.3 1.25.48 1.68.62.71.23 1.35.2 1.86.12.57-.08 1.78-.73 2.03-1.44.25-.7.25-1.3.17-1.43-.08-.13-.27-.2-.57-.35Z" />
   </svg>
 );
 
@@ -67,20 +80,31 @@ export default function Header() {
   }, []);
 
   // Unique regions (one entry per region_slug, picking the first matching tour)
-  const regionLinks = useMemo(() => {
-    const map = new Map();
-    tours.forEach((t) => {
-      if (!t.region_slug) return;
-      if (!map.has(t.region_slug)) {
-        // Link to first tour of region; we keep the region label for UI
-        map.set(t.region_slug, {
-          slug: t.region_slug,
-          label: t.region_name || t.title,
-          tourSlug: t.slug,
-        });
-      }
-    });
-    return Array.from(map.values());
+  // const regionLinks = useMemo(() => {
+  //   const map = new Map();
+  //   tours.forEach((t) => {
+  //     console.log(t);
+
+  //     if (!t.region_slug) return;
+  //     if (!map.has(t.region_slug)) {
+  //       // Link to first tour of region; we keep the region label for UI
+  //       map.set(t.region_slug, {
+  //         slug: t.region_slug,
+  //         label: t.region_name || t.title,
+  //         tourSlug: t.slug,
+  //       });
+  //     }
+  //   });
+  //   return Array.from(map.values());
+  // }, [tours]);
+
+  const tourLinks = useMemo(() => {
+    return tours
+      .filter((t) => t.slug)
+      .map((t) => ({
+        slug: t.slug,
+        label: t.title,
+      }));
   }, [tours]);
 
   const headerPhones = settings?.header_phones?.length
@@ -117,12 +141,11 @@ export default function Header() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        className={`fixed top-0 left-0 right-0 z-50 border-b transition-all duration-500 ${
           scrolled
-            ? "bg-white/90 backdrop-blur-xl shadow-md border-b border-black/5"
-            : "bg-black/25 backdrop-blur-md"
+            ? "bg-white/90 backdrop-blur-xl shadow-md border-black/5"
+            : "bg-black/25 backdrop-blur-md border-transparent"
         }`}
-        data-testid="site-header"
       >
         {/* TOP INFO BAR */}
         <AnimatePresence>
@@ -160,11 +183,16 @@ export default function Header() {
                     </a>
                   </span>
 
-                  <span>Адрес: {settings?.address || "пр-т Независимости 58, Минск"}</span>
+                  <span>
+                    Адрес: {settings?.address || "пр-т Независимости 58, Минск"}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-6">
-                  <span>График работы: {settings?.work_hours || "Ежедневно 10:00–19:00"}</span>
+                  <span>
+                    График работы:{" "}
+                    {settings?.work_hours || "Ежедневно 10:00–19:00"}
+                  </span>
                   <span className="text-[#F97316] font-medium">
                     На связи в Instagram 24/7
                   </span>
@@ -180,7 +208,11 @@ export default function Header() {
             scrolled ? "h-16" : "h-20"
           }`}
         >
-          <Link to="/" className="flex items-center gap-2 shrink-0" data-testid="header-logo">
+          <Link
+            to="/"
+            className="flex items-center gap-2 shrink-0"
+            data-testid="header-logo"
+          >
             <img
               src={logo}
               alt="TravelSpace logo"
@@ -224,7 +256,7 @@ export default function Header() {
               {toursOpen && (
                 <div className="absolute left-0 top-full pt-4">
                   <div className="w-64 rounded-2xl border border-white/50 bg-white/95 backdrop-blur-xl shadow-2xl p-2">
-                    {regionLinks.map((item) => (
+                    {/* {regionLinks.map((item) => (
                       <NavLink
                         key={item.slug}
                         to={`/tours/${item.tourSlug}`}
@@ -236,6 +268,21 @@ export default function Header() {
                           }`
                         }
                         data-testid={`nav-tour-${item.slug}`}
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))} */}
+                    {tourLinks.map((item) => (
+                      <NavLink
+                        key={item.slug}
+                        to={`/tours/${item.slug}`}
+                        className={({ isActive }) =>
+                          `block rounded-xl px-4 py-2.5 text-sm transition-colors ${
+                            isActive
+                              ? "bg-orange-50 text-[#C2410C]"
+                              : "text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
+                          }`
+                        }
                       >
                         {item.label}
                       </NavLink>
@@ -332,7 +379,9 @@ export default function Header() {
               className="absolute right-0 top-0 h-full w-[88%] max-w-[360px] bg-white p-4 overflow-y-auto shadow-2xl"
             >
               <div className="flex items-center justify-between">
-                <span className="font-heading text-xl font-bold">TRAVELSPACE</span>
+                <span className="font-heading text-xl font-bold">
+                  TRAVELSPACE
+                </span>
                 <button
                   onClick={closeMenu}
                   className="size-9 rounded-full bg-neutral-100 grid place-items-center"
@@ -369,13 +418,23 @@ export default function Header() {
                             className="overflow-hidden"
                           >
                             <div className="flex flex-col gap-0.5 pl-3 py-1">
-                              {regionLinks.map((item) => (
+                              {/* {regionLinks.map((item) => (
                                 <NavLink
                                   key={item.slug}
                                   to={`/tours/${item.tourSlug}`}
                                   onClick={closeMenu}
                                   className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
                                   data-testid={`mobile-nav-tour-${item.slug}`}
+                                >
+                                  {item.label}
+                                </NavLink>
+                              ))} */}
+                              {tourLinks.map((item) => (
+                                <NavLink
+                                  key={item.slug}
+                                  to={`/tours/${item.slug}`}
+                                  onClick={closeMenu}
+                                  className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
                                 >
                                   {item.label}
                                 </NavLink>
@@ -408,7 +467,9 @@ export default function Header() {
                     className="rounded-xl border border-neutral-200 px-3 py-2 text-sm flex items-center justify-between hover:border-[#C2410C]"
                     data-testid={`mobile-phone-${p.link}`}
                   >
-                    <span className="font-medium text-neutral-900">{p.phone}</span>
+                    <span className="font-medium text-neutral-900">
+                      {p.phone}
+                    </span>
                     <span className="text-xs text-neutral-500">{p.label}</span>
                   </a>
                 ))}

@@ -12,7 +12,7 @@ export default function Agencies() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
         <div className="relative h-full section-container flex flex-col justify-end pb-10 text-white">
-          <p className="overline text-white/85">Агентствам</p>
+          <p className="text-white/85">Агентствам</p>
           <h1 className="font-heading text-4xl lg:text-6xl mt-2 max-w-3xl">Работаем с турагентствами по всей Беларуси</h1>
         </div>
       </section>
