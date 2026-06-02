@@ -30,7 +30,6 @@ import {
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
-import { log } from "three";
 
 const BADGE_STYLES = {
   Хит: "bg-rose-500 text-white border-rose-500",
@@ -66,6 +65,54 @@ function fmtDateRange(d) {
 
   return `${formatDate(d.start)} → ${formatDate(d.end)}`;
 }
+
+function dateKey(d) {
+  return d?.id || d?.start || fmtDateRange(d);
+}
+
+function getRoomUnavailableDates(room) {
+  return room?.unavailable_dates || room?.unavailableDates || [];
+}
+
+function isRoomUnavailableOnDate(room, date) {
+  const unavailable = getRoomUnavailableDates(room);
+  return unavailable.includes(date?.id) || unavailable.includes(date?.start);
+}
+
+function buildLegacyChain(tour) {
+  const dates = (tour.dates || []).filter((d) => d.status !== "hidden");
+  const hotels = tour.hotels || [];
+
+  if (!dates.length && !hotels.length) return [];
+
+  return [
+    {
+      id: "legacy-chain",
+      title: "Основное расписание",
+      dates,
+      hotels: hotels.map((hotel) => ({
+        ...hotel,
+        rooms: hotel.rooms || [],
+      })),
+    },
+  ];
+}
+
+function getTourChains(tour) {
+  const chains = Array.isArray(tour.chains) ? tour.chains : [];
+  if (chains.length) {
+    return chains
+      .filter((chain) => chain?.active !== false)
+      .map((chain, index) => ({
+        ...chain,
+        title: chain.title || chain.name || `Цепочка ${index + 1}`,
+        dates: (chain.dates || []).filter((d) => d.status !== "hidden"),
+        hotels: (chain.hotels || []).filter((h) => h.active !== false),
+      }));
+  }
+
+  return buildLegacyChain(tour);
+}
 export default function TourPage() {
   const { slug } = useParams();
   const [tour, setTour] = useState(null);
@@ -73,6 +120,7 @@ export default function TourPage() {
   const [leadOpen, setLeadOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const { tours } = useSiteData();
 
   useEffect(() => {
@@ -106,8 +154,9 @@ export default function TourPage() {
     );
   }
 
-  const dates = (tour.dates || []).filter((d) => d.status !== "hidden");
-  const dateStrings = dates.map(fmtDateRange);
+  const chains = getTourChains(tour);
+  const dates = chains.flatMap((chain) => chain.dates || []);
+  const dateStrings = dates.map(fmtDateRange).filter(Boolean);
 
   return (
     <div data-testid="tour-page">
@@ -204,7 +253,7 @@ export default function TourPage() {
       </section>
 
       {/* TOUR ANCHOR NAV */}
-      <div className="sticky top-16 lg:top-20 z-30 bg-white/95 backdrop-blur border-b border-neutral-200">
+      <div className="sticky top-16 z-40 bg-white/95 backdrop-blur border-b border-neutral-200">
         <div className="section-container flex gap-1 overflow-x-auto py-2 text-sm font-medium">
           {SECTIONS.map(([id, label]) => (
             <button
@@ -381,43 +430,127 @@ export default function TourPage() {
             </div>
           </div>
 
-          {/* HOTELS */}
-          {tour.hotels?.length > 0 && (
+          {/* CHAINS / HOTELS / ROOMS */}
+          {chains.some((chain) => chain.hotels?.length > 0) && (
             <div data-testid="tour-hotels">
               <p className="overline text-[#C2410C]">Где живём</p>
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
-                Отели и проживание
+                Отели, номера и цепочки заездов
               </h2>
-              <div className="grid sm:grid-cols-2 gap-5">
-                {tour.hotels.map((h) => (
+
+              <div className="space-y-8">
+                {chains.map((chain, chainIndex) => (
                   <div
-                    key={h.id}
-                    className="rounded-2xl overflow-hidden border border-neutral-200 bg-white"
+                    key={chain.id || chainIndex}
+                    className="rounded-3xl border border-neutral-200 bg-white p-4 sm:p-5"
                   >
-                    {h.image && (
-                      <div className="aspect-[4/3] bg-neutral-100">
-                        <img
-                          src={h.image}
-                          alt={h.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
-                    <div className="p-5">
-                      <h4 className="font-heading text-xl">{h.name}</h4>
-                      <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                        {h.description}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
-                        {h.meal && (
-                          <span>
-                            <Hotel className="inline size-3.5 -mt-0.5 mr-1" />
-                            {h.meal}
-                          </span>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="font-heading text-2xl">
+                          {chain.title || `Цепочка ${chainIndex + 1}`}
+                        </h3>
+                        {chain.description && (
+                          <p className="mt-1 text-sm text-neutral-600">
+                            {chain.description}
+                          </p>
                         )}
-                        {h.location && <span>{h.location}</span>}
                       </div>
+                      {chain.dates?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 text-xs">
+                          {chain.dates.map((d) => (
+                            <span
+                              key={dateKey(d)}
+                              className="rounded-full bg-orange-50 px-3 py-1 text-[#C2410C]"
+                            >
+                              {fmtDateRange(d)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 grid gap-5">
+                      {(chain.hotels || []).map((h) => (
+                        <div
+                          key={h.id}
+                          className="rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-50"
+                        >
+                          <div className="grid md:grid-cols-[240px_1fr]">
+                            {h.image && (
+                              <div className="aspect-[4/3] md:aspect-auto bg-neutral-100">
+                                <img
+                                  src={h.image}
+                                  alt={h.name}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                            )}
+                            <div className="p-5">
+                              <h4 className="font-heading text-xl">{h.name}</h4>
+                              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
+                                {h.description}
+                              </p>
+                              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
+                                {h.meal && (
+                                  <span>
+                                    <Hotel className="inline size-3.5 -mt-0.5 mr-1" />
+                                    {h.meal}
+                                  </span>
+                                )}
+                                {h.location && <span>{h.location}</span>}
+                              </div>
+
+                              {h.rooms?.length > 0 && (
+                                <div className="mt-5">
+                                  <p className="text-sm font-medium">Номера</p>
+                                  <div className="mt-3 grid sm:grid-cols-2 gap-3">
+                                    {h.rooms.map((room) => (
+                                      <button
+                                        key={room.id}
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedRoom({
+                                            room,
+                                            hotel: h,
+                                            chain,
+                                          })
+                                        }
+                                        className="text-left rounded-xl border border-neutral-200 bg-white p-3 hover:border-[#C2410C] hover:bg-orange-50/40 transition"
+                                      >
+                                        {(room.gallery?.[0] || room.image) && (
+                                          <img
+                                            src={
+                                              room.gallery?.[0] || room.image
+                                            }
+                                            alt={room.title || room.number}
+                                            className="mb-3 aspect-[4/3] w-full rounded-lg object-cover bg-neutral-100"
+                                            loading="lazy"
+                                          />
+                                        )}
+                                        <p className="font-medium">
+                                          {room.title ||
+                                            (room.number
+                                              ? `Номер ${room.number}`
+                                              : "Номер")}
+                                        </p>
+                                        {room.description && (
+                                          <p className="mt-1 line-clamp-2 text-xs text-neutral-500">
+                                            {room.description}
+                                          </p>
+                                        )}
+                                        <p className="mt-2 text-xs text-[#C2410C]">
+                                          Посмотреть даты и фото
+                                        </p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -578,30 +711,128 @@ export default function TourPage() {
             </DialogTitle>
             <DialogDescription>{tour.title}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            {dates.map((d) => (
-              <button
-                key={d.id || fmtDateRange(d)}
-                type="button"
-                onClick={() => {
-                  setSelectedDate(fmtDateRange(d));
-                  setPricesOpen(false);
-                  setLeadOpen(true);
-                }}
-                className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left hover:border-[#C2410C] hover:bg-orange-50/40 transition"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{fmtDateRange(d)}</span>
-                  <span className="font-heading text-xl text-[#C2410C]">
-                    {d.price} {d.currency || tour.currency || "BYN"}
-                  </span>
+          <div className="space-y-4">
+            {chains.map((chain, chainIndex) => (
+              <div key={chain.id || chainIndex}>
+                <p className="mb-2 text-sm font-medium text-neutral-700">
+                  {chain.title || `Цепочка ${chainIndex + 1}`}
+                </p>
+                <div className="space-y-2">
+                  {(chain.dates || []).map((d) => (
+                    <button
+                      key={dateKey(d)}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(fmtDateRange(d));
+                        setPricesOpen(false);
+                        setLeadOpen(true);
+                      }}
+                      className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left hover:border-[#C2410C] hover:bg-orange-50/40 transition"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium">{fmtDateRange(d)}</span>
+                        <span className="font-heading text-xl text-[#C2410C]">
+                          {d.price} {d.currency || tour.currency || "BYN"}
+                        </span>
+                      </div>
+                      {d.comment && (
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {d.comment}
+                        </p>
+                      )}
+                    </button>
+                  ))}
                 </div>
-                {d.comment && (
-                  <p className="mt-1 text-xs text-neutral-500">{d.comment}</p>
-                )}
-              </button>
+              </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!selectedRoom}
+        onOpenChange={(v) => !v && setSelectedRoom(null)}
+      >
+        <DialogContent
+          className="max-w-3xl max-h-[calc(100vh-24px)] overflow-y-auto rounded-2xl"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          {selectedRoom && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-heading text-2xl">
+                  {selectedRoom.room.title ||
+                    (selectedRoom.room.number
+                      ? `Номер ${selectedRoom.room.number}`
+                      : "Номер")}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedRoom.hotel.name} · {selectedRoom.chain.title}
+                </DialogDescription>
+              </DialogHeader>
+
+              {selectedRoom.room.description && (
+                <p className="text-sm text-neutral-700">
+                  {selectedRoom.room.description}
+                </p>
+              )}
+
+              {selectedRoom.room.video_url && (
+                <a
+                  href={selectedRoom.room.video_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex w-fit rounded-full bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+                >
+                  Посмотреть на YouTube
+                </a>
+              )}
+
+              {selectedRoom.room.gallery?.length > 0 && (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {selectedRoom.room.gallery.map((image, index) => (
+                    <img
+                      key={`${image}-${index}`}
+                      src={image}
+                      alt={`Фото номера ${index + 1}`}
+                      className="aspect-[4/3] w-full rounded-xl object-cover bg-neutral-100"
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <p className="font-medium">Доступность по датам</p>
+                <div className="mt-2 grid gap-2">
+                  {(selectedRoom.chain.dates || []).map((d) => {
+                    const unavailable = isRoomUnavailableOnDate(
+                      selectedRoom.room,
+                      d,
+                    );
+
+                    return (
+                      <div
+                        key={dateKey(d)}
+                        className={`rounded-xl border px-4 py-3 text-sm ${
+                          unavailable
+                            ? "border-red-200 bg-red-50 text-red-700"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium">{fmtDateRange(d)}</span>
+                          <span>
+                            {unavailable ? "Номер выкуплен" : "Доступен"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

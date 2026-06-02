@@ -32,13 +32,13 @@ const CARDS = [
     to: "/admin/specialists",
     accent: "#171717",
   },
-  {
-    key: "reviews",
-    label: "Отзывы",
-    icon: MessageSquare,
-    to: "/admin/reviews",
-    accent: "#525252",
-  },
+  // {
+  //   key: "reviews",
+  //   label: "Отзывы",
+  //   icon: MessageSquare,
+  //   to: "/admin/reviews",
+  //   accent: "#525252",
+  // },
   {
     key: "articles",
     label: "Блог",

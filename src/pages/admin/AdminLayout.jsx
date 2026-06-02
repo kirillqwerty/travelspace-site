@@ -20,7 +20,7 @@ const ITEMS = [
   { to: "/admin/leads", label: "Заявки", icon: Inbox },
   { to: "/admin/tours", label: "Туры", icon: Map },
   { to: "/admin/specialists", label: "Специалисты", icon: Users },
-  { to: "/admin/reviews", label: "Отзывы", icon: MessageSquare },
+  // { to: "/admin/reviews", label: "Отзывы", icon: MessageSquare },
   { to: "/admin/articles", label: "Блог", icon: FileText },
   { to: "/admin/promotions", label: "Акции", icon: Tag },
   { to: "/admin/faq", label: "FAQ", icon: HelpCircle },

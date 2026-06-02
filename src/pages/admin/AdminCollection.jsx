@@ -24,7 +24,7 @@ import { toast } from "sonner";
 const TITLES = {
   tours: "Туры",
   specialists: "Специалисты",
-  reviews: "Отзывы",
+  // reviews: "Отзывы",
   articles: "Статьи блога",
   promotions: "Акции",
   faq: "FAQ",
@@ -103,22 +103,22 @@ const SCHEMAS = {
       { key: "active", label: "Активен", type: "switch" },
     ],
   },
-  reviews: {
-    label: (r) => r.name,
-    description: (r) => r.tour_name || r.direction,
-    image: (r) => r.photo,
-    fields: [
-      { key: "name", label: "Имя", type: "text" },
-      { key: "tour_name", label: "Тур (название)", type: "text" },
-      { key: "text", label: "Текст отзыва", type: "textarea" },
-      { key: "rating", label: "Рейтинг (1-5)", type: "number" },
-      { key: "photo", label: "Фото", type: "image" },
-      { key: "external_link", label: "Ссылка на внешний отзыв", type: "text" },
-      { key: "date", label: "Дата", type: "date", placeholder: "01.09.2025" },
-      { key: "order", label: "Порядок", type: "number" },
-      { key: "active", label: "Активен", type: "switch" },
-    ],
-  },
+  // reviews: {
+  //   label: (r) => r.name,
+  //   description: (r) => r.tour_name || r.direction,
+  //   image: (r) => r.photo,
+  //   fields: [
+  //     { key: "name", label: "Имя", type: "text" },
+  //     { key: "tour_name", label: "Тур (название)", type: "text" },
+  //     { key: "text", label: "Текст отзыва", type: "textarea" },
+  //     { key: "rating", label: "Рейтинг (1-5)", type: "number" },
+  //     { key: "photo", label: "Фото", type: "image" },
+  //     { key: "external_link", label: "Ссылка на внешний отзыв", type: "text" },
+  //     { key: "date", label: "Дата", type: "date", placeholder: "01.09.2025" },
+  //     { key: "order", label: "Порядок", type: "number" },
+  //     { key: "active", label: "Активен", type: "switch" },
+  //   ],
+  // },
   articles: {
     label: (a) => a.title,
     description: (a) => a.published_at,
@@ -173,6 +173,82 @@ const SCHEMAS = {
 
 const TOUR_JSON_HINT =
   "Для тура можно добавить поля: highlights (массив строк) — главные впечатления; what_to_see (массив строк) — что посмотреть; gallery (массив URL) — галерея; program (массив дней) — программа по дням; included / excluded — что входит и что нет; important_info — важно знать; hotels — отели; dates — массив дат; faq — массив вопросов.";
+
+const normalizeDateRecord = (d = {}, record = {}) => ({
+  id: d.id || uid(),
+  start: d.start || "",
+  end: d.end || "",
+  price: d.price === "" ? "" : Number(d.price ?? record.price_from ?? 0),
+  currency: d.currency || record.currency || "BYN",
+  status: d.status || "active",
+  comment: d.comment || "",
+});
+
+const normalizeRoomRecord = (room = {}) => ({
+  id: room.id || uid(),
+  number: room.number || "",
+  title: room.title || "",
+  description: room.description || "",
+  gallery: Array.isArray(room.gallery) ? room.gallery.filter(Boolean) : [],
+  video_url: room.video_url || room.videoUrl || "",
+  unavailable_dates: Array.isArray(room.unavailable_dates)
+    ? room.unavailable_dates
+    : Array.isArray(room.unavailableDates)
+      ? room.unavailableDates
+      : [],
+  order: room.order ?? "",
+  active: room.active !== false,
+});
+
+const normalizeHotelRecord = (h = {}) => ({
+  id: h.id || uid(),
+  name: h.name || "",
+  description: h.description || "",
+  image: h.image || "",
+  meal: h.meal || "",
+  location: h.location || "",
+  order: h.order ?? "",
+  active: h.active !== false,
+  rooms: Array.isArray(h.rooms) ? h.rooms.map(normalizeRoomRecord) : [],
+});
+
+const normalizeChains = (record = {}) => {
+  if (Array.isArray(record.chains) && record.chains.length) {
+    return record.chains.map((chain, index) => ({
+      id: chain.id || uid(),
+      title: chain.title || chain.name || `Цепочка ${index + 1}`,
+      description: chain.description || "",
+      order: chain.order ?? index + 1,
+      active: chain.active !== false,
+      dates: Array.isArray(chain.dates)
+        ? chain.dates.map((d) => normalizeDateRecord(d, record))
+        : [],
+      hotels: Array.isArray(chain.hotels)
+        ? chain.hotels.map(normalizeHotelRecord)
+        : [],
+    }));
+  }
+
+  if (Array.isArray(record.dates) || Array.isArray(record.hotels)) {
+    return [
+      {
+        id: uid(),
+        title: "Основная цепочка",
+        description: "",
+        order: 1,
+        active: true,
+        dates: Array.isArray(record.dates)
+          ? record.dates.map((d) => normalizeDateRecord(d, record))
+          : [],
+        hotels: Array.isArray(record.hotels)
+          ? record.hotels.map(normalizeHotelRecord)
+          : [],
+      },
+    ];
+  }
+
+  return [];
+};
 
 const normalizeRecord = (record = {}, collectionName) => {
   if (collectionName !== "tours") return record;
@@ -229,27 +305,16 @@ const normalizeRecord = (record = {}, collectionName) => {
         }))
       : [],
 
-    dates: Array.isArray(record.dates)
-      ? record.dates.map((d) => ({
-          id: d.id || uid(),
-          start: d.start || "",
-          end: d.end || "",
-          price: Number(d.price || record.price_from || 0),
-          currency: d.currency || record.currency || "BYN",
-          status: d.status || "active",
-          comment: d.comment || "",
-        }))
-      : [],
+    // New tour structure: chain -> hotels -> rooms.
+    // Old dates/hotels are converted into one default chain for compatibility.
+    chains: normalizeChains(record),
 
+    // Keep old fields only for compatibility with old public components/data.
+    dates: Array.isArray(record.dates)
+      ? record.dates.map((d) => normalizeDateRecord(d, record))
+      : [],
     hotels: Array.isArray(record.hotels)
-      ? record.hotels.map((h) => ({
-          id: h.id || uid(),
-          name: h.name || "",
-          description: h.description || "",
-          image: h.image || "",
-          meal: h.meal || "",
-          location: h.location || "",
-        }))
+      ? record.hotels.map(normalizeHotelRecord)
       : [],
 
     faq: Array.isArray(record.faq)
@@ -476,6 +541,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
     "excluded",
     "important_info",
     "program",
+    "chains",
     "dates",
     "hotels",
     "faq",
@@ -848,14 +914,11 @@ function TourExtraFields({ form, setForm }) {
         onChange={(v) => update("program", v)}
       />
 
-      <DatesField
-        value={form.dates || []}
-        onChange={(v) => update("dates", v)}
-      />
-
-      <HotelsField
-        value={form.hotels || []}
-        onChange={(v) => update("hotels", v)}
+      <ChainsField
+        value={form.chains || []}
+        onChange={(v) => update("chains", v)}
+        tourCurrency={form.currency || "BYN"}
+        tourPrice={form.price_from || ""}
       />
 
       <FaqField value={form.faq || []} onChange={(v) => update("faq", v)} />
@@ -1160,7 +1223,12 @@ function ProgramField({ value, onChange }) {
   );
 }
 
-function DatesField({ value, onChange }) {
+function DatesField({
+  value,
+  onChange,
+  defaultCurrency = "BYN",
+  defaultPrice = "",
+}) {
   const items = value.length
     ? value
     : [
@@ -1168,7 +1236,8 @@ function DatesField({ value, onChange }) {
           id: uid(),
           start: "",
           end: "",
-          price: "",
+          price: defaultPrice || "",
+          currency: defaultCurrency,
           status: "active",
           comment: "",
         },
@@ -1187,7 +1256,8 @@ function DatesField({ value, onChange }) {
         id: uid(),
         start: "",
         end: "",
-        price: "",
+        price: defaultPrice || "",
+        currency: defaultCurrency,
         status: "active",
         comment: "",
       },
@@ -1393,6 +1463,403 @@ function HotelsField({ value, onChange }) {
       </Button>
     </div>
   );
+}
+
+function ChainsField({ value, onChange, tourCurrency, tourPrice }) {
+  const items = value.length
+    ? value
+    : [
+        {
+          id: uid(),
+          title: "Цепочка 1",
+          description: "",
+          order: 1,
+          active: true,
+          dates: [],
+          hotels: [],
+        },
+      ];
+
+  const updateItem = (index, patch) => {
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const addItem = () =>
+    onChange([
+      ...items,
+      {
+        id: uid(),
+        title: `Цепочка ${items.length + 1}`,
+        description: "",
+        order: items.length + 1,
+        active: true,
+        dates: [],
+        hotels: [],
+      },
+    ]);
+
+  const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
+
+  return (
+    <div>
+      <Label>Цепочки / расписания автобусов</Label>
+      <p className="mt-1 text-xs text-neutral-500">
+        У каждой цепочки свои даты, свои отели и свои номера. Номер можно
+        отметить выкупленным на конкретную дату цепочки.
+      </p>
+
+      <div className="mt-3 space-y-4">
+        {items.map((chain, index) => (
+          <div
+            key={chain.id || index}
+            className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 space-y-4"
+          >
+            <div className="flex items-start gap-2">
+              <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_120px]">
+                <Input
+                  value={chain.title || ""}
+                  onChange={(e) => updateItem(index, { title: e.target.value })}
+                  placeholder="Например: Цепочка 1 / Автобус 1"
+                />
+                <Input
+                  type="number"
+                  value={chain.order ?? ""}
+                  onChange={(e) =>
+                    updateItem(index, {
+                      order:
+                        e.target.value === "" ? "" : Number(e.target.value),
+                    })
+                  }
+                  placeholder="Порядок"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeItem(index)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            <Textarea
+              value={chain.description || ""}
+              onChange={(e) =>
+                updateItem(index, { description: e.target.value })
+              }
+              placeholder="Комментарий к цепочке, если нужен"
+              rows={2}
+            />
+
+            <DatesField
+              value={chain.dates || []}
+              onChange={(dates) => updateItem(index, { dates })}
+              defaultCurrency={tourCurrency}
+              defaultPrice={tourPrice}
+            />
+
+            <ChainHotelsField
+              value={chain.hotels || []}
+              dates={chain.dates || []}
+              onChange={(hotels) => updateItem(index, { hotels })}
+            />
+          </div>
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-3"
+        onClick={addItem}
+      >
+        <Plus className="size-4 mr-1" /> Добавить цепочку
+      </Button>
+    </div>
+  );
+}
+
+function ChainHotelsField({ value, dates, onChange }) {
+  const items = value.length
+    ? value
+    : [
+        {
+          id: uid(),
+          name: "",
+          description: "",
+          image: "",
+          meal: "",
+          location: "",
+          rooms: [],
+          active: true,
+        },
+      ];
+
+  const updateItem = (index, patch) => {
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const addItem = () =>
+    onChange([
+      ...items,
+      {
+        id: uid(),
+        name: "",
+        description: "",
+        image: "",
+        meal: "",
+        location: "",
+        rooms: [],
+        active: true,
+      },
+    ]);
+
+  const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-3">
+      <Label>Отели этой цепочки</Label>
+
+      <div className="mt-2 space-y-3">
+        {items.map((item, index) => (
+          <div
+            key={item.id || index}
+            className="rounded-xl border border-neutral-200 p-3 space-y-3"
+          >
+            <div className="flex gap-2">
+              <Input
+                value={item.name || ""}
+                onChange={(e) => updateItem(index, { name: e.target.value })}
+                placeholder="Название отеля"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeItem(index)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            <Textarea
+              value={item.description || ""}
+              onChange={(e) =>
+                updateItem(index, { description: e.target.value })
+              }
+              placeholder="Описание отеля"
+            />
+
+            <ImageInput
+              value={item.image || ""}
+              onChange={(v) => updateItem(index, { image: v })}
+            />
+
+            <div className="grid sm:grid-cols-2 gap-2">
+              <Input
+                value={item.meal || ""}
+                onChange={(e) => updateItem(index, { meal: e.target.value })}
+                placeholder="Питание"
+              />
+              <Input
+                value={item.location || ""}
+                onChange={(e) =>
+                  updateItem(index, { location: e.target.value })
+                }
+                placeholder="Расположение"
+              />
+            </div>
+
+            <RoomsField
+              value={item.rooms || []}
+              dates={dates}
+              onChange={(rooms) => updateItem(index, { rooms })}
+            />
+          </div>
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-2"
+        onClick={addItem}
+      >
+        <Plus className="size-4 mr-1" /> Добавить отель
+      </Button>
+    </div>
+  );
+}
+
+function RoomsField({ value, dates, onChange }) {
+  const items = value.length
+    ? value
+    : [
+        {
+          id: uid(),
+          number: "",
+          title: "",
+          description: "",
+          gallery: [],
+          video_url: "",
+          unavailable_dates: [],
+          active: true,
+        },
+      ];
+
+  const updateItem = (index, patch) => {
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const addItem = () =>
+    onChange([
+      ...items,
+      {
+        id: uid(),
+        number: "",
+        title: "",
+        description: "",
+        gallery: [],
+        video_url: "",
+        unavailable_dates: [],
+        active: true,
+      },
+    ]);
+
+  const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
+
+  return (
+    <div className="rounded-xl border border-dashed border-neutral-300 p-3">
+      <Label>Номера отеля</Label>
+
+      <div className="mt-2 space-y-3">
+        {items.map((room, index) => (
+          <div
+            key={room.id || index}
+            className="rounded-xl border p-3 space-y-3"
+          >
+            <div className="grid sm:grid-cols-[120px_1fr_auto] gap-2">
+              <Input
+                value={room.number || ""}
+                onChange={(e) => updateItem(index, { number: e.target.value })}
+                placeholder="№ 201"
+              />
+              <Input
+                value={room.title || ""}
+                onChange={(e) => updateItem(index, { title: e.target.value })}
+                placeholder="Название номера"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeItem(index)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            <Textarea
+              value={room.description || ""}
+              onChange={(e) =>
+                updateItem(index, { description: e.target.value })
+              }
+              placeholder="Описание номера"
+            />
+
+            <ImageListField
+              label="Галерея номера"
+              value={room.gallery || []}
+              onChange={(gallery) => updateItem(index, { gallery })}
+            />
+
+            <Input
+              value={room.video_url || ""}
+              onChange={(e) => updateItem(index, { video_url: e.target.value })}
+              placeholder="Ссылка на YouTube / видеообзор"
+            />
+
+            <RoomUnavailableDatesField
+              value={room.unavailable_dates || []}
+              dates={dates}
+              onChange={(unavailable_dates) =>
+                updateItem(index, { unavailable_dates })
+              }
+            />
+          </div>
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-2"
+        onClick={addItem}
+      >
+        <Plus className="size-4 mr-1" /> Добавить номер
+      </Button>
+    </div>
+  );
+}
+
+function RoomUnavailableDatesField({ value, dates, onChange }) {
+  const toggleDate = (date) => {
+    const key = date.id || date.start;
+    if (!key) return;
+
+    if (value.includes(key)) {
+      onChange(value.filter((x) => x !== key));
+    } else {
+      onChange([...value, key]);
+    }
+  };
+
+  return (
+    <div>
+      <Label className="text-xs">Недоступные / выкупленные даты номера</Label>
+
+      {!dates.length && (
+        <p className="mt-1 text-xs text-neutral-500">
+          Сначала добавьте даты в цепочку.
+        </p>
+      )}
+
+      <div className="mt-2 grid sm:grid-cols-2 gap-2">
+        {dates.map((date) => {
+          const key = date.id || date.start;
+          const checked = value.includes(key);
+
+          return (
+            <label
+              key={key}
+              className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
+                checked
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-neutral-200 bg-white text-neutral-700"
+              }`}
+            >
+              <span>{formatDateLabel(date)}</span>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggleDate(date)}
+              />
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function formatDateLabel(date) {
+  if (!date?.start) return "Дата";
+  if (!date?.end) return date.start;
+  return `${date.start} → ${date.end}`;
 }
 
 function FaqField({ value, onChange }) {
