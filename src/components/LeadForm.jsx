@@ -306,10 +306,10 @@ export default function LeadForm({
           data-testid="lead-consent-checkbox"
         />
         <span>
-          Я согласен на обработку{" "}
+          Я согласен на обработку
           <a href="/legal" className="underline hover:text-[#C2410C]">
             персональных данных
-          </a>{" "}
+          </a>
           и принимаю условия публичного договора.
         </span>
       </label>

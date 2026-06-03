@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { MapPin, Calendar, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { mediaUrl } from "@/lib/media";
 
 const BADGE_STYLES = {
   Хит: "bg-rose-500 text-white border-rose-500",
@@ -12,8 +13,7 @@ const BADGE_STYLES = {
   "Авторский тур": "bg-fuchsia-500 text-white border-fuchsia-500",
 };
 
-const DEFAULT_BADGE =
-  "bg-neutral-100 text-neutral-700 border-neutral-200";
+const DEFAULT_BADGE = "bg-neutral-100 text-neutral-700 border-neutral-200";
 
 export default function TourCard({ tour, size = "default" }) {
   const isLarge = size === "large";
@@ -31,9 +31,11 @@ export default function TourCard({ tour, size = "default" }) {
       "
       data-testid={`tour-card-${tour.slug}`}
     >
-      <div className={`relative ${isLarge ? "aspect-[4/3] lg:aspect-[16/11]" : "aspect-[4/3]"} overflow-hidden bg-neutral-100`}>
+      <div
+        className={`relative ${isLarge ? "aspect-[4/3] lg:aspect-[16/11]" : "aspect-[4/3]"} overflow-hidden bg-neutral-100`}
+      >
         <img
-          src={tour.hero_image}
+          src={mediaUrl(tour.hero_image)}
           alt={tour.title}
           loading="lazy"
           className="
@@ -98,7 +100,7 @@ export default function TourCard({ tour, size = "default" }) {
               {tour.price_type || "от"}
             </p>
             <p className="font-heading text-3xl font-bold text-neutral-900">
-              {tour.price_from}{" "}
+              {tour.price_from}
               <span className="text-sm font-medium text-[#C2410C]">
                 {tour.currency || "BYN"}
               </span>

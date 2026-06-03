@@ -174,7 +174,7 @@ export default function Header() {
                   </div>
 
                   <span>
-                    Эл. почта:{" "}
+                    Эл. почта:
                     <a
                       href={`mailto:${settings?.email || "info@travel-space.by"}`}
                       className="hover:text-[#F97316]"
@@ -190,7 +190,7 @@ export default function Header() {
 
                 <div className="flex items-center gap-6">
                   <span>
-                    График работы:{" "}
+                    График работы:
                     {settings?.work_hours || "Ежедневно 10:00–19:00"}
                   </span>
                   <span className="text-[#F97316] font-medium">

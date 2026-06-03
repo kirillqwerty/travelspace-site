@@ -42,7 +42,6 @@ export default function Promotions() {
           >
             {p.image && (
               <div className="h-64 bg-neutral-100">
-                {" "}
                 <img
                   src={p.image}
                   alt={p.title}
@@ -62,7 +61,7 @@ export default function Promotions() {
               {p.valid_until && (
                 <p className="mt-4 text-xs text-neutral-500 inline-flex items-center gap-1">
                   <Calendar className="size-3.5" /> Действует до
-                   {formatDate(p.valid_until)}
+                  {formatDate(p.valid_until)}
                 </p>
               )}
               <div className="mt-auto pt-5 flex gap-3">

@@ -78,7 +78,7 @@ export default function Payment() {
           <li>Подтвердите сумму и проведите оплату.</li>
         </ol>
         <p className="text-xs text-neutral-500 mt-4">
-          Возникли вопросы по оплате?{" "}
+          Возникли вопросы по оплате?
           <Link to="/contacts" className="underline text-[#C2410C]">
             Свяжитесь с менеджером
           </Link>

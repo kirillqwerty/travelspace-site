@@ -20,6 +20,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Plus, Edit, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { mediaUrl } from "@/lib/media";
 
 const TITLES = {
   tours: "Туры",
@@ -204,7 +205,12 @@ const normalizeHotelRecord = (h = {}) => ({
   id: h.id || uid(),
   name: h.name || "",
   description: h.description || "",
-  image: h.image || "",
+  images: Array.isArray(h.images)
+    ? h.images.filter(Boolean)
+    : h.image
+      ? [h.image]
+      : [],
+  image: h.image || h.images?.[0] || "",
   meal: h.meal || "",
   location: h.location || "",
   order: h.order ?? "",
@@ -456,7 +462,7 @@ export default function AdminCollection({ name }) {
               {schema.image?.(it) && (
                 <div className="h-[220px] shrink-0 bg-neutral-100">
                   <img
-                    src={schema.image(it)}
+                    src={mediaUrl(schema.image(it))}
                     alt=""
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -983,8 +989,19 @@ function StringListField({ label, value, onChange, placeholder }) {
   );
 }
 
+const reorderArray = (list, fromIndex, toIndex) => {
+  if (fromIndex === toIndex) return list;
+
+  const next = [...list];
+  const [movedItem] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, movedItem);
+
+  return next;
+};
+
 function ImageListField({ label, value, onChange }) {
   const items = value.length ? value : [""];
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   const updateItem = (index, text) => {
     const next = [...items];
@@ -995,6 +1012,11 @@ function ImageListField({ label, value, onChange }) {
   const addItem = () => onChange([...items.filter(Boolean), ""]);
   const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
 
+  const moveItem = (fromIndex, toIndex) => {
+    const cleanItems = items.filter(Boolean);
+    onChange(reorderArray(cleanItems, fromIndex, toIndex));
+  };
+
   return (
     <div>
       <Label>{label}</Label>
@@ -1002,10 +1024,41 @@ function ImageListField({ label, value, onChange }) {
       <div className="mt-2 space-y-3">
         {items.map((item, index) => (
           <div
-            key={index}
-            className="flex flex-col sm:flex-row gap-2 items-start"
+            key={`${item}-${index}`}
+            draggable={!!item}
+            onDragStart={() => setDraggedIndex(index)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+
+              if (draggedIndex === null) return;
+              if (!items[draggedIndex]) return;
+              if (!item) return;
+
+              moveItem(draggedIndex, index);
+              setDraggedIndex(null);
+            }}
+            onDragEnd={() => setDraggedIndex(null)}
+            className={`flex flex-col sm:flex-row gap-2 items-start rounded-xl transition ${
+              draggedIndex === index ? "opacity-50 ring-2 ring-[#C2410C]" : ""
+            }`}
           >
+            <div className="flex w-full sm:w-auto items-center gap-2">
+              <button
+                type="button"
+                className="cursor-grab rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-500 active:cursor-grabbing"
+                title="Перетащить фото"
+              >
+                ☰
+              </button>
+
+              <span className="w-6 shrink-0 text-xs text-neutral-400">
+                {index + 1}
+              </span>
+            </div>
+
             <ImageInput value={item} onChange={(v) => updateItem(index, v)} />
+
             <Button
               type="button"
               variant="outline"
@@ -1025,9 +1078,14 @@ function ImageListField({ label, value, onChange }) {
       >
         <Plus className="size-4 mr-1" /> Добавить фото
       </Button>
+
+      <p className="mt-2 text-xs text-neutral-500">
+        Порядок фото можно менять перетягиванием. Первое фото будет главным.
+      </p>
     </div>
   );
 }
+
 function CitySelect({ value, onChange }) {
   const cities = ["Минск", "Гомель", "Жлобин", "Бобруйск", "Москва"];
 
@@ -1072,13 +1130,83 @@ function CitySelect({ value, onChange }) {
     </div>
   );
 }
-function ImageInput({ value, onChange }) {
-  const readFile = (file) => {
-    if (!file?.type?.startsWith("image/")) return;
 
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result);
-    reader.readAsDataURL(file);
+async function compressImage(file, maxWidth = 1200, quality = 0.72) {
+  if (!file?.type?.startsWith("image/")) {
+    throw new Error("Можно загружать только изображения");
+  }
+
+  const imageUrl = URL.createObjectURL(file);
+
+  const img = await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = imageUrl;
+  });
+
+  const scale = Math.min(1, maxWidth / img.width);
+  const width = Math.round(img.width * scale);
+  const height = Math.round(img.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
+
+  URL.revokeObjectURL(imageUrl);
+
+  return await new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        resolve(
+          new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+            type: "image/jpeg",
+          }),
+        );
+      },
+      "image/jpeg",
+      quality,
+    );
+  });
+}
+
+async function uploadImage(file) {
+  const compressed = await compressImage(file);
+
+  const formData = new FormData();
+  formData.append("file", compressed);
+
+  const response = await api.post("/admin/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data.url;
+}
+
+function ImageInput({ value, onChange }) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const url = await uploadImage(file);
+      onChange(url);
+      toast.success("Изображение загружено");
+    } catch (e) {
+      console.error(e);
+      toast.error(
+        e?.response?.data?.detail || e.message || "Ошибка загрузки изображения",
+      );
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -1087,19 +1215,23 @@ function ImageInput({ value, onChange }) {
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
-        readFile(e.dataTransfer.files?.[0]);
+        handleFile(e.dataTransfer.files?.[0]);
       }}
     >
       <div className="flex flex-col sm:flex-row gap-3 items-start">
         {value ? (
           <img
-            src={value}
+            src={mediaUrl(value)}
             alt=""
             className="size-20 rounded-lg object-cover bg-neutral-100"
           />
         ) : (
           <div className="size-20 rounded-lg bg-neutral-100 flex items-center justify-center">
-            <Upload className="size-5 text-neutral-400" />
+            {uploading ? (
+              <Loader2 className="size-5 animate-spin text-neutral-400" />
+            ) : (
+              <Upload className="size-5 text-neutral-400" />
+            )}
           </div>
         )}
 
@@ -1111,21 +1243,22 @@ function ImageInput({ value, onChange }) {
           />
 
           <label className="inline-flex w-full sm:w-auto justify-center items-center rounded-md border border-neutral-300 px-4 py-2 text-sm cursor-pointer hover:bg-neutral-50">
-            Выбрать изображение
+            {uploading ? "Загрузка..." : "Выбрать изображение"}
             <input
               type="file"
               accept="image/*"
               className="hidden"
+              disabled={uploading}
               onChange={(e) => {
-                readFile(e.target.files?.[0]);
+                handleFile(e.target.files?.[0]);
                 e.target.value = "";
               }}
             />
           </label>
 
           <p className="text-xs text-neutral-500">
-            На компьютере можно перетащить изображение, на телефоне — выбрать из
-            галереи.
+            Можно перетащить фото или выбрать через проводник. Фото сжимается и
+            сохраняется на сервер, в тур записывается только URL.
           </p>
         </div>
       </div>
@@ -1362,109 +1495,6 @@ function DatesField({
   );
 }
 
-function HotelsField({ value, onChange }) {
-  const items = value.length
-    ? value
-    : [
-        {
-          id: uid(),
-          name: "",
-          description: "",
-          image: "",
-          meal: "",
-          location: "",
-        },
-      ];
-
-  const updateItem = (index, patch) => {
-    const next = [...items];
-    next[index] = { ...next[index], ...patch };
-    onChange(next);
-  };
-
-  const addItem = () =>
-    onChange([
-      ...items,
-      {
-        id: uid(),
-        name: "",
-        description: "",
-        image: "",
-        meal: "",
-        location: "",
-      },
-    ]);
-
-  const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
-
-  return (
-    <div>
-      <Label>Отели</Label>
-
-      <div className="mt-2 space-y-3">
-        {items.map((item, index) => (
-          <div
-            key={item.id || index}
-            className="rounded-xl border p-3 space-y-2"
-          >
-            <div className="flex gap-2">
-              <Input
-                value={item.name || ""}
-                onChange={(e) => updateItem(index, { name: e.target.value })}
-                placeholder="Название отеля"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => removeItem(index)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-
-            <Textarea
-              value={item.description || ""}
-              onChange={(e) =>
-                updateItem(index, { description: e.target.value })
-              }
-              placeholder="Описание"
-            />
-
-            <ImageInput
-              value={item.image || ""}
-              onChange={(v) => updateItem(index, { image: v })}
-            />
-
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                value={item.meal || ""}
-                onChange={(e) => updateItem(index, { meal: e.target.value })}
-                placeholder="Питание"
-              />
-              <Input
-                value={item.location || ""}
-                onChange={(e) =>
-                  updateItem(index, { location: e.target.value })
-                }
-                placeholder="Расположение"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-2"
-        onClick={addItem}
-      >
-        <Plus className="size-4 mr-1" /> Добавить отель
-      </Button>
-    </div>
-  );
-}
-
 function ChainsField({ value, onChange, tourCurrency, tourPrice }) {
   const items = value.length
     ? value
@@ -1589,6 +1619,7 @@ function ChainHotelsField({ value, dates, onChange }) {
           id: uid(),
           name: "",
           description: "",
+          images: [],
           image: "",
           meal: "",
           location: "",
@@ -1653,9 +1684,15 @@ function ChainHotelsField({ value, dates, onChange }) {
               placeholder="Описание отеля"
             />
 
-            <ImageInput
-              value={item.image || ""}
-              onChange={(v) => updateItem(index, { image: v })}
+            <ImageListField
+              label="Фото отеля"
+              value={item.images || (item.image ? [item.image] : [])}
+              onChange={(images) =>
+                updateItem(index, {
+                  images,
+                  image: images[0] || "",
+                })
+              }
             />
 
             <div className="grid sm:grid-cols-2 gap-2">

@@ -19,6 +19,7 @@ import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import TourCard from "@/components/TourCard";
 import LeadDialog from "@/components/LeadDialog";
+import { mediaUrl } from "@/lib/media";
 
 const BENEFITS = [
   {
@@ -272,7 +273,7 @@ export default function Home() {
                   {p.image && (
                     <div className="h-[280px] bg-neutral-100 shrink-0">
                       <img
-                        src={p.image}
+                        src={mediaUrl(p.image)}
                         alt={p.title}
                         className="w-full h-full object-cover"
                         loading="lazy"
