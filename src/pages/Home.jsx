@@ -204,11 +204,11 @@ export default function Home() {
 
       {/* ======================= BENEFITS ======================= */}
       <section
-        className="section-pad bg-neutral-50"
+        className="py-12 lg:py-16 bg-neutral-50"
         data-testid="benefits-section"
       >
         <div className="section-container">
-          <div className="max-w-2xl mb-10 lg:mb-16">
+          <div className="max-w-2xl mb-8 lg:mb-10">
             <p className="overline text-[#C2410C]">Почему едут именно с нами</p>
             <h2 className="font-heading text-4xl sm:text-5xl mt-2">
               Заботимся о каждой детали поездки
@@ -235,9 +235,9 @@ export default function Home() {
 
       {/* ======================= PROMOTIONS BLOCK ======================= */}
       {promotions.length > 0 && (
-        <section className="section-pad" data-testid="promotions-section">
+        <section className="py-12 lg:py-16" data-testid="promotions-section">
           <div className="section-container">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7">
               <div>
                 <p className="overline text-[#C2410C]">Сейчас выгодно</p>
                 <h2 className="font-heading text-4xl sm:text-5xl mt-2 max-w-xl">
@@ -306,115 +306,6 @@ export default function Home() {
                       >
                         Посмотреть тур <ArrowRight className="size-4" />
                       </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ======================= HIT TOURS ======================= */}
-      {hits.length > 0 && (
-        <section
-          className="bg-neutral-50 section-pad"
-          data-testid="hits-section"
-        >
-          <div className="section-container">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <p className="overline text-[#C2410C]">Хиты сезона</p>
-                <h2 className="font-heading text-3xl sm:text-4xl mt-2">
-                  Бронируют чаще всего
-                </h2>
-              </div>
-              <Link
-                to="/tours"
-                className="hidden sm:inline-flex items-center text-sm gap-2 hover:text-[#C2410C]"
-              >
-                Все туры <ChevronRight className="size-4" />
-              </Link>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7">
-              {hits.map((t) => (
-                <TourCard key={t.id} tour={t} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ======================= SPECIALISTS ======================= */}
-      {specialists.length > 0 && (
-        <section
-          className="section-pad bg-neutral-950 text-white"
-          data-testid="specialists-section"
-        >
-          <div className="section-container">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
-              <div>
-                <p className="overline text-[#F97316]">Выберите специалиста</p>
-                <h2 className="font-heading text-4xl sm:text-5xl mt-2 max-w-xl">
-                  Менеджеры, которые сами ездят в эти туры
-                </h2>
-              </div>
-              <p className="text-sm text-neutral-400 max-w-sm">
-                Каждый менеджер ведёт своё направление и знает все тонкости — от
-                пограничных формальностей до лучших ресторанов на маршруте.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7">
-              {specialists.map((s) => (
-                <div
-                  key={s.id}
-                  className="bg-white/[0.04] border border-white/10 rounded-2xl p-5 backdrop-blur"
-                  data-testid={`specialist-card-${s.id}`}
-                >
-                  <div className="aspect-square overflow-hidden rounded-xl bg-neutral-800">
-                    <img
-                      src={s.photo}
-                      alt={s.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <h3 className="font-heading text-2xl mt-4">{s.name}</h3>
-                  <p className="text-sm text-neutral-400">{s.role}</p>
-                  <a
-                    href={`tel:${s.phone_link || s.phone.replace(/\D/g, "")}`}
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-medium hover:text-[#F97316]"
-                  >
-                    <Phone className="size-4" /> {s.phone}
-                  </a>
-                  <div className="mt-4 flex gap-2">
-                    {s.viber && (
-                      <a
-                        href={`viber://chat?number=${encodeURIComponent(s.viber)}`}
-                        className="flex-1 text-center text-xs py-2 rounded-full bg-[#7360F2] hover:opacity-90 transition"
-                      >
-                        Viber
-                      </a>
-                    )}
-                    {s.telegram && (
-                      <a
-                        href={`https://t.me/${s.telegram}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 text-center text-xs py-2 rounded-full bg-[#0088CC] hover:opacity-90 transition"
-                      >
-                        Telegram
-                      </a>
-                    )}
-                    {s.whatsapp && (
-                      <a
-                        href={`https://wa.me/${s.whatsapp.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 text-center text-xs py-2 rounded-full bg-[#25D366] hover:opacity-90 transition"
-                      >
-                        WhatsApp
-                      </a>
                     )}
                   </div>
                 </div>

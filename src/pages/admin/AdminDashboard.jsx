@@ -7,8 +7,10 @@ import {
   MessageSquare,
   FileText,
   Loader2,
+  Hotel,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatDate } from "@/lib/formatDate";
 
 const CARDS = [
   {
@@ -115,6 +117,8 @@ export default function AdminDashboard() {
                 <th className="text-left px-5 py-3">Имя</th>
                 <th className="text-left px-5 py-3">Телефон</th>
                 <th className="text-left px-5 py-3">Тур</th>
+                <th className="text-left px-5 py-3">Детали</th>
+
                 <th className="text-left px-5 py-3">Статус</th>
               </tr>
             </thead>
@@ -131,21 +135,50 @@ export default function AdminDashboard() {
                 </tr>
               )}
 
-              {recentLeads.map((l) => (
-                <tr key={l.id}>
-                  <td className="px-5 py-3 text-neutral-500">
-                    {l.created_at?.slice(0, 16).replace("T", " ")}
-                  </td>
-                  <td className="px-5 py-3">{l.name || "—"}</td>
-                  <td className="px-5 py-3 font-mono">{l.phone}</td>
-                  <td className="px-5 py-3">{l.tour || l.region || "—"}</td>
-                  <td className="px-5 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-[#C2410C]">
-                      {l.status || "new"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {recentLeads.map((l) => {
+                const hasHotelDetails = l.extra?.hotel || l.extra?.room;
+                return (
+                  <tr key={l.id}>
+                    <td className="px-5 py-3 text-neutral-500">
+                      {formatDate(l.created_at?.slice(0, 16).replace("T", " "))}
+                    </td>
+                    <td className="px-5 py-3">{l.name || "—"}</td>
+                    <td className="px-5 py-3 font-mono">{l.phone}</td>
+                    <td className="px-5 py-3">{l.tour || l.region || "—"}</td>
+                    <td className="px-5 py-3 min-w-[220px]">
+                      {hasHotelDetails ? (
+                        <div className="rounded-xl border border-orange-100 bg-orange-50/60 px-3 py-2">
+                          <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#C2410C]">
+                            <Hotel className="size-3.5" />
+                            Детали размещения
+                          </div>
+
+                          {l.extra?.hotel && (
+                            <div className="text-xs text-neutral-700">
+                              <span className="font-medium">Отель:</span>{" "}
+                              {l.extra.hotel}
+                            </div>
+                          )}
+
+                          {l.extra?.room && (
+                            <div className="mt-1 text-xs text-neutral-700">
+                              <span className="font-medium">Номер:</span>{" "}
+                              {l.extra.room}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-neutral-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-[#C2410C]">
+                        {l.status || "new"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

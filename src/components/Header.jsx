@@ -7,7 +7,6 @@ import MessengerModal from "@/components/MessengerModal";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import logo from "../assets/travelspace-logo.png";
-import { log } from "three";
 
 const PRIMARY_NAV = [
   { to: "/tours", label: "Автобусные туры", dropdown: true },
@@ -124,6 +123,8 @@ export default function Header() {
 
   const headerText = scrolled ? "text-neutral-900" : "text-white";
   const headerMutedText = scrolled ? "text-neutral-700" : "text-white/90";
+  const workHours = settings?.work_hours || "По будням с 11:00 до 19:00";
+  const address = settings?.address || "Минск, Площадь Свободы 23, офис 16А";
 
   const closeMenu = () => {
     setOpen(false);
@@ -160,39 +161,11 @@ export default function Header() {
             >
               <div className="section-container h-11 flex items-center justify-between text-[13px] text-white/90">
                 <div className="flex items-center gap-6">
-                  <div className="flex flex-col leading-tight">
-                    {headerPhones.map((item) => (
-                      <a
-                        key={item.phone}
-                        href={`tel:${item.link}`}
-                        className="hover:text-[#F97316] transition-colors"
-                        data-testid={`header-phone-${item.link}`}
-                      >
-                        {item.phone}: {item.label}
-                      </a>
-                    ))}
-                  </div>
-
-                  <span>
-                    Эл. почта:
-                    <a
-                      href={`mailto:${settings?.email || "info@travel-space.by"}`}
-                      className="hover:text-[#F97316]"
-                    >
-                      {settings?.email || "info@travel-space.by"}
-                    </a>
-                  </span>
-
-                  <span>
-                    Адрес: {settings?.address || "пр-т Независимости 58, Минск"}
-                  </span>
+                  <span>Адрес: {address}</span>
+                  <span>График работы: {workHours}</span>
                 </div>
 
                 <div className="flex items-center gap-6">
-                  <span>
-                    График работы:
-                    {settings?.work_hours || "Ежедневно 10:00–19:00"}
-                  </span>
                   <span className="text-[#F97316] font-medium">
                     На связи в Instagram 24/7
                   </span>
@@ -309,7 +282,7 @@ export default function Header() {
           </nav>
 
           {/* RIGHT SIDE */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-4">
             <div className="flex items-center gap-1">
               {MESSENGER_BTNS.map(({ type, color, Icon, label }) => (
                 <button
@@ -324,6 +297,21 @@ export default function Header() {
                 >
                   <Icon className="size-4" />
                 </button>
+              ))}
+            </div>
+
+            <div
+              className={`flex flex-col items-end leading-tight text-[12px] ${headerMutedText}`}
+            >
+              {headerPhones.map((item) => (
+                <a
+                  key={item.link || item.phone}
+                  href={`tel:${item.link}`}
+                  className="hover:text-[#F97316] transition-colors"
+                  data-testid={`header-phone-${item.link}`}
+                >
+                  {item.phone} · {item.label}
+                </a>
               ))}
             </div>
 

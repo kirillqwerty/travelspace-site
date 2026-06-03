@@ -15,8 +15,23 @@ const BADGE_STYLES = {
 
 const DEFAULT_BADGE = "bg-neutral-100 text-neutral-700 border-neutral-200";
 
+function cleanDescription(tour) {
+  const source = tour.tagline || tour.short_description || "";
+  const title = tour.title || "";
+  const region = tour.region_name || tour.direction_name || "";
+
+  return (
+    source
+      .replace(title, "")
+      .replace(region, "")
+      .replace(/^[:\s,–—-]+/, "")
+      .trim() || source
+  );
+}
+
 export default function TourCard({ tour, size = "default" }) {
   const isLarge = size === "large";
+  const description = cleanDescription(tour);
   return (
     <Link
       to={`/tours/${tour.slug}`}
@@ -70,7 +85,7 @@ export default function TourCard({ tour, size = "default" }) {
           <h3
             className="
               font-heading mt-1 leading-tight line-clamp-2
-              text-2xl
+              text-xl sm:text-2xl
             "
           >
             {tour.title}
@@ -80,7 +95,7 @@ export default function TourCard({ tour, size = "default" }) {
 
       <div className="p-5">
         <p className="text-sm leading-relaxed text-neutral-700 line-clamp-2 min-h-[2.6em]">
-          {tour.short_description}
+          {description}
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">

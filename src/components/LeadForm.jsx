@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { api, formatApiErrorDetail } from "@/lib/api";
-import { isValidBelarusPhone, maskBelarusPhone } from "@/lib/phoneMask";
+import { isValidPhone, maskPhone } from "@/lib/phoneMask";
 
 /**
  * Reusable lead form.
@@ -46,7 +46,7 @@ export default function LeadForm({
 }) {
   const [form, setForm] = useState({
     name: "",
-    phone: "+375 ",
+    phone: "",
     tour: tour || "",
     tour_slug: tour_slug || "",
     date: date || "",
@@ -66,12 +66,20 @@ export default function LeadForm({
     }
   }, [selectedDate]);
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const onPhone = (e) => update("phone", maskBelarusPhone(e.target.value));
+  const onPhone = (e) => {
+    update("phone", maskPhone(e.target.value));
+  };
+
+  const onPhoneFocus = () => {
+    if (!form.phone) {
+      update("phone", "+375 ");
+    }
+  };
 
   const validate = () => {
     const err = {};
-    if (!isValidBelarusPhone(form.phone))
-      err.phone = "Введите номер в формате +375 XX XXX-XX-XX";
+    if (!isValidPhone(form.phone))
+      err.phone = "Введите корректный номер телефона";
     if (!form.consent) err.consent = "Необходимо ваше согласие";
     if (variant === "agency" && !form.company) {
       err.company = "Укажите название агентства";
@@ -117,7 +125,7 @@ export default function LeadForm({
       );
       setForm({
         name: "",
-        phone: "+375 ",
+        phone: "",
         tour: tour || "",
         tour_slug: tour_slug || "",
         date: date || "",
@@ -205,6 +213,7 @@ export default function LeadForm({
           data-testid="lead-phone-input"
           value={form.phone}
           onChange={onPhone}
+          onFocus={onPhoneFocus}
           inputMode="tel"
           placeholder="+375 XX XXX-XX-XX"
           className="mt-1"

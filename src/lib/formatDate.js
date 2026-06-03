@@ -1,6 +1,11 @@
 export function formatDate(date) {
   if (!date) return "";
 
-  const [year, month, day] = date.split("-");
-  return `${day}.${month}.${year}`;
+  const [datePart, timePart] = date.split(/[ T]/);
+
+  const [year, month, day] = datePart.split("-");
+
+  return timePart
+    ? `${day}.${month}.${year} ${timePart}`
+    : `${day}.${month}.${year}`;
 }

@@ -1,152 +1,3 @@
-// import { Link } from "react-router-dom";
-// import { useMemo } from "react";
-// import { useSiteData } from "@/lib/useSiteData";
-// import { Phone, Mail, MapPin, Clock } from "lucide-react";
-// import logo from "../assets/travelspace-logo.png";
-
-// export default function Footer() {
-//   const { settings, tours } = useSiteData();
-
-//   const tourLinks = useMemo(() => {
-//     const map = new Map();
-//     tours.forEach((t) => {
-//       if (!t.region_slug || map.has(t.region_slug)) return;
-//       map.set(t.region_slug, { label: t.region_name || t.title, slug: t.slug });
-//     });
-//     return Array.from(map.values());
-//   }, [tours]);
-
-//   if (!settings) return null;
-
-//   return (
-//     <footer
-//       className="bg-neutral-950 text-neutral-300 mt-20"
-//       data-testid="site-footer"
-//     >
-//       <div className="section-container py-14 grid lg:grid-cols-12 gap-10">
-//         <div className="lg:col-span-4">
-//           <div className="flex items-center gap-2">
-//             <img
-//               src={logo}
-//               alt="TravelSpace logo"
-//               className="w-8 h-8 object-contain"
-//             />
-//             <span className="font-heading text-2xl font-bold text-white">
-//               TRAVELSPACE
-//             </span>
-//           </div>
-//           <p className="mt-4 text-sm text-neutral-400 leading-relaxed max-w-xs">
-//             Туроператор автобусных туров из Минска. Простые программы и забота
-//             на всю поездку.
-//           </p>
-//         </div>
-
-//         <div className="lg:col-span-3">
-//           <p className="overline text-neutral-500">Сайт</p>
-//           <ul className="mt-4 space-y-2 text-sm">
-//             <li>
-//               <Link to="/tours" className="hover:text-white">Все туры</Link>
-//             </li>
-//             <li>
-//               <Link to="/promotions" className="hover:text-white">Акции</Link>
-//             </li>
-//             <li>
-//               <Link to="/blog" className="hover:text-white">Блог</Link>
-//             </li>
-//             <li>
-//               <Link to="/about" className="hover:text-white">О компании</Link>
-//             </li>
-//             <li>
-//               <Link to="/agencies" className="hover:text-white">Агентствам</Link>
-//             </li>
-//             <li>
-//               <Link to="/payment" className="hover:text-white">Оплата</Link>
-//             </li>
-//             <li>
-//               <Link to="/faq" className="hover:text-white">FAQ</Link>
-//             </li>
-//             <li>
-//               <Link to="/contacts" className="hover:text-white">Контакты</Link>
-//             </li>
-//           </ul>
-//         </div>
-
-//         <div className="lg:col-span-3">
-//           <p className="overline text-neutral-500">Туры</p>
-//           <ul className="mt-4 space-y-2 text-sm">
-//             {tourLinks.map((t) => (
-//               <li key={t.slug}>
-//                 <Link to={`/tours/${t.slug}`} className="hover:text-white">
-//                   {t.label}
-//                 </Link>
-//               </li>
-//             ))}
-//           </ul>
-//         </div>
-
-//         <div className="lg:col-span-2">
-//           <p className="overline text-neutral-500">Контакты</p>
-//           <ul className="mt-4 space-y-3 text-sm">
-//             <li className="flex items-start gap-2">
-//               <Phone className="size-4 mt-0.5 text-[#F97316]" />
-//               <a
-//                 href={`tel:${settings.phone_link}`}
-//                 className="hover:text-white"
-//               >
-//                 {settings.phone}
-//               </a>
-//             </li>
-//             <li className="flex items-start gap-2">
-//               <Mail className="size-4 mt-0.5 text-[#F97316]" />
-//               <a
-//                 href={`mailto:${settings.email}`}
-//                 className="hover:text-white break-all"
-//               >
-//                 {settings.email}
-//               </a>
-//             </li>
-//             <li className="flex items-start gap-2">
-//               <MapPin className="size-4 mt-0.5 text-[#F97316]" />
-//               <span>{settings.address}</span>
-//             </li>
-//             <li className="flex items-start gap-2">
-//               <Clock className="size-4 mt-0.5 text-[#F97316]" />
-//               <span>{settings.work_hours}</span>
-//             </li>
-//           </ul>
-//         </div>
-//       </div>
-
-//       {/* Decorative pre-footer band — fingerprint style */}
-//       <div
-//         className="relative h-2 overflow-hidden"
-//         style={{
-//           background:
-//             "repeating-linear-gradient(90deg, #C2410C 0 14px, transparent 14px 28px)",
-//         }}
-//       />
-
-//       <div className="border-t border-neutral-900">
-//         <div className="section-container py-5 flex flex-col sm:flex-row gap-2 sm:items-center justify-between text-xs text-neutral-500">
-//           <p>
-//             © {new Date().getFullYear()} {settings.legal_name}. УНП {settings.unp}.
-//           </p>
-//           <div className="flex flex-wrap gap-x-4 gap-y-1">
-//             <Link to="/legal" className="hover:text-white">
-//               Политика конфиденциальности
-//             </Link>
-//             <Link to="/legal#offer" className="hover:text-white">
-//               Публичный договор
-//             </Link>
-//             <Link to="/admin/login" className="hover:text-white opacity-70">
-//               Админ-панель
-//             </Link>
-//           </div>
-//         </div>
-//       </div>
-//     </footer>
-//   );
-// }
 import { Link } from "react-router-dom";
 import { useSiteData } from "@/lib/useSiteData";
 import { Mail, MapPin, Phone } from "lucide-react";
@@ -226,8 +77,10 @@ export default function Footer() {
               <MapPin className="mt-1 size-4 shrink-0 text-[#F97316]" />
               <div>
                 <p>Адрес:</p>
-                <p>пр-т Независимости 58</p>
-                <p>220005</p>
+                <p>
+                  {settings?.address || "Минск, Площадь Свободы 23, офис 16А"}
+                </p>
+                <p>220030</p>
               </div>
             </div>
 
@@ -289,7 +142,7 @@ export default function Footer() {
 
             <div>
               <p>График работы:</p>
-              <p>Ежедневно с 10:00 до 19:00</p>
+              <p>{settings?.work_hours || "По будням с 11:00 до 19:00"}</p>
               <p>На связи в instagram 24/7</p>
             </div>
 

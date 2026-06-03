@@ -43,12 +43,12 @@ const BADGE_STYLES = {
 };
 
 const SECTIONS = [
-  ["about-tour", "О туре"],
-  ["highlights", "Особенности"],
-  ["gallery", "Галерея"],
   ["program", "Программа"],
-  ["price", "Стоимость"],
-  ["faq", "FAQ"],
+  ["price", "Что входит"],
+  ["faq", "Вопрос-ответ"],
+  ["gallery", "Галерея"],
+  ["highlights", "Особенности"],
+  ["about-tour", "О туре"],
 ];
 
 const glassText =
@@ -211,22 +211,16 @@ export default function TourPage() {
               </span>
             </div>
 
-            <div className="mt-3">
-              <div className={`${glassText} max-w-5xl`}>
-                <h1 className="font-heading text-3xl sm:text-5xl lg:text-6xl">
-                  {tour.title}
-                </h1>
-              </div>
+            <div className="mt-3 max-w-5xl">
+              <h1 className="font-heading text-3xl sm:text-5xl lg:text-6xl drop-shadow-[0_3px_14px_rgba(0,0,0,0.45)]">
+                {tour.title}
+              </h1>
             </div>
 
             {tour.tagline && (
-              <div className="mt-3">
-                <span
-                  className={`${glassText} text-base sm:text-lg text-white/90 max-w-3xl`}
-                >
-                  {tour.tagline}
-                </span>
-              </div>
+              <p className="mt-3 max-w-3xl text-base sm:text-lg text-white/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+                {tour.tagline}
+              </p>
             )}
 
             <div className="mt-4">
@@ -477,8 +471,8 @@ export default function TourPage() {
                   >
                     <AccordionTrigger className="text-left py-5 hover:no-underline">
                       <div className="flex items-baseline gap-5">
-                        <span className="font-heading text-2xl text-[#C2410C] font-bold tabular-nums w-12">
-                          {`0${d.day}`.slice(-2)}
+                        <span className="font-heading text-xl sm:text-2xl text-[#C2410C] font-bold tabular-nums w-20">
+                          День {d.day}
                         </span>
 
                         <span className="font-medium text-lg">{d.title}</span>
@@ -486,7 +480,7 @@ export default function TourPage() {
                     </AccordionTrigger>
 
                     <AccordionContent>
-                      <div className="pl-[68px] pb-2">
+                      <div className="pl-[100px] pb-2">
                         <p className="text-neutral-700 leading-relaxed">
                           {d.description}
                         </p>
@@ -505,26 +499,26 @@ export default function TourPage() {
           )}
 
           <div id="price" className="scroll-mt-32 grid sm:grid-cols-2 gap-6">
-            <div className="rounded-2xl bg-orange-50/40 border border-orange-100 p-6">
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-6">
               <h3 className="font-heading text-2xl">Входит в стоимость</h3>
 
               <ul className="mt-4 space-y-2.5">
                 {(tour.included || []).map((x) => (
                   <li key={x} className="flex items-start gap-2.5 text-sm">
-                    <BadgeCheck className="size-4 mt-0.5 text-[#C2410C] shrink-0" />
+                    <BadgeCheck className="size-4 mt-0.5 text-emerald-600 shrink-0" />
                     <span>{x}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="rounded-2xl bg-neutral-50 border border-neutral-200 p-6">
+            <div className="rounded-2xl bg-rose-50 border border-rose-100 p-6">
               <h3 className="font-heading text-2xl">Не входит</h3>
 
               <ul className="mt-4 space-y-2.5">
                 {(tour.excluded || []).map((x) => (
                   <li key={x} className="flex items-start gap-2.5 text-sm">
-                    <XIcon className="size-4 mt-0.5 text-neutral-400 shrink-0" />
+                    <XIcon className="size-4 mt-0.5 text-rose-500 shrink-0" />
                     <span>{x}</span>
                   </li>
                 ))}
@@ -860,7 +854,7 @@ export default function TourPage() {
               <p className="overline text-[#C2410C]">Часто спрашивают</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
-                Вопросы по туру
+                Частые вопросы по туру
               </h2>
 
               <Accordion

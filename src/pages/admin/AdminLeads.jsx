@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/formatDate";
 
 const STATUSES = [
   { v: "new", label: "Новая" },
@@ -104,7 +105,7 @@ export default function AdminLeads() {
               return (
                 <tr key={l.id} data-testid={`lead-row-${l.id}`}>
                   <td className="px-5 py-3 text-neutral-500 whitespace-nowrap">
-                    {l.created_at?.slice(0, 16).replace("T", " ")}
+                    {formatDate(l.created_at?.slice(0, 16).replace("T", " "))}
                   </td>
 
                   <td className="px-5 py-3 text-xs">{l.form_type}</td>

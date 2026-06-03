@@ -1,27 +1,37 @@
-// Belarusian phone mask: +375 XX XXX-XX-XX
-export function maskBelarusPhone(value) {
-  const digits = (value || "").replace(/\D/g, "");
-  // Always start with 375
-  let raw = digits;
-  if (raw.startsWith("8")) raw = "375" + raw.slice(1);
-  if (!raw.startsWith("375")) raw = "375" + raw;
-  raw = raw.slice(0, 12); // +375 + 9 digits
+export function maskPhone(value) {
+  if (!value) return "";
 
-  const after375 = raw.slice(3);
-  const p1 = after375.slice(0, 2); // operator
-  const p2 = after375.slice(2, 5); // first 3
-  const p3 = after375.slice(5, 7); // 2
-  const p4 = after375.slice(7, 9); // 2
+  const cleaned = value.replace(/[^\d+]/g, "");
 
-  let out = "+375";
-  if (p1) out += " " + p1;
-  if (p2) out += " " + p2;
-  if (p3) out += "-" + p3;
-  if (p4) out += "-" + p4;
-  return out;
+  // Форматируем только белорусский номер
+  if (cleaned.startsWith("+375") || cleaned.startsWith("375")) {
+    const digits = cleaned.replace(/\D/g, "").slice(0, 12);
+
+    const p1 = digits.slice(3, 5);
+    const p2 = digits.slice(5, 8);
+    const p3 = digits.slice(8, 10);
+    const p4 = digits.slice(10, 12);
+
+    let result = "+375";
+
+    if (p1) result += ` ${p1}`;
+    if (p2) result += ` ${p2}`;
+    if (p3) result += `-${p3}`;
+    if (p4) result += `-${p4}`;
+
+    return result;
+  }
+
+  // Остальные страны не ломаем маской
+  return value;
 }
 
-export function isValidBelarusPhone(value) {
+export function isValidPhone(value) {
   const digits = (value || "").replace(/\D/g, "");
-  return digits.length === 12 && digits.startsWith("375");
+
+  if (digits.startsWith("375")) {
+    return digits.length === 12;
+  }
+
+  return digits.length >= 10;
 }
