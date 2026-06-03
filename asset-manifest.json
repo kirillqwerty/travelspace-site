@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/travelspace-site/static/css/main.971cc8dd.css",
-    "main.js": "/travelspace-site/static/js/main.177a2c56.js",
+    "main.js": "/travelspace-site/static/js/main.e83ea356.js",
     "static/media/footer-image.png": "/travelspace-site/static/media/footer-image.05c1c8c5b2eb67b01ac6.png",
     "static/media/travelspace-logo.png": "/travelspace-site/static/media/travelspace-logo.040f6b7cce6aa360f461.png",
     "index.html": "/travelspace-site/index.html",
     "main.971cc8dd.css.map": "/travelspace-site/static/css/main.971cc8dd.css.map",
-    "main.177a2c56.js.map": "/travelspace-site/static/js/main.177a2c56.js.map"
+    "main.e83ea356.js.map": "/travelspace-site/static/js/main.e83ea356.js.map"
   },
   "entrypoints": [
     "static/css/main.971cc8dd.css",
-    "static/js/main.177a2c56.js"
+    "static/js/main.e83ea356.js"
   ]
 }
