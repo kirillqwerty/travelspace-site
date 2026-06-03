@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Edit, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { mediaUrl } from "@/lib/media";
+import { formatDate } from "@/lib/formatDate";
 
 const TITLES = {
   tours: "Туры",
@@ -1894,9 +1895,11 @@ function RoomUnavailableDatesField({ value, dates, onChange }) {
 }
 
 function formatDateLabel(date) {
-  if (!date?.start) return "Дата";
-  if (!date?.end) return date.start;
-  return `${date.start} → ${date.end}`;
+  if (!date?.start) return "";
+
+  return date.end
+    ? `${formatDate(date.start)} → ${formatDate(date.end)}`
+    : formatDate(date.start);
 }
 
 function FaqField({ value, onChange }) {

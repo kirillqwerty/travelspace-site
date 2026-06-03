@@ -35,6 +35,8 @@ export default function LeadForm({
   region,
   date,
   selectedDate,
+  selectedHotel,
+  selectedRoom,
   tours,
   dates,
   source_page,
@@ -98,8 +100,16 @@ export default function LeadForm({
           (typeof window !== "undefined" ? window.location.pathname : null),
         extra:
           variant === "agency"
-            ? { company: form.company, email: form.email }
-            : null,
+            ? {
+                company: form.company,
+                email: form.email,
+              }
+            : selectedHotel
+              ? {
+                  hotel: selectedHotel,
+                  room: selectedRoom,
+                }
+              : null,
       };
       await api.post("/leads", payload);
       toast.success(
@@ -285,7 +295,17 @@ export default function LeadForm({
           </Select>
         </div>
       )}
+      {selectedHotel && (
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+          <p className="text-sm">
+            <span className="font-medium">Отель:</span> {selectedHotel}
+          </p>
 
+          <p className="text-sm mt-1">
+            <span className="font-medium">Номер:</span> {selectedRoom}
+          </p>
+        </div>
+      )}
       <div>
         <Label htmlFor="lf-comment">Комментарий</Label>
         <Textarea

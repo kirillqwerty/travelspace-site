@@ -133,9 +133,13 @@ export default function TourPage() {
   const [leadOpen, setLeadOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedHotel, setSelectedHotel] = useState("");
+  const [selectedRoomTitle, setSelectedRoomTitle] = useState("");
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [hotelSlideById, setHotelSlideById] = useState({});
   const [roomSlide, setRoomSlide] = useState(0);
+  const [tourGallerySlide, setTourGallerySlide] = useState(0);
+  const [roomCardSlideById, setRoomCardSlideById] = useState({});
   const { tours } = useSiteData();
 
   useEffect(() => {
@@ -297,8 +301,22 @@ export default function TourPage() {
         </div>
       </div>
 
-      <section className="section-container py-12 lg:py-20 grid lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-8 space-y-14">
+      {/* <section className="section-container py-12 lg:py-20 grid lg:grid-cols-12 gap-10"> */}
+      <section
+        className="
+  mx-auto
+  max-w-[1600px]
+  px-6
+  xl:px-8
+  py-12
+  lg:py-20
+  grid
+  lg:grid-cols-[minmax(0,1fr)_380px]
+  gap-10
+"
+      >
+        {/* <div className="lg:col-span-8 space-y-14"> */}
+        <div className="min-w-0 space-y-14">
           <div id="about-tour" className="scroll-mt-32">
             <p className="overline text-[#C2410C]">О туре</p>
 
@@ -361,26 +379,79 @@ export default function TourPage() {
                 Фото тура
               </h2>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                {(tour.gallery || tour.images)
-                  .slice(0, 6)
-                  .map((image, index) => (
-                    <div
-                      key={`${image}-${index}`}
-                      className="aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-100"
-                    >
+              {(() => {
+                const images = (
+                  tour.gallery?.length ? tour.gallery : tour.images
+                ).filter(Boolean);
+                const currentImage = images[tourGallerySlide] || images[0];
+
+                return (
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <div className="relative overflow-hidden rounded-2xl bg-neutral-100">
                       <img
-                        src={mediaUrl(image)}
-                        alt={`${tour.title} фото ${index + 1}`}
-                        className="h-full w-full object-cover"
+                        src={mediaUrl(currentImage)}
+                        alt={`${tour.title} фото ${tourGallerySlide + 1}`}
+                        className="block h-[260px] w-full object-cover sm:h-[420px]"
                         loading="lazy"
                       />
+
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTourGallerySlide((prev) =>
+                                prev === 0 ? images.length - 1 : prev - 1,
+                              )
+                            }
+                            className="absolute left-4 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-xl shadow hover:bg-white"
+                          >
+                            ‹
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTourGallerySlide((prev) =>
+                                prev === images.length - 1 ? 0 : prev + 1,
+                              )
+                            }
+                            className="absolute right-4 top-1/2 z-10 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-xl shadow hover:bg-white"
+                          >
+                            ›
+                          </button>
+                        </>
+                      )}
                     </div>
-                  ))}
-              </div>
+
+                    {images.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {images.map((image, index) => (
+                          <button
+                            key={`${image}-${index}`}
+                            type="button"
+                            onClick={() => setTourGallerySlide(index)}
+                            className={`h-16 w-24 shrink-0 overflow-hidden rounded-xl border ${
+                              tourGallerySlide === index
+                                ? "border-[#C2410C]"
+                                : "border-neutral-200"
+                            }`}
+                          >
+                            <img
+                              src={mediaUrl(image)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
-
           {tour.program?.length > 0 && (
             <div
               id="program"
@@ -520,71 +591,83 @@ export default function TourPage() {
 
                                   return (
                                     <>
-                                      <div className="aspect-[16/9] max-h-[420px] overflow-hidden">
+                                      <div className="relative h-[340px] sm:h-[500px] overflow-hidden bg-neutral-900 flex items-center justify-center">
+                                        <img
+                                          src={mediaUrl(currentImage)}
+                                          alt=""
+                                          aria-hidden="true"
+                                          className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl opacity-60"
+                                          loading="lazy"
+                                        />
+
+                                        <div className="absolute inset-0 bg-black/25" />
+
                                         <img
                                           src={mediaUrl(currentImage)}
                                           alt={h.name}
-                                          className="h-full w-full object-cover"
+                                          className="relative z-10 max-h-full max-w-full object-contain"
                                           loading="lazy"
                                         />
+
+                                        {images.length > 1 && (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setHotelSlideById((prev) => ({
+                                                  ...prev,
+                                                  [h.id]:
+                                                    currentIndex === 0
+                                                      ? images.length - 1
+                                                      : currentIndex - 1,
+                                                }))
+                                              }
+                                              className="absolute left-4 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow hover:bg-white"
+                                            >
+                                              ‹
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setHotelSlideById((prev) => ({
+                                                  ...prev,
+                                                  [h.id]:
+                                                    currentIndex ===
+                                                    images.length - 1
+                                                      ? 0
+                                                      : currentIndex + 1,
+                                                }))
+                                              }
+                                              className="absolute right-4 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow hover:bg-white"
+                                            >
+                                              ›
+                                            </button>
+
+                                            <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm">
+                                              {images.map((image, dotIndex) => (
+                                                <button
+                                                  key={`${image}-${dotIndex}`}
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setHotelSlideById(
+                                                      (prev) => ({
+                                                        ...prev,
+                                                        [h.id]: dotIndex,
+                                                      }),
+                                                    )
+                                                  }
+                                                  className={`size-2 rounded-full ${
+                                                    dotIndex === currentIndex
+                                                      ? "bg-white"
+                                                      : "bg-white/45"
+                                                  }`}
+                                                />
+                                              ))}
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
-
-                                      {images.length > 1 && (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setHotelSlideById((prev) => ({
-                                                ...prev,
-                                                [h.id]:
-                                                  currentIndex === 0
-                                                    ? images.length - 1
-                                                    : currentIndex - 1,
-                                              }))
-                                            }
-                                            className="absolute left-4 top-1/2 z-10 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-xl shadow hover:bg-white"
-                                          >
-                                            ‹
-                                          </button>
-
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setHotelSlideById((prev) => ({
-                                                ...prev,
-                                                [h.id]:
-                                                  currentIndex ===
-                                                  images.length - 1
-                                                    ? 0
-                                                    : currentIndex + 1,
-                                              }))
-                                            }
-                                            className="absolute right-4 top-1/2 z-10 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-xl shadow hover:bg-white"
-                                          >
-                                            ›
-                                          </button>
-
-                                          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                                            {images.map((image, dotIndex) => (
-                                              <button
-                                                key={`${image}-${dotIndex}`}
-                                                type="button"
-                                                onClick={() =>
-                                                  setHotelSlideById((prev) => ({
-                                                    ...prev,
-                                                    [h.id]: dotIndex,
-                                                  }))
-                                                }
-                                                className={`size-2 rounded-full ${
-                                                  dotIndex === currentIndex
-                                                    ? "bg-white"
-                                                    : "bg-white/50"
-                                                }`}
-                                              />
-                                            ))}
-                                          </div>
-                                        </>
-                                      )}
                                     </>
                                   );
                                 })()}
@@ -613,50 +696,131 @@ export default function TourPage() {
                                 <div className="mt-5">
                                   <p className="text-sm font-medium">Номера</p>
 
-                                  <div className="mt-3 grid sm:grid-cols-2 gap-3">
-                                    {h.rooms.map((room) => (
-                                      <button
-                                        key={room.id}
-                                        type="button"
-                                        onClick={() => {
-                                          setRoomSlide(0);
-                                          setSelectedRoom({
-                                            room,
-                                            hotel: h,
-                                            chain,
-                                          });
-                                        }}
-                                        className="text-left rounded-xl border border-neutral-200 bg-white p-3 hover:border-[#C2410C] hover:bg-orange-50/40 transition"
-                                      >
-                                        {(room.gallery?.[0] || room.image) && (
-                                          <img
-                                            src={mediaUrl(
-                                              room.gallery?.[0] || room.image,
+                                  <div className="mt-3">
+                                    <div className="flex gap-3 overflow-x-auto pb-2">
+                                      {h.rooms.map((room) => {
+                                        const roomImages = (
+                                          room.gallery?.length
+                                            ? room.gallery
+                                            : [room.image]
+                                        ).filter(Boolean);
+                                        const currentIndex =
+                                          roomCardSlideById[room.id] || 0;
+                                        const currentImage =
+                                          roomImages[currentIndex] ||
+                                          roomImages[0];
+
+                                        return (
+                                          <div
+                                            key={room.id}
+                                            className="w-[280px] shrink-0 rounded-xl border border-neutral-200 bg-white p-3"
+                                          >
+                                            {currentImage && (
+                                              <div className="relative mb-3 overflow-hidden rounded-lg bg-neutral-100">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setRoomSlide(0);
+                                                    setSelectedRoom({
+                                                      room,
+                                                      hotel: h,
+                                                      chain,
+                                                    });
+                                                  }}
+                                                  className="block w-full text-left"
+                                                >
+                                                  <img
+                                                    src={mediaUrl(currentImage)}
+                                                    alt={
+                                                      room.title || room.number
+                                                    }
+                                                    className="aspect-[4/3] w-full object-cover"
+                                                    loading="lazy"
+                                                  />
+                                                </button>
+
+                                                {roomImages.length > 1 && (
+                                                  <>
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setRoomCardSlideById(
+                                                          (prev) => ({
+                                                            ...prev,
+                                                            [room.id]:
+                                                              currentIndex === 0
+                                                                ? roomImages.length -
+                                                                  1
+                                                                : currentIndex -
+                                                                  1,
+                                                          }),
+                                                        );
+                                                      }}
+                                                      className="absolute left-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow"
+                                                    >
+                                                      ‹
+                                                    </button>
+
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setRoomCardSlideById(
+                                                          (prev) => ({
+                                                            ...prev,
+                                                            [room.id]:
+                                                              currentIndex ===
+                                                              roomImages.length -
+                                                                1
+                                                                ? 0
+                                                                : currentIndex +
+                                                                  1,
+                                                          }),
+                                                        );
+                                                      }}
+                                                      className="absolute right-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow"
+                                                    >
+                                                      ›
+                                                    </button>
+                                                  </>
+                                                )}
+                                              </div>
                                             )}
-                                            alt={room.title || room.number}
-                                            className="mb-3 aspect-[4/3] w-full rounded-lg object-cover bg-neutral-100"
-                                            loading="lazy"
-                                          />
-                                        )}
 
-                                        <p className="font-medium">
-                                          {room.title ||
-                                            (room.number
-                                              ? `Номер ${room.number}`
-                                              : "Номер")}
-                                        </p>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setRoomSlide(0);
+                                                setSelectedRoom({
+                                                  room,
+                                                  hotel: h,
+                                                  chain,
+                                                });
+                                              }}
+                                              className="w-full text-left"
+                                            >
+                                              <p className="font-medium">
+                                                {room.title ||
+                                                  (room.number
+                                                    ? `Номер ${room.number}`
+                                                    : "Номер")}
+                                              </p>
 
-                                        {room.description && (
-                                          <p className="mt-1 line-clamp-2 text-xs text-neutral-500">
-                                            {room.description}
-                                          </p>
-                                        )}
+                                              {room.description && (
+                                                <p className="mt-1 line-clamp-2 text-xs text-neutral-500">
+                                                  {room.description}
+                                                </p>
+                                              )}
 
-                                        <p className="mt-2 text-xs text-[#C2410C]">
-                                          Посмотреть даты и фото
-                                        </p>
-                                      </button>
-                                    ))}
+                                              <p className="mt-2 text-xs text-[#C2410C]">
+                                                Посмотреть даты и фото
+                                              </p>
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -732,10 +896,19 @@ export default function TourPage() {
             </div>
           )}
         </div>
-
-        <aside className="lg:col-span-4 space-y-6">
+        {/* <aside className="lg:col-span-4 space-y-6"> */}
+        <aside className="w-full lg:w-[380px] space-y-6">
           <div
-            className="rounded-2xl border border-neutral-200 p-6 lg:sticky lg:top-32 bg-white shadow-sm"
+            className="
+    rounded-2xl
+    border
+    border-neutral-200
+    p-6
+    bg-white
+    shadow-sm
+    sticky
+    top-32
+  "
             data-testid="tour-sticky-sidebar"
           >
             <p className="text-sm text-neutral-500">
@@ -773,6 +946,8 @@ export default function TourPage() {
             <Button
               onClick={() => {
                 setSelectedDate("");
+                setSelectedHotel("");
+                setSelectedRoomTitle("");
                 setLeadOpen(true);
               }}
               className="w-full mt-6 rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white py-6 text-base"
@@ -801,7 +976,6 @@ export default function TourPage() {
               <Phone className="inline size-4 mr-1" /> Позвонить менеджеру
             </a>
           </div>
-
           <div className="rounded-2xl bg-neutral-50 border border-neutral-200 p-6 lg:hidden">
             <p className="font-heading text-xl mb-3">Быстрая заявка</p>
 
@@ -998,7 +1172,7 @@ export default function TourPage() {
                     </div>
                   )}
 
-                  <div className="min-w-0">
+                  {/* <div className="min-w-0">
                     <p className="text-sm font-medium">Доступность по датам</p>
 
                     <div className="mt-2 flex min-w-0 flex-col gap-2">
@@ -1017,16 +1191,94 @@ export default function TourPage() {
                                 : "border-emerald-200 bg-emerald-50 text-emerald-700"
                             }`}
                           >
-                            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <span className="font-medium">
                                 {fmtDateRange(d)}
                               </span>
 
-                              <span>
-                                {unavailable ? "Номер выкуплен" : "Доступен"}
-                              </span>
+                              {unavailable ? (
+                                <span>Номер выкуплен</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDate(fmtDateRange(d));
+                                    setSelectedHotel(selectedRoom.hotel.name);
+                                    setSelectedRoomTitle(
+                                      selectedRoom.room.title ||
+                                        (selectedRoom.room.number
+                                          ? `Номер ${selectedRoom.room.number}`
+                                          : "Номер"),
+                                    );
+                                    setSelectedRoom(null);
+                                    setLeadOpen(true);
+                                  }}
+                                  className="rounded-full bg-[#C2410C] px-4 py-2 text-xs font-medium text-white hover:bg-[#9A3412]"
+                                >
+                                  Забронировать
+                                </button>
+                              )}
                             </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  </div> */}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Доступность по датам</p>
+
+                    <div className="mt-2 flex min-w-0 flex-col gap-2">
+                      {(selectedRoom.chain.dates || []).map((d) => {
+                        const unavailable = isRoomUnavailableOnDate(
+                          selectedRoom.room,
+                          d,
+                        );
+
+                        const openLeadWithRoom = () => {
+                          setSelectedDate(fmtDateRange(d));
+                          setSelectedHotel(selectedRoom.hotel.name);
+                          setSelectedRoomTitle(
+                            selectedRoom.room.title ||
+                              (selectedRoom.room.number
+                                ? `Номер ${selectedRoom.room.number}`
+                                : "Номер"),
+                          );
+                          setSelectedRoom(null);
+                          setLeadOpen(true);
+                        };
+
+                        if (unavailable) {
+                          return (
+                            <div
+                              key={dateKey(d)}
+                              className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                            >
+                              <p className="font-medium">{fmtDateRange(d)}</p>
+                              <p className="mt-1 text-xs">Номер выкуплен</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={dateKey(d)}
+                            type="button"
+                            onClick={openLeadWithRoom}
+                            className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm text-emerald-800 transition hover:bg-emerald-100"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="font-medium">{fmtDateRange(d)}</p>
+                                <p className="mt-1 text-xs text-emerald-700">
+                                  Номер доступен
+                                </p>
+                              </div>
+
+                              <span className="shrink-0 text-xs font-semibold text-[#C2410C]">
+                                Забронировать →
+                              </span>
+                            </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1046,6 +1298,8 @@ export default function TourPage() {
         region={tour.region_slug}
         dates={dateStrings}
         selectedDate={selectedDate}
+        selectedHotel={selectedHotel}
+        selectedRoom={selectedRoomTitle}
         tours={tours}
         title={`Заявка на тур «${tour.title}»`}
         description="Менеджер свяжется в течение часа и расскажет о ближайших датах."

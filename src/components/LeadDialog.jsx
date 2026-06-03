@@ -16,6 +16,8 @@ export default function LeadDialog({
   region,
   dates,
   selectedDate,
+  selectedHotel,
+  selectedRoom,
   tours,
   title,
   description,
@@ -53,6 +55,8 @@ export default function LeadDialog({
           tours={tours}
           dates={dates}
           selectedDate={selectedDate}
+          selectedHotel={selectedHotel}
+          selectedRoom={selectedRoom}
           onSuccess={() => onOpenChange(false)}
         />
       </DialogContent>
