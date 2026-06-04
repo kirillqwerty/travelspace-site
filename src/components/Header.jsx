@@ -7,6 +7,8 @@ import MessengerModal from "@/components/MessengerModal";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import logo from "../assets/travelspace-logo.png";
+import mtsLogo from "../assets/mts.png";
+import a1Logo from "../assets/a1.png";
 
 const PRIMARY_NAV = [
   { to: "/tours", label: "Автобусные туры", dropdown: true },
@@ -40,6 +42,12 @@ const MESSENGER_BTNS = [
   { type: "telegram", color: "#0088CC", Icon: TgSvg, label: "Telegram" },
   { type: "whatsapp", color: "#25D366", Icon: WaSvg, label: "WhatsApp" },
 ];
+
+const operatorLogos = [mtsLogo, a1Logo];
+
+const phoneTel = (phone) => {
+  return String(phone || "").replace(/[^\d]/g, "");
+};
 
 export default function Header() {
   const { settings, tours } = useSiteData();
@@ -240,8 +248,8 @@ export default function Header() {
           </nav>
 
           {/* RIGHT SIDE */}
-          <div className="hidden lg:flex items-center gap-4 ml-5">
-            {" "}
+          <div className="hidden lg:flex items-center gap-8 ml-8">
+            {/* <div className="hidden lg:flex items-center gap-4 ml-5"> */}{" "}
             <div className="flex items-center gap-1">
               {MESSENGER_BTNS.map(({ type, color, Icon, label }) => (
                 <button
@@ -259,18 +267,30 @@ export default function Header() {
               ))}
             </div>
             <div
-              className={`flex flex-col items-start text-left leading-tight text-[12px] min-w-[180px] ${headerMutedText}`}
+              className={`flex items-center gap-2 text-left leading-tight text-[12px] min-w-[280px] ${headerMutedText}`}
             >
-              {headerPhones.map((item) => (
-                <a
-                  key={item.link || item.phone}
-                  href={`tel:${item.link}`}
-                  className="block hover:text-[#F97316] transition-colors"
-                  data-testid={`header-phone-${item.link}`}
-                >
-                  {item.phone} · {item.label}
-                </a>
-              ))}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {operatorLogos.map((logo, index) => (
+                  <img
+                    key={index}
+                    src={logo}
+                    alt=""
+                    className="w-9 h-6 object-contain"
+                  />
+                ))}
+              </div>
+
+              <div className="flex flex-col items-start">
+                {headerPhones.map((item) => (
+                  <a
+                    key={item.link || item.phone}
+                    href={`tel:${phoneTel(item.phone)}`}
+                    className="block hover:text-[#F97316] transition-colors"
+                  >
+                    {item.phone} · {item.label}
+                  </a>
+                ))}
+              </div>
             </div>
             <Button
               onClick={() => setLeadOpen(true)}
@@ -397,13 +417,26 @@ export default function Header() {
                 {headerPhones.map((p) => (
                   <a
                     key={p.link}
-                    href={`tel:${p.link}`}
+                    href={`tel:${phoneTel(p.phone)}`}
                     className="rounded-xl border border-neutral-200 px-3 py-2 text-sm flex items-center justify-between hover:border-[#C2410C]"
                     data-testid={`mobile-phone-${p.link}`}
                   >
-                    <span className="font-medium text-neutral-900">
-                      {p.phone}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-0.5 shrink-0">
+                        {operatorLogos.map((logo, index) => (
+                          <img
+                            key={index}
+                            src={logo}
+                            alt=""
+                            className="w-8 h-6 object-contain"
+                          />
+                        ))}
+                      </span>
+
+                      <span className="font-medium text-neutral-900">
+                        {p.phone}
+                      </span>
+                    </div>
                     <span className="text-xs text-neutral-500">{p.label}</span>
                   </a>
                 ))}

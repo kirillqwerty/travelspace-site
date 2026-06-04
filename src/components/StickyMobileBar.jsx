@@ -9,23 +9,25 @@ import {
 } from "@/components/ui/dialog";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
+import mtsLogo from "../assets/mts.png";
+import a1Logo from "../assets/a1.png";
 
 const DEFAULT_CALL_DIRECTIONS = [
   {
     label: "Грузия и Дагестан",
-    phones: [
-      { operator: "МТС", phone: "636-99-11", link: "+375296369911" },
-      { operator: "A1", phone: "636-99-11", link: "+375446369911" },
-    ],
+    phones: [{ phone: "636-99-11" }],
   },
   {
     label: "Питер и Карелия",
-    phones: [
-      { operator: "МТС", phone: "636-22-99", link: "+375296362299" },
-      { operator: "A1", phone: "636-22-99", link: "+375446362299" },
-    ],
+    phones: [{ phone: "636-22-99" }],
   },
 ];
+
+const operatorLogos = [mtsLogo, a1Logo];
+
+const phoneTel = (phone) => {
+  return String(phone || "").replace(/[^\d]/g, "");
+};
 
 export default function StickyMobileBar() {
   const { settings, tours } = useSiteData();
@@ -111,12 +113,19 @@ export default function StickyMobileBar() {
                 {(selectedDirection.phones || []).map((item) => (
                   <a
                     key={`${item.operator}-${item.link}`}
-                    href={`tel:${item.link}`}
+                    href={`tel:${phoneTel(item.phone)}`}
                     className="rounded-2xl border border-neutral-200 px-4 py-3 hover:border-[#C2410C]"
                   >
-                    <span className="block text-xs text-neutral-500">
-                      {item.operator}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {operatorLogos.map((logo, index) => (
+                        <img
+                          key={index}
+                          src={logo}
+                          alt=""
+                          className="w-5 h-5 object-contain"
+                        />
+                      ))}
+                    </div>
                     <span className="block text-lg font-bold text-neutral-900">
                       {item.phone}
                     </span>

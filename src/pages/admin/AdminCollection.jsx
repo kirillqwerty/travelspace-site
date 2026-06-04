@@ -198,14 +198,81 @@
 //   comment: d.comment || "",
 // });
 
-// const normalizeRoomDatePriceRecord = (price = {}, room = {}) => ({
-//   id: price.id || uid(),
-//   date_id: price.date_id || price.dateId || "",
-//   date_start: price.date_start || price.dateStart || "",
-//   date_label: price.date_label || price.dateLabel || "",
-//   price: price.price ?? "",
-//   currency: price.currency || room.currency || "BYN",
+// const ROOM_MEAL_PLANS = [
+//   { key: "breakfast", label: "Завтрак" },
+//   { key: "breakfast_lunch", label: "Завтрак + обед" },
+//   { key: "breakfast_dinner", label: "Завтрак + ужин" },
+// ];
+
+// const normalizeMealPriceRecord = (meal = {}, fallback = {}) => ({
+//   price: meal.price ?? fallback.price ?? "",
+//   currency: meal.currency || fallback.currency || "BYN",
+//   additional_price:
+//     meal.additional_price ??
+//     meal.additionalPrice ??
+//     fallback.additional_price ??
+//     "",
+//   additional_currency:
+//     meal.additional_currency ||
+//     meal.additionalCurrency ||
+//     fallback.additional_currency ||
+//     fallback.currency ||
+//     "BYN",
 // });
+
+// const hasMealPriceValue = (meal = {}) =>
+//   [meal.price, meal.additional_price].some(
+//     (value) =>
+//       value !== undefined && value !== null && String(value).trim() !== "",
+//   );
+
+// const normalizeRoomDatePriceRecord = (price = {}, room = {}) => {
+//   const fallback = {
+//     price: price.price ?? price.main_price ?? price.base_price ?? "",
+//     currency:
+//       price.currency ||
+//       price.main_currency ||
+//       price.base_currency ||
+//       room.currency ||
+//       "BYN",
+//     additional_price:
+//       price.additional_price ??
+//       price.additionalPrice ??
+//       price.extra_price ??
+//       price.extraPrice ??
+//       "",
+//     additional_currency:
+//       price.additional_currency ||
+//       price.additionalCurrency ||
+//       price.extra_currency ||
+//       price.extraCurrency ||
+//       price.currency ||
+//       room.currency ||
+//       "BYN",
+//   };
+
+//   const rawMealPrices = price.meal_prices || price.mealPrices || {};
+//   const meal_prices = ROOM_MEAL_PLANS.reduce((acc, plan, index) => {
+//     const rawMeal = rawMealPrices[plan.key] || rawMealPrices[plan.label] || {};
+//     acc[plan.key] = normalizeMealPriceRecord(
+//       rawMeal,
+//       index === 0 ? fallback : { currency: fallback.currency },
+//     );
+//     return acc;
+//   }, {});
+
+//   return {
+//     id: price.id || uid(),
+//     date_id: price.date_id || price.dateId || "",
+//     date_start: price.date_start || price.dateStart || "",
+//     date_label: price.date_label || price.dateLabel || "",
+//     meal_prices,
+//     price: fallback.price,
+//     currency: fallback.currency,
+//     additional_price: fallback.additional_price,
+//     additional_currency: fallback.additional_currency,
+//   };
+// };
 
 // const normalizeRoomRecord = (room = {}) => ({
 //   id: room.id || uid(),
@@ -664,7 +731,9 @@
 //   return (
 //     <Dialog open={open} onOpenChange={(v) => !saving && !v && onClose()}>
 //       <DialogContent
-//         className="max-w-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col"
+//         className="max-w-2xl max-w-[1500px]
+//   h-[95vh]
+//   max-h-[95vh] p-0 overflow-hidden flex flex-col"
 //         data-testid="admin-edit-dialog"
 //         onOpenAutoFocus={(event) => event.preventDefault()}
 //       >
@@ -1894,6 +1963,7 @@
 //   defaultCurrency = "BYN",
 //   onChange,
 // }) {
+//   const currencies = ["BYN", "RUB", "USD", "EUR"];
 //   const getKey = (date) => date.id || date.start;
 
 //   const getPriceRecord = (date) => {
@@ -1907,20 +1977,62 @@
 //     );
 //   };
 
-//   const updatePrice = (date, patch) => {
+//   const getMealRecord = (date, planKey) => {
+//     const priceRecord = getPriceRecord(date);
+//     const meal = priceRecord?.meal_prices?.[planKey] || {};
+
+//     if (planKey === "breakfast") {
+//       return {
+//         price: meal.price ?? priceRecord?.price ?? "",
+//         currency: meal.currency || priceRecord?.currency || defaultCurrency,
+//         additional_price:
+//           meal.additional_price ?? priceRecord?.additional_price ?? "",
+//         additional_currency:
+//           meal.additional_currency ||
+//           priceRecord?.additional_currency ||
+//           priceRecord?.currency ||
+//           defaultCurrency,
+//       };
+//     }
+
+//     return {
+//       price: meal.price ?? "",
+//       currency: meal.currency || defaultCurrency,
+//       additional_price: meal.additional_price ?? "",
+//       additional_currency:
+//         meal.additional_currency || meal.currency || defaultCurrency,
+//     };
+//   };
+
+//   const updateMealPrice = (date, planKey, patch) => {
 //     const key = getKey(date);
 //     if (!key) return;
 
 //     const date_label = formatDateLabel(date);
 //     const current = getPriceRecord(date);
+//     const currentMealPrices = current?.meal_prices || {};
+//     const nextMeal = {
+//       ...getMealRecord(date, planKey),
+//       ...patch,
+//     };
+
+//     const nextMealPrices = {
+//       ...currentMealPrices,
+//       [planKey]: nextMeal,
+//     };
+
+//     const breakfast = nextMealPrices.breakfast || {};
 //     const nextRecord = {
 //       id: current?.id || uid(),
 //       date_id: key,
 //       date_start: date.start || "",
 //       date_label,
-//       price: current?.price ?? "",
-//       currency: current?.currency || defaultCurrency,
-//       ...patch,
+//       meal_prices: nextMealPrices,
+//       price: breakfast.price ?? "",
+//       currency: breakfast.currency || defaultCurrency,
+//       additional_price: breakfast.additional_price ?? "",
+//       additional_currency:
+//         breakfast.additional_currency || breakfast.currency || defaultCurrency,
 //     };
 
 //     const otherRecords = (value || []).filter(
@@ -1930,69 +2042,149 @@
 //         item.date_label !== date_label,
 //     );
 
-//     const shouldKeep =
-//       nextRecord.price !== undefined &&
-//       nextRecord.price !== null &&
-//       String(nextRecord.price).trim() !== "";
+//     const hasAnyPrice = ROOM_MEAL_PLANS.some((plan) =>
+//       hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
+//     );
 
-//     onChange(shouldKeep ? [...otherRecords, nextRecord] : otherRecords);
+//     onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
 //   };
 
 //   return (
-//     <div>
-//       <Label className="text-xs">Цены номера по датам</Label>
+//     <div className="rounded-xl border border-orange-100 bg-orange-50/30 p-3">
+//       <Label className="text-sm font-semibold">
+//         Прайслист номера по датам и питанию
+//       </Label>
+//       <p className="mt-1 text-xs text-neutral-500">
+//         Для каждой даты заезда заполните стоимость номера по плану питания. Поле
+//         «+ доп.» можно использовать для доплаты/придаточной цены.
+//       </p>
 
 //       {!dates.length && (
-//         <p className="mt-1 text-xs text-neutral-500">
+//         <p className="mt-2 text-xs text-neutral-500">
 //           Сначала добавьте даты в цепочку.
 //         </p>
 //       )}
 
-//       <div className="mt-2 grid gap-2">
-//         {dates.map((date) => {
-//           const key = getKey(date);
-//           const priceRecord = getPriceRecord(date);
+//       {dates.length > 0 && (
+//         <div className="mt-3 overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+//           <table className="min-w-[980px] w-full text-xs">
+//             <thead className="bg-neutral-50 text-neutral-700">
+//               <tr>
+//                 <th className="border-b border-neutral-200 px-3 py-2 text-left">
+//                   Дата заезда
+//                 </th>
+//                 {ROOM_MEAL_PLANS.map((plan) => (
+//                   <th
+//                     key={plan.key}
+//                     className="border-b border-l border-neutral-200 px-3 py-2 text-left"
+//                   >
+//                     {plan.label}
+//                   </th>
+//                 ))}
+//               </tr>
+//             </thead>
 
-//           return (
-//             <div
-//               key={key}
-//               className="grid gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs sm:grid-cols-[1fr_140px_110px] sm:items-center"
-//             >
-//               <span className="font-medium text-neutral-700">
-//                 {formatDateLabel(date)}
-//               </span>
+//             <tbody>
+//               {dates.map((date) => {
+//                 const key = getKey(date);
 
-//               <Input
-//                 type="number"
-//                 min="0"
-//                 value={priceRecord?.price ?? ""}
-//                 onChange={(e) =>
-//                   updatePrice(date, {
-//                     price: e.target.value === "" ? "" : Number(e.target.value),
-//                   })
-//                 }
-//                 placeholder="Цена"
-//               />
+//                 return (
+//                   <tr key={key} className="align-top">
+//                     <td className="border-b border-neutral-100 px-3 py-3 font-medium text-neutral-700">
+//                       {formatDateLabel(date)}
+//                     </td>
 
-//               <Select
-//                 value={priceRecord?.currency || defaultCurrency}
-//                 onValueChange={(currency) => updatePrice(date, { currency })}
-//               >
-//                 <SelectTrigger>
-//                   <SelectValue />
-//                 </SelectTrigger>
-//                 <SelectContent>
-//                   {["BYN", "RUB", "USD", "EUR"].map((currency) => (
-//                     <SelectItem key={currency} value={currency}>
-//                       {currency}
-//                     </SelectItem>
-//                   ))}
-//                 </SelectContent>
-//               </Select>
-//             </div>
-//           );
-//         })}
-//       </div>
+//                     {ROOM_MEAL_PLANS.map((plan) => {
+//                       const meal = getMealRecord(date, plan.key);
+
+//                       return (
+//                         <td
+//                           key={plan.key}
+//                           className="border-b border-l border-neutral-100 px-3 py-3"
+//                         >
+//                           <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+//                             <Input
+//                               type="number"
+//                               min="0"
+//                               value={meal.price ?? ""}
+//                               onChange={(e) =>
+//                                 updateMealPrice(date, plan.key, {
+//                                   price:
+//                                     e.target.value === ""
+//                                       ? ""
+//                                       : Number(e.target.value),
+//                                 })
+//                               }
+//                               placeholder="Цена"
+//                             />
+
+//                             <Select
+//                               value={meal.currency || defaultCurrency}
+//                               onValueChange={(currency) =>
+//                                 updateMealPrice(date, plan.key, { currency })
+//                               }
+//                             >
+//                               <SelectTrigger>
+//                                 <SelectValue />
+//                               </SelectTrigger>
+//                               <SelectContent>
+//                                 {currencies.map((currency) => (
+//                                   <SelectItem key={currency} value={currency}>
+//                                     {currency}
+//                                   </SelectItem>
+//                                 ))}
+//                               </SelectContent>
+//                             </Select>
+
+//                             <Input
+//                               type="number"
+//                               min="0"
+//                               value={meal.additional_price ?? ""}
+//                               onChange={(e) =>
+//                                 updateMealPrice(date, plan.key, {
+//                                   additional_price:
+//                                     e.target.value === ""
+//                                       ? ""
+//                                       : Number(e.target.value),
+//                                 })
+//                               }
+//                               placeholder="+ доп."
+//                             />
+
+//                             <Select
+//                               value={
+//                                 meal.additional_currency ||
+//                                 meal.currency ||
+//                                 defaultCurrency
+//                               }
+//                               onValueChange={(additional_currency) =>
+//                                 updateMealPrice(date, plan.key, {
+//                                   additional_currency,
+//                                 })
+//                               }
+//                             >
+//                               <SelectTrigger>
+//                                 <SelectValue />
+//                               </SelectTrigger>
+//                               <SelectContent>
+//                                 {currencies.map((currency) => (
+//                                   <SelectItem key={currency} value={currency}>
+//                                     {currency}
+//                                   </SelectItem>
+//                                 ))}
+//                               </SelectContent>
+//                             </Select>
+//                           </div>
+//                         </td>
+//                       );
+//                     })}
+//                   </tr>
+//                 );
+//               })}
+//             </tbody>
+//           </table>
+//         </div>
+//       )}
 //     </div>
 //   );
 // }
@@ -2242,9 +2434,9 @@ const SCHEMAS = {
         placeholder: "например 7 дней / 6 ночей",
       },
       {
-        key: "departure_city",
-        label: "Город отправления",
-        type: "city-select",
+        key: "departure_cities",
+        label: "Города отправления",
+        type: "city-multi-select",
       },
       { key: "price_from", label: "Основная цена", type: "number" },
       {
@@ -2383,14 +2575,70 @@ const normalizeDateRecord = (d = {}, record = {}) => ({
   comment: d.comment || "",
 });
 
-const normalizeRoomDatePriceRecord = (price = {}, room = {}) => ({
-  id: price.id || uid(),
-  date_id: price.date_id || price.dateId || "",
-  date_start: price.date_start || price.dateStart || "",
-  date_label: price.date_label || price.dateLabel || "",
-  price: price.price ?? "",
-  currency: price.currency || room.currency || "BYN",
+const ROOM_MEAL_PLANS = [
+  { key: "breakfast", label: "Завтрак" },
+  { key: "breakfast_lunch", label: "Завтрак + обед" },
+  { key: "breakfast_dinner", label: "Завтрак + обед + ужин" },
+];
+
+const normalizeMealPriceRecord = (meal = {}, fallback = {}) => ({
+  price: meal.price ?? fallback.price ?? "",
+  currency: meal.currency || fallback.currency || "BYN",
 });
+
+const hasMealPriceValue = (meal = {}) =>
+  [meal.price].some(
+    (value) =>
+      value !== undefined && value !== null && String(value).trim() !== "",
+  );
+
+const normalizeRoomDatePriceRecord = (price = {}, room = {}) => {
+  const fallback = {
+    price: price.price ?? price.main_price ?? price.base_price ?? "",
+    currency:
+      price.currency ||
+      price.main_currency ||
+      price.base_currency ||
+      room.currency ||
+      "BYN",
+    additional_price:
+      price.additional_price ??
+      price.additionalPrice ??
+      price.extra_price ??
+      price.extraPrice ??
+      "",
+    additional_currency:
+      price.additional_currency ||
+      price.additionalCurrency ||
+      price.extra_currency ||
+      price.extraCurrency ||
+      price.currency ||
+      room.currency ||
+      "BYN",
+  };
+
+  const rawMealPrices = price.meal_prices || price.mealPrices || {};
+  const meal_prices = ROOM_MEAL_PLANS.reduce((acc, plan, index) => {
+    const rawMeal = rawMealPrices[plan.key] || rawMealPrices[plan.label] || {};
+    acc[plan.key] = normalizeMealPriceRecord(
+      rawMeal,
+      index === 0 ? fallback : { currency: fallback.currency },
+    );
+    return acc;
+  }, {});
+
+  return {
+    id: price.id || uid(),
+    date_id: price.date_id || price.dateId || "",
+    date_start: price.date_start || price.dateStart || "",
+    date_label: price.date_label || price.dateLabel || "",
+    meal_prices,
+    price: fallback.price,
+    currency: fallback.currency,
+    additional_price: fallback.additional_price,
+    additional_currency: fallback.additional_currency,
+  };
+};
 
 const normalizeRoomRecord = (room = {}) => ({
   id: room.id || uid(),
@@ -2910,6 +3158,12 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                     value={form[f.key]}
                     onChange={(v) => update(f.key, v)}
                   />
+                ) : f.type === "city-multi-select" ? (
+                  <CityMultiSelect
+                    value={form[f.key] || []}
+                    legacyValue={form.departure_city}
+                    onChange={(v) => update(f.key, v)}
+                  />
                 ) : f.type === "date" ? (
                   <DateInput
                     value={form[f.key] ?? ""}
@@ -3349,6 +3603,94 @@ function CitySelect({ value, onChange }) {
           Добавить
         </Button>
       </div>
+    </div>
+  );
+}
+
+function CityMultiSelect({ value = [], legacyValue, onChange }) {
+  const cities = ["Минск", "Гомель", "Жлобин", "Бобруйск", "Москва"];
+  const selected = Array.isArray(value)
+    ? value
+    : value
+      ? [value]
+      : legacyValue
+        ? [legacyValue]
+        : [];
+  const [customCity, setCustomCity] = useState("");
+
+  const toggleCity = (city) => {
+    onChange(
+      selected.includes(city)
+        ? selected.filter((item) => item !== city)
+        : [...selected, city],
+    );
+  };
+
+  const addCustomCity = () => {
+    const city = customCity.trim();
+    if (!city) return;
+
+    if (!selected.includes(city)) {
+      onChange([...selected, city]);
+    }
+
+    setCustomCity("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {cities.map((city) => {
+          const active = selected.includes(city);
+
+          return (
+            <button
+              key={city}
+              type="button"
+              onClick={() => toggleCity(city)}
+              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                active
+                  ? "border-[#C2410C] bg-orange-50 text-[#C2410C]"
+                  : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+              }`}
+            >
+              {city}
+            </button>
+          );
+        })}
+      </div>
+
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((city) => (
+            <button
+              key={city}
+              type="button"
+              onClick={() => onChange(selected.filter((item) => item !== city))}
+              className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700"
+            >
+              {city} ×
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          value={customCity}
+          placeholder="Свой город в родительном падеже"
+          onChange={(e) => setCustomCity(e.target.value)}
+        />
+
+        <Button type="button" variant="outline" onClick={addCustomCity}>
+          Добавить
+        </Button>
+      </div>
+
+      <p className="text-xs text-neutral-500">
+        Для городов из списка падеж подставится в карточке автоматически. Свой
+        город вводите сразу в родительном падеже: «Вильнюса», «Тбилиси».
+      </p>
     </div>
   );
 }
@@ -4081,6 +4423,7 @@ function RoomDatePricesField({
   defaultCurrency = "BYN",
   onChange,
 }) {
+  const currencies = ["BYN", "RUB", "USD", "EUR"];
   const getKey = (date) => date.id || date.start;
 
   const getPriceRecord = (date) => {
@@ -4094,7 +4437,36 @@ function RoomDatePricesField({
     );
   };
 
-  const updatePrice = (date, patch) => {
+  const getMealRecord = (date, planKey) => {
+    const priceRecord = getPriceRecord(date);
+    const meal = priceRecord?.meal_prices?.[planKey] || {};
+
+    if (planKey === "breakfast") {
+      return {
+        price: meal.price ?? priceRecord?.price ?? "",
+        currency: meal.currency || priceRecord?.currency || defaultCurrency,
+      };
+    }
+
+    return {
+      price: meal.price ?? "",
+      currency: meal.currency || defaultCurrency,
+    };
+  };
+
+  const getDateAdditionalRecord = (date) => {
+    const priceRecord = getPriceRecord(date);
+
+    return {
+      additional_price: priceRecord?.additional_price ?? "",
+      additional_currency:
+        priceRecord?.additional_currency ||
+        priceRecord?.currency ||
+        defaultCurrency,
+    };
+  };
+
+  const updateDateAdditionalPrice = (date, patch) => {
     const key = getKey(date);
     if (!key) return;
 
@@ -4105,8 +4477,12 @@ function RoomDatePricesField({
       date_id: key,
       date_start: date.start || "",
       date_label,
+      meal_prices: current?.meal_prices || {},
       price: current?.price ?? "",
       currency: current?.currency || defaultCurrency,
+      additional_price: current?.additional_price ?? "",
+      additional_currency:
+        current?.additional_currency || current?.currency || defaultCurrency,
       ...patch,
     };
 
@@ -4117,69 +4493,208 @@ function RoomDatePricesField({
         item.date_label !== date_label,
     );
 
-    const shouldKeep =
-      nextRecord.price !== undefined &&
-      nextRecord.price !== null &&
-      String(nextRecord.price).trim() !== "";
+    const hasAnyPrice =
+      ROOM_MEAL_PLANS.some((plan) =>
+        hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
+      ) || hasMealPriceValue({ price: nextRecord.additional_price });
 
-    onChange(shouldKeep ? [...otherRecords, nextRecord] : otherRecords);
+    onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
+  };
+
+  const updateMealPrice = (date, planKey, patch) => {
+    const key = getKey(date);
+    if (!key) return;
+
+    const date_label = formatDateLabel(date);
+    const current = getPriceRecord(date);
+    const currentMealPrices = current?.meal_prices || {};
+    const nextMeal = {
+      ...getMealRecord(date, planKey),
+      ...patch,
+    };
+
+    const nextMealPrices = {
+      ...currentMealPrices,
+      [planKey]: nextMeal,
+    };
+
+    const breakfast = nextMealPrices.breakfast || {};
+    const nextRecord = {
+      id: current?.id || uid(),
+      date_id: key,
+      date_start: date.start || "",
+      date_label,
+      meal_prices: nextMealPrices,
+      price: breakfast.price ?? "",
+      currency: breakfast.currency || defaultCurrency,
+      additional_price: current?.additional_price ?? "",
+      additional_currency:
+        current?.additional_currency || current?.currency || defaultCurrency,
+    };
+
+    const otherRecords = (value || []).filter(
+      (item) =>
+        item.date_id !== key &&
+        item.date_start !== date.start &&
+        item.date_label !== date_label,
+    );
+
+    const hasAnyPrice =
+      ROOM_MEAL_PLANS.some((plan) =>
+        hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
+      ) || hasMealPriceValue({ price: nextRecord.additional_price });
+
+    onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
   };
 
   return (
-    <div>
-      <Label className="text-xs">Цены номера по датам</Label>
+    <div className="rounded-xl border border-orange-100 bg-orange-50/30 p-3">
+      <Label className="text-sm font-semibold">
+        Прайслист номера по датам и питанию
+      </Label>
+      <p className="mt-1 text-xs text-neutral-500">
+        Для каждой даты заезда заполните доплату один раз и стоимость номера по
+        каждому плану питания.
+      </p>
 
       {!dates.length && (
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-neutral-500">
           Сначала добавьте даты в цепочку.
         </p>
       )}
 
-      <div className="mt-2 grid gap-2">
-        {dates.map((date) => {
-          const key = getKey(date);
-          const priceRecord = getPriceRecord(date);
+      {dates.length > 0 && (
+        <div className="mt-3 overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+          <table className="min-w-[1080px] w-full text-xs">
+            <thead className="bg-neutral-50 text-neutral-700">
+              <tr>
+                <th className="border-b border-neutral-200 px-3 py-2 text-left">
+                  Дата заезда
+                </th>
+                <th className="border-b border-l border-neutral-200 px-3 py-2 text-left">
+                  Доплата за заезд
+                </th>
+                {ROOM_MEAL_PLANS.map((plan) => (
+                  <th
+                    key={plan.key}
+                    className="border-b border-l border-neutral-200 px-3 py-2 text-left"
+                  >
+                    {plan.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-          return (
-            <div
-              key={key}
-              className="grid gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs sm:grid-cols-[1fr_140px_110px] sm:items-center"
-            >
-              <span className="font-medium text-neutral-700">
-                {formatDateLabel(date)}
-              </span>
+            <tbody>
+              {dates.map((date) => {
+                const key = getKey(date);
 
-              <Input
-                type="number"
-                min="0"
-                value={priceRecord?.price ?? ""}
-                onChange={(e) =>
-                  updatePrice(date, {
-                    price: e.target.value === "" ? "" : Number(e.target.value),
-                  })
-                }
-                placeholder="Цена"
-              />
+                return (
+                  <tr key={key} className="align-top">
+                    <td className="border-b border-neutral-100 px-3 py-3 font-medium text-neutral-700">
+                      {formatDateLabel(date)}
+                    </td>
 
-              <Select
-                value={priceRecord?.currency || defaultCurrency}
-                onValueChange={(currency) => updatePrice(date, { currency })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {["BYN", "RUB", "USD", "EUR"].map((currency) => (
-                    <SelectItem key={currency} value={currency}>
-                      {currency}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        })}
-      </div>
+                    <td className="border-b border-l border-neutral-100 px-3 py-3">
+                      {(() => {
+                        const additional = getDateAdditionalRecord(date);
+
+                        return (
+                          <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={additional.additional_price ?? ""}
+                              onChange={(e) =>
+                                updateDateAdditionalPrice(date, {
+                                  additional_price:
+                                    e.target.value === ""
+                                      ? ""
+                                      : Number(e.target.value),
+                                })
+                              }
+                              placeholder="+ доп."
+                            />
+
+                            <Select
+                              value={
+                                additional.additional_currency ||
+                                defaultCurrency
+                              }
+                              onValueChange={(additional_currency) =>
+                                updateDateAdditionalPrice(date, {
+                                  additional_currency,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {currencies.map((currency) => (
+                                  <SelectItem key={currency} value={currency}>
+                                    {currency}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })()}
+                    </td>
+
+                    {ROOM_MEAL_PLANS.map((plan) => {
+                      const meal = getMealRecord(date, plan.key);
+
+                      return (
+                        <td
+                          key={plan.key}
+                          className="border-b border-l border-neutral-100 px-3 py-3"
+                        >
+                          <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={meal.price ?? ""}
+                              onChange={(e) =>
+                                updateMealPrice(date, plan.key, {
+                                  price:
+                                    e.target.value === ""
+                                      ? ""
+                                      : Number(e.target.value),
+                                })
+                              }
+                              placeholder="Цена"
+                            />
+
+                            <Select
+                              value={meal.currency || defaultCurrency}
+                              onValueChange={(currency) =>
+                                updateMealPrice(date, plan.key, { currency })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {currencies.map((currency) => (
+                                  <SelectItem key={currency} value={currency}>
+                                    {currency}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
