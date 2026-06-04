@@ -57,9 +57,9 @@
 //         placeholder: "например 7 дней / 6 ночей",
 //       },
 //       {
-//         key: "departure_city",
-//         label: "Город отправления",
-//         type: "city-select",
+//         key: "departure_cities",
+//         label: "Города отправления",
+//         type: "city-multi-select",
 //       },
 //       { key: "price_from", label: "Основная цена", type: "number" },
 //       {
@@ -201,27 +201,16 @@
 // const ROOM_MEAL_PLANS = [
 //   { key: "breakfast", label: "Завтрак" },
 //   { key: "breakfast_lunch", label: "Завтрак + обед" },
-//   { key: "breakfast_dinner", label: "Завтрак + ужин" },
+//   { key: "breakfast_dinner", label: "Завтрак + обед + ужин" },
 // ];
 
 // const normalizeMealPriceRecord = (meal = {}, fallback = {}) => ({
 //   price: meal.price ?? fallback.price ?? "",
 //   currency: meal.currency || fallback.currency || "BYN",
-//   additional_price:
-//     meal.additional_price ??
-//     meal.additionalPrice ??
-//     fallback.additional_price ??
-//     "",
-//   additional_currency:
-//     meal.additional_currency ||
-//     meal.additionalCurrency ||
-//     fallback.additional_currency ||
-//     fallback.currency ||
-//     "BYN",
 // });
 
 // const hasMealPriceValue = (meal = {}) =>
-//   [meal.price, meal.additional_price].some(
+//   [meal.price].some(
 //     (value) =>
 //       value !== undefined && value !== null && String(value).trim() !== "",
 //   );
@@ -792,6 +781,12 @@
 //                     value={form[f.key]}
 //                     onChange={(v) => update(f.key, v)}
 //                   />
+//                 ) : f.type === "city-multi-select" ? (
+//                   <CityMultiSelect
+//                     value={form[f.key] || []}
+//                     legacyValue={form.departure_city}
+//                     onChange={(v) => update(f.key, v)}
+//                   />
 //                 ) : f.type === "date" ? (
 //                   <DateInput
 //                     value={form[f.key] ?? ""}
@@ -1231,6 +1226,94 @@
 //           Добавить
 //         </Button>
 //       </div>
+//     </div>
+//   );
+// }
+
+// function CityMultiSelect({ value = [], legacyValue, onChange }) {
+//   const cities = ["Минск", "Гомель", "Жлобин", "Бобруйск", "Москва"];
+//   const selected = Array.isArray(value)
+//     ? value
+//     : value
+//       ? [value]
+//       : legacyValue
+//         ? [legacyValue]
+//         : [];
+//   const [customCity, setCustomCity] = useState("");
+
+//   const toggleCity = (city) => {
+//     onChange(
+//       selected.includes(city)
+//         ? selected.filter((item) => item !== city)
+//         : [...selected, city],
+//     );
+//   };
+
+//   const addCustomCity = () => {
+//     const city = customCity.trim();
+//     if (!city) return;
+
+//     if (!selected.includes(city)) {
+//       onChange([...selected, city]);
+//     }
+
+//     setCustomCity("");
+//   };
+
+//   return (
+//     <div className="space-y-2">
+//       <div className="flex flex-wrap gap-2">
+//         {cities.map((city) => {
+//           const active = selected.includes(city);
+
+//           return (
+//             <button
+//               key={city}
+//               type="button"
+//               onClick={() => toggleCity(city)}
+//               className={`rounded-full border px-3 py-1.5 text-xs transition ${
+//                 active
+//                   ? "border-[#C2410C] bg-orange-50 text-[#C2410C]"
+//                   : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+//               }`}
+//             >
+//               {city}
+//             </button>
+//           );
+//         })}
+//       </div>
+
+//       {selected.length > 0 && (
+//         <div className="flex flex-wrap gap-1.5">
+//           {selected.map((city) => (
+//             <button
+//               key={city}
+//               type="button"
+//               onClick={() => onChange(selected.filter((item) => item !== city))}
+//               className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700"
+//             >
+//               {city} ×
+//             </button>
+//           ))}
+//         </div>
+//       )}
+
+//       <div className="flex flex-col gap-2 sm:flex-row">
+//         <Input
+//           value={customCity}
+//           placeholder="Свой город в родительном падеже"
+//           onChange={(e) => setCustomCity(e.target.value)}
+//         />
+
+//         <Button type="button" variant="outline" onClick={addCustomCity}>
+//           Добавить
+//         </Button>
+//       </div>
+
+//       <p className="text-xs text-neutral-500">
+//         Для городов из списка падеж подставится в карточке автоматически. Свой
+//         город вводите сразу в родительном падеже: «Вильнюса», «Тбилиси».
+//       </p>
 //     </div>
 //   );
 // }
@@ -1985,23 +2068,60 @@
 //       return {
 //         price: meal.price ?? priceRecord?.price ?? "",
 //         currency: meal.currency || priceRecord?.currency || defaultCurrency,
-//         additional_price:
-//           meal.additional_price ?? priceRecord?.additional_price ?? "",
-//         additional_currency:
-//           meal.additional_currency ||
-//           priceRecord?.additional_currency ||
-//           priceRecord?.currency ||
-//           defaultCurrency,
 //       };
 //     }
 
 //     return {
 //       price: meal.price ?? "",
 //       currency: meal.currency || defaultCurrency,
-//       additional_price: meal.additional_price ?? "",
-//       additional_currency:
-//         meal.additional_currency || meal.currency || defaultCurrency,
 //     };
+//   };
+
+//   const getDateAdditionalRecord = (date) => {
+//     const priceRecord = getPriceRecord(date);
+
+//     return {
+//       additional_price: priceRecord?.additional_price ?? "",
+//       additional_currency:
+//         priceRecord?.additional_currency ||
+//         priceRecord?.currency ||
+//         defaultCurrency,
+//     };
+//   };
+
+//   const updateDateAdditionalPrice = (date, patch) => {
+//     const key = getKey(date);
+//     if (!key) return;
+
+//     const date_label = formatDateLabel(date);
+//     const current = getPriceRecord(date);
+//     const nextRecord = {
+//       id: current?.id || uid(),
+//       date_id: key,
+//       date_start: date.start || "",
+//       date_label,
+//       meal_prices: current?.meal_prices || {},
+//       price: current?.price ?? "",
+//       currency: current?.currency || defaultCurrency,
+//       additional_price: current?.additional_price ?? "",
+//       additional_currency:
+//         current?.additional_currency || current?.currency || defaultCurrency,
+//       ...patch,
+//     };
+
+//     const otherRecords = (value || []).filter(
+//       (item) =>
+//         item.date_id !== key &&
+//         item.date_start !== date.start &&
+//         item.date_label !== date_label,
+//     );
+
+//     const hasAnyPrice =
+//       ROOM_MEAL_PLANS.some((plan) =>
+//         hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
+//       ) || hasMealPriceValue({ price: nextRecord.additional_price });
+
+//     onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
 //   };
 
 //   const updateMealPrice = (date, planKey, patch) => {
@@ -2030,9 +2150,9 @@
 //       meal_prices: nextMealPrices,
 //       price: breakfast.price ?? "",
 //       currency: breakfast.currency || defaultCurrency,
-//       additional_price: breakfast.additional_price ?? "",
+//       additional_price: current?.additional_price ?? "",
 //       additional_currency:
-//         breakfast.additional_currency || breakfast.currency || defaultCurrency,
+//         current?.additional_currency || current?.currency || defaultCurrency,
 //     };
 
 //     const otherRecords = (value || []).filter(
@@ -2042,9 +2162,10 @@
 //         item.date_label !== date_label,
 //     );
 
-//     const hasAnyPrice = ROOM_MEAL_PLANS.some((plan) =>
-//       hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
-//     );
+//     const hasAnyPrice =
+//       ROOM_MEAL_PLANS.some((plan) =>
+//         hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
+//       ) || hasMealPriceValue({ price: nextRecord.additional_price });
 
 //     onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
 //   };
@@ -2055,8 +2176,8 @@
 //         Прайслист номера по датам и питанию
 //       </Label>
 //       <p className="mt-1 text-xs text-neutral-500">
-//         Для каждой даты заезда заполните стоимость номера по плану питания. Поле
-//         «+ доп.» можно использовать для доплаты/придаточной цены.
+//         Для каждой даты заезда заполните доплату один раз и стоимость номера по
+//         каждому плану питания.
 //       </p>
 
 //       {!dates.length && (
@@ -2067,11 +2188,14 @@
 
 //       {dates.length > 0 && (
 //         <div className="mt-3 overflow-x-auto rounded-xl border border-neutral-200 bg-white">
-//           <table className="min-w-[980px] w-full text-xs">
+//           <table className="min-w-[1080px] w-full text-xs">
 //             <thead className="bg-neutral-50 text-neutral-700">
 //               <tr>
 //                 <th className="border-b border-neutral-200 px-3 py-2 text-left">
 //                   Дата заезда
+//                 </th>
+//                 <th className="border-b border-l border-neutral-200 px-3 py-2 text-left">
+//                   Доплата за заезд
 //                 </th>
 //                 {ROOM_MEAL_PLANS.map((plan) => (
 //                   <th
@@ -2092,6 +2216,54 @@
 //                   <tr key={key} className="align-top">
 //                     <td className="border-b border-neutral-100 px-3 py-3 font-medium text-neutral-700">
 //                       {formatDateLabel(date)}
+//                     </td>
+
+//                     <td className="border-b border-l border-neutral-100 px-3 py-3">
+//                       {(() => {
+//                         const additional = getDateAdditionalRecord(date);
+
+//                         return (
+//                           <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+//                             <Input
+//                               type="number"
+//                               min="0"
+//                               value={additional.additional_price ?? ""}
+//                               onChange={(e) =>
+//                                 updateDateAdditionalPrice(date, {
+//                                   additional_price:
+//                                     e.target.value === ""
+//                                       ? ""
+//                                       : Number(e.target.value),
+//                                 })
+//                               }
+//                               placeholder="+ доп."
+//                             />
+
+//                             <Select
+//                               value={
+//                                 additional.additional_currency ||
+//                                 defaultCurrency
+//                               }
+//                               onValueChange={(additional_currency) =>
+//                                 updateDateAdditionalPrice(date, {
+//                                   additional_currency,
+//                                 })
+//                               }
+//                             >
+//                               <SelectTrigger>
+//                                 <SelectValue />
+//                               </SelectTrigger>
+//                               <SelectContent>
+//                                 {currencies.map((currency) => (
+//                                   <SelectItem key={currency} value={currency}>
+//                                     {currency}
+//                                   </SelectItem>
+//                                 ))}
+//                               </SelectContent>
+//                             </Select>
+//                           </div>
+//                         );
+//                       })()}
 //                     </td>
 
 //                     {ROOM_MEAL_PLANS.map((plan) => {
@@ -2122,45 +2294,6 @@
 //                               value={meal.currency || defaultCurrency}
 //                               onValueChange={(currency) =>
 //                                 updateMealPrice(date, plan.key, { currency })
-//                               }
-//                             >
-//                               <SelectTrigger>
-//                                 <SelectValue />
-//                               </SelectTrigger>
-//                               <SelectContent>
-//                                 {currencies.map((currency) => (
-//                                   <SelectItem key={currency} value={currency}>
-//                                     {currency}
-//                                   </SelectItem>
-//                                 ))}
-//                               </SelectContent>
-//                             </Select>
-
-//                             <Input
-//                               type="number"
-//                               min="0"
-//                               value={meal.additional_price ?? ""}
-//                               onChange={(e) =>
-//                                 updateMealPrice(date, plan.key, {
-//                                   additional_price:
-//                                     e.target.value === ""
-//                                       ? ""
-//                                       : Number(e.target.value),
-//                                 })
-//                               }
-//                               placeholder="+ доп."
-//                             />
-
-//                             <Select
-//                               value={
-//                                 meal.additional_currency ||
-//                                 meal.currency ||
-//                                 defaultCurrency
-//                               }
-//                               onValueChange={(additional_currency) =>
-//                                 updateMealPrice(date, plan.key, {
-//                                   additional_currency,
-//                                 })
 //                               }
 //                             >
 //                               <SelectTrigger>
@@ -2578,7 +2711,8 @@ const normalizeDateRecord = (d = {}, record = {}) => ({
 const ROOM_MEAL_PLANS = [
   { key: "breakfast", label: "Завтрак" },
   { key: "breakfast_lunch", label: "Завтрак + обед" },
-  { key: "breakfast_dinner", label: "Завтрак + обед + ужин" },
+  { key: "breakfast_dinner", label: "Завтрак + ужин" },
+  { key: "breakfast_full", label: "Завтрак + обед + ужин" },
 ];
 
 const normalizeMealPriceRecord = (meal = {}, fallback = {}) => ({
