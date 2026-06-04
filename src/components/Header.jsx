@@ -17,14 +17,6 @@ const PRIMARY_NAV = [
   { to: "/contacts", label: "Контакты" },
 ];
 
-// const ViberSvg = () => (
-//   <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
-//     <g transform="translate(0.4 0)">
-//       <path d="M12.04 0C5.4 0 0 5.05 0 11.27c0 2.08.62 4.1 1.8 5.86L.62 24l7.05-1.84a12.4 12.4 0 0 0 4.37.8c6.64 0 12.03-5.05 12.03-11.27C24.07 5.05 18.68 0 12.04 0Zm6.99 15.94c-.3.85-1.78 1.63-2.44 1.72-.63.08-1.42.12-4.58-1.18-4.03-1.67-6.63-5.78-6.83-6.05-.2-.27-1.64-2.18-1.64-4.16 0-1.98 1.04-2.95 1.41-3.35.37-.4.8-.5 1.07-.5h.77c.24 0 .56-.09.87.66.3.74 1.03 2.57 1.12 2.75.09.18.15.39.03.63-.12.24-.18.39-.36.6-.18.21-.38.47-.54.63-.18.18-.36.37-.15.72.21.36.94 1.53 2.02 2.47 1.39 1.22 2.56 1.6 2.92 1.78.36.18.57.15.78-.09.21-.24.9-1.05 1.14-1.41.24-.36.48-.3.81-.18.33.12 2.1.98 2.46 1.16.36.18.6.27.69.42.09.15.09.88-.21 1.73Z" />
-//     </g>
-//   </svg>
-// );
-
 const ViberSvg = () => (
   <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
     <path d="M12.011 0C5.373 0 0 5.373 0 12.011c0 2.119.553 4.108 1.52 5.832L0 24l6.36-1.487a11.94 11.94 0 0 0 5.651 1.42c6.638 0 12.011-5.373 12.011-12.011S18.649 0 12.011 0Zm6.43 16.77c-.265.748-1.56 1.43-2.14 1.51-.553.073-1.246.11-4.018-1.03-3.538-1.465-5.819-5.073-5.994-5.31-.176-.237-1.438-1.91-1.438-3.645 0-1.735.91-2.585 1.237-2.935.324-.35.703-.438.938-.438h.675c.21 0 .49-.08.763.58.265.65.903 2.25.983 2.41.08.158.132.342.026.553-.105.21-.158.342-.316.526-.158.184-.333.412-.474.553-.158.158-.316.324-.132.632.184.316.825 1.342 1.773 2.166 1.22 1.07 2.245 1.404 2.56 1.562.316.158.5.132.685-.08.184-.21.79-.922 1-1.237.21-.316.42-.263.71-.158.29.105 1.84.86 2.156 1.017.316.158.526.237.605.368.08.132.08.773-.184 1.52Z" />
@@ -36,15 +28,6 @@ const TgSvg = () => (
     <path d="M9.5 14.5 9.4 18c.3 0 .4-.1.6-.3l1.5-1.4 3.1 2.3c.6.3 1 .2 1.2-.5l2.1-9.9c.2-.9-.3-1.2-.9-1l-12.4 4.8c-.8.3-.8.8-.2 1l3.2 1 7.4-4.7c.4-.2.7-.1.4.2" />
   </svg>
 );
-
-// const WaSvg = () => (
-//   <svg viewBox="0 0 32 32" className="size-5" fill="currentColor">
-//     <g transform="translate(0.8 0)">
-//       <path d="M19.11 17.2c-.3-.15-1.77-.87-2.05-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.08-.3-.15-1.28-.47-2.43-1.5-.9-.8-1.5-1.8-1.68-2.1-.18-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.05 1.03-1.05 2.52s1.08 2.92 1.23 3.12c.15.2 2.1 3.2 5.08 4.48.7.3 1.25.48 1.68.62.7.22 1.33.18 1.83.1.56-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.08-.12-.27-.2-.57-.35Z" />
-//       <path d="M16.03 3C8.85 3 3 8.74 3 15.8c0 2.26.6 4.47 1.74 6.42L3 29l6.98-1.82a13.1 13.1 0 0 0 6.05 1.48h.01C23.2 28.66 29 22.92 29 15.86 29 8.8 23.2 3 16.03 3Zm0 23.3h-.01a10.8 10.8 0 0 1-5.5-1.5l-.4-.23-4.14 1.08 1.1-4.03-.26-.42a10.5 10.5 0 0 1-1.62-5.57c0-5.88 4.84-10.66 10.82-10.66 5.97 0 10.82 4.78 10.82 10.66 0 5.88-4.86 10.67-10.83 10.67Z" />
-//     </g>
-//   </svg>
-// );
 
 const WaSvg = () => (
   <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
@@ -77,25 +60,6 @@ export default function Header() {
     window.addEventListener("scroll", fn);
     return () => window.removeEventListener("scroll", fn);
   }, []);
-
-  // Unique regions (one entry per region_slug, picking the first matching tour)
-  // const regionLinks = useMemo(() => {
-  //   const map = new Map();
-  //   tours.forEach((t) => {
-  //     console.log(t);
-
-  //     if (!t.region_slug) return;
-  //     if (!map.has(t.region_slug)) {
-  //       // Link to first tour of region; we keep the region label for UI
-  //       map.set(t.region_slug, {
-  //         slug: t.region_slug,
-  //         label: t.region_name || t.title,
-  //         tourSlug: t.slug,
-  //       });
-  //     }
-  //   });
-  //   return Array.from(map.values());
-  // }, [tours]);
 
   const tourLinks = useMemo(() => {
     return tours
@@ -131,12 +95,6 @@ export default function Header() {
     setMobileToursOpen(false);
   };
 
-  // Desktop nav (all primary items)
-  const desktopNav = PRIMARY_NAV;
-  // Mobile nav: per requirements doc:
-  //   - "Подобрать тур" не нужен
-  //   - "Агентствам" не показываем (только десктоп)
-  //   - Туры с подпунктами (раскрытие)
   const mobileNav = PRIMARY_NAV.filter((n) => !n.desktopOnly);
 
   return (
@@ -166,9 +124,22 @@ export default function Header() {
                 </div>
 
                 <div className="flex items-center gap-6">
-                  <span className="text-[#F97316] font-medium">
-                    На связи в Instagram 24/7
-                  </span>
+                  <div
+                    className="
+    flex items-center gap-2
+    px-4 py-1.5
+    rounded-full
+    bg-[#F97316]/15
+    border border-[#F97316]/30
+    text-[#FB923C]
+    font-semibold
+    text-sm
+    shadow-[0_0_15px_rgba(249,115,22,0.25)]
+  "
+                  >
+                    <span className="animate-pulse text-[#FB923C]">●</span>
+                    <span>На связи в Instagram 24/7</span>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -183,7 +154,7 @@ export default function Header() {
         >
           <Link
             to="/"
-            className="flex items-center gap-2 shrink-0"
+            className="flex items-center gap-3 shrink-0 mr-3"
             data-testid="header-logo"
           >
             <img
@@ -203,7 +174,7 @@ export default function Header() {
           </Link>
 
           {/* DESKTOP NAV */}
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
+          <nav className="hidden lg:flex items-center gap-4 text-sm font-medium">
             <div
               className="relative"
               onMouseEnter={() => setToursOpen(true)}
@@ -212,9 +183,11 @@ export default function Header() {
               <NavLink
                 to="/tours"
                 className={({ isActive }) =>
-                  `flex items-center gap-1 transition-colors hover:text-[#F97316] ${
-                    isActive || toursOpen ? "text-[#F97316]" : headerMutedText
-                  }`
+                  `flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-1.5
+   transition-all duration-200
+   hover:bg-white/15 hover:text-[#F97316]
+   hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]
+   ${isActive || toursOpen ? "text-[#F97316]" : headerMutedText}`
                 }
                 data-testid="nav-tours"
               >
@@ -229,22 +202,6 @@ export default function Header() {
               {toursOpen && (
                 <div className="absolute left-0 top-full pt-4">
                   <div className="w-64 rounded-2xl border border-white/50 bg-white/95 backdrop-blur-xl shadow-2xl p-2">
-                    {/* {regionLinks.map((item) => (
-                      <NavLink
-                        key={item.slug}
-                        to={`/tours/${item.tourSlug}`}
-                        className={({ isActive }) =>
-                          `block rounded-xl px-4 py-2.5 text-sm transition-colors ${
-                            isActive
-                              ? "bg-orange-50 text-[#C2410C]"
-                              : "text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
-                          }`
-                        }
-                        data-testid={`nav-tour-${item.slug}`}
-                      >
-                        {item.label}
-                      </NavLink>
-                    ))} */}
                     {tourLinks.map((item) => (
                       <NavLink
                         key={item.slug}
@@ -264,15 +221,16 @@ export default function Header() {
                 </div>
               )}
             </div>
-
             {PRIMARY_NAV.filter((n) => !n.dropdown).map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
                 className={({ isActive }) =>
-                  `transition-colors hover:text-[#F97316] ${
-                    isActive ? "text-[#F97316]" : headerMutedText
-                  }`
+                  `whitespace-nowrap rounded-full px-2 py-1.5
+   transition-all duration-200
+   hover:bg-white/15 hover:text-[#F97316]
+   hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]
+   ${isActive ? "text-[#F97316]" : headerMutedText}`
                 }
                 data-testid={`nav-${n.to.slice(1) || "home"}`}
               >
@@ -282,7 +240,8 @@ export default function Header() {
           </nav>
 
           {/* RIGHT SIDE */}
-          <div className="hidden lg:flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-4 ml-5">
+            {" "}
             <div className="flex items-center gap-1">
               {MESSENGER_BTNS.map(({ type, color, Icon, label }) => (
                 <button
@@ -299,22 +258,20 @@ export default function Header() {
                 </button>
               ))}
             </div>
-
             <div
-              className={`flex flex-col items-end leading-tight text-[12px] ${headerMutedText}`}
+              className={`flex flex-col items-start text-left leading-tight text-[12px] min-w-[180px] ${headerMutedText}`}
             >
               {headerPhones.map((item) => (
                 <a
                   key={item.link || item.phone}
                   href={`tel:${item.link}`}
-                  className="hover:text-[#F97316] transition-colors"
+                  className="block hover:text-[#F97316] transition-colors"
                   data-testid={`header-phone-${item.link}`}
                 >
                   {item.phone} · {item.label}
                 </a>
               ))}
             </div>
-
             <Button
               onClick={() => setLeadOpen(true)}
               className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white font-medium px-6"
@@ -406,17 +363,6 @@ export default function Header() {
                             className="overflow-hidden"
                           >
                             <div className="flex flex-col gap-0.5 pl-3 py-1">
-                              {/* {regionLinks.map((item) => (
-                                <NavLink
-                                  key={item.slug}
-                                  to={`/tours/${item.tourSlug}`}
-                                  onClick={closeMenu}
-                                  className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
-                                  data-testid={`mobile-nav-tour-${item.slug}`}
-                                >
-                                  {item.label}
-                                </NavLink>
-                              ))} */}
                               {tourLinks.map((item) => (
                                 <NavLink
                                   key={item.slug}

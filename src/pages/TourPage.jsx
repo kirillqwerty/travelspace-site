@@ -54,6 +54,100 @@ const SECTIONS = [
 const glassText =
   "w-fit bg-black/35 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-2";
 
+function hasAdditionalPrice(item) {
+  return (
+    item?.additional_price !== undefined &&
+    item?.additional_price !== null &&
+    item?.additional_price !== ""
+  );
+}
+
+function getAdditionalPriceSource(item, fallbackTour) {
+  if (hasAdditionalPrice(item)) return item;
+  if (hasAdditionalPrice(fallbackTour)) return fallbackTour;
+  return null;
+}
+
+function formatCurrency(currency) {
+  return currency || "BYN";
+}
+
+// CHANGE: хелперы для цены конкретного номера отеля по выбранной дате
+function getRoomDatePrice(room, date) {
+  if (!room || !date) return null;
+
+  const datePrices = Array.isArray(room.date_prices)
+    ? room.date_prices
+    : Array.isArray(room.datePrices)
+      ? room.datePrices
+      : [];
+  const key = date.id || date.start;
+  const label = fmtDateRange(date);
+
+  const priceRecord = datePrices.find(
+    (item) =>
+      item.date_id === key ||
+      item.dateId === key ||
+      item.date_start === date.start ||
+      item.dateStart === date.start ||
+      item.date_label === label ||
+      item.dateLabel === label,
+  );
+
+  if (
+    priceRecord?.price !== undefined &&
+    priceRecord?.price !== null &&
+    priceRecord?.price !== ""
+  ) {
+    return priceRecord;
+  }
+
+  // legacy fallback: старые номера могли иметь одну общую цену без привязки к дате
+  if (room.price !== undefined && room.price !== null && room.price !== "") {
+    return { price: room.price, currency: room.currency };
+  }
+
+  return null;
+}
+
+function RoomPriceInline({ room, date, className = "" }) {
+  const priceRecord = getRoomDatePrice(room, date);
+  if (!priceRecord) return null;
+
+  return (
+    <span className={className}>
+      {priceRecord.price} <span>{formatCurrency(priceRecord.currency)}</span>
+    </span>
+  );
+}
+
+function PriceInline({
+  item,
+  fallbackTour,
+  className = "",
+  currencyClassName = "",
+}) {
+  const additionalSource = getAdditionalPriceSource(item, fallbackTour);
+
+  return (
+    <span className={className}>
+      {item.price ?? item.price_from}{" "}
+      <span className={currencyClassName}>
+        {formatCurrency(item.currency || fallbackTour?.currency)}
+      </span>
+      {additionalSource && (
+        <>
+          <span className="mx-1 opacity-70">+</span>
+          {additionalSource.additional_price}{" "}
+          <span className={currencyClassName}>
+            {formatCurrency(additionalSource.additional_currency)}
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
 function formatDate(date) {
   if (!date) return "";
 
@@ -251,12 +345,11 @@ export default function TourPage() {
                   Стоимость {tour.price_type || "от"}
                 </p>
 
-                <p className="font-heading text-4xl sm:text-5xl font-bold text-orange-300">
-                  {tour.price_from}{" "}
-                  <span className="text-lg text-white/75">
-                    {tour.currency || "BYN"}
-                  </span>
-                </p>
+                <PriceInline
+                  item={tour}
+                  className="font-heading text-4xl sm:text-5xl font-bold text-orange-300"
+                  currencyClassName="text-lg text-white/75"
+                />
               </div>
 
               {dates.length > 0 && (
@@ -807,9 +900,18 @@ export default function TourPage() {
                                                 </p>
                                               )}
 
-                                              <p className="mt-2 text-xs text-[#C2410C]">
-                                                Посмотреть даты и фото
-                                              </p>
+                                              {/* CHANGE: ценник номера в карточке отеля рядом с действием бронирования */}
+                                              <div className="mt-3 flex items-center justify-between gap-3">
+                                                <p className="text-xs text-[#C2410C]">
+                                                  Посмотреть даты и фото
+                                                </p>
+
+                                                <RoomPriceInline
+                                                  room={room}
+                                                  date={chain.dates?.[0]}
+                                                  className="shrink-0 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[#C2410C]"
+                                                />
+                                              </div>
                                             </button>
                                           </div>
                                         );
@@ -909,12 +1011,11 @@ export default function TourPage() {
               {tour.price_type || "от"}
             </p>
 
-            <p className="font-heading text-5xl font-bold mt-1">
-              {tour.price_from}{" "}
-              <span className="text-lg font-medium text-neutral-500">
-                {tour.currency || "BYN"}
-              </span>
-            </p>
+            <PriceInline
+              item={tour}
+              className="font-heading text-5xl font-bold mt-1"
+              currencyClassName="text-lg font-medium text-neutral-500"
+            />
 
             {dates.length > 0 && (
               <>
@@ -929,7 +1030,7 @@ export default function TourPage() {
                       <span>{fmtDateRange(d)}</span>
 
                       <span className="font-medium">
-                        {d.price} {d.currency || tour.currency || "BYN"}
+                        <PriceInline item={d} fallbackTour={tour} />
                       </span>
                     </li>
                   ))}
@@ -1022,7 +1123,7 @@ export default function TourPage() {
                         <span className="font-medium">{fmtDateRange(d)}</span>
 
                         <span className="font-heading text-xl text-[#C2410C]">
-                          {d.price} {d.currency || tour.currency || "BYN"}
+                          <PriceInline item={d} fallbackTour={tour} />
                         </span>
                       </div>
 
@@ -1237,7 +1338,7 @@ export default function TourPage() {
                                 ? `Номер ${selectedRoom.room.number}`
                                 : "Номер"),
                           );
-                          setSelectedRoom(null);
+                          // setSelectedRoom(null);
                           setLeadOpen(true);
                         };
 
@@ -1268,8 +1369,28 @@ export default function TourPage() {
                                 </p>
                               </div>
 
-                              <span className="shrink-0 text-xs font-semibold text-[#C2410C]">
-                                Забронировать →
+                              {/* CHANGE: цена номера возле кнопки бронирования */}
+                              <span className="flex shrink-0 flex-col items-end gap-1 text-right">
+                                <RoomPriceInline
+                                  room={selectedRoom.room}
+                                  date={d}
+                                  // className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-[#C2410C]"
+                                  className="
+    rounded-xl
+    bg-orange-50
+    border
+    border-orange-200
+    px-4
+    py-2
+    text-xl
+    font-bold
+    text-orange-600
+    whitespace-nowrap
+  "
+                                />
+                                <span className="text-xs font-semibold text-[#C2410C]">
+                                  Забронировать →
+                                </span>
                               </span>
                             </div>
                           </button>
