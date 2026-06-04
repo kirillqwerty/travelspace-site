@@ -1,15 +1,17 @@
 {
   "files": {
-    "main.css": "/travelspace-site/static/css/main.ff1c1ee3.css",
-    "main.js": "/travelspace-site/static/js/main.9df154a5.js",
+    "main.css": "/travelspace-site/static/css/main.18768636.css",
+    "main.js": "/travelspace-site/static/js/main.4a36bf96.js",
+    "static/media/a1.png": "/travelspace-site/static/media/a1.fbbc66a7e415e08f4475.png",
     "static/media/footer-image.png": "/travelspace-site/static/media/footer-image.05c1c8c5b2eb67b01ac6.png",
     "static/media/travelspace-logo.png": "/travelspace-site/static/media/travelspace-logo.040f6b7cce6aa360f461.png",
+    "static/media/mts.png": "/travelspace-site/static/media/mts.ebd049652f598a5486e3.png",
     "index.html": "/travelspace-site/index.html",
-    "main.ff1c1ee3.css.map": "/travelspace-site/static/css/main.ff1c1ee3.css.map",
-    "main.9df154a5.js.map": "/travelspace-site/static/js/main.9df154a5.js.map"
+    "main.18768636.css.map": "/travelspace-site/static/css/main.18768636.css.map",
+    "main.4a36bf96.js.map": "/travelspace-site/static/js/main.4a36bf96.js.map"
   },
   "entrypoints": [
-    "static/css/main.ff1c1ee3.css",
-    "static/js/main.9df154a5.js"
+    "static/css/main.18768636.css",
+    "static/js/main.4a36bf96.js"
   ]
 }
