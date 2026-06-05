@@ -15,7 +15,11 @@ export default function AdminLogin() {
   const navigate = useNavigate();
 
   if (loading) {
-    return <div className="min-h-screen grid place-items-center text-sm text-neutral-500">Загрузка…</div>;
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-neutral-500">
+        Загрузка…
+      </div>
+    );
   }
   if (user) return <Navigate to="/admin" replace />;
 
@@ -40,7 +44,9 @@ export default function AdminLogin() {
           <ShieldCheck className="size-5" />
         </div>
         <h1 className="font-heading text-2xl mt-4">Вход в админ-панель</h1>
-        <p className="text-sm text-neutral-500 mt-1">Доступ только для администраторов сайта.</p>
+        <p className="text-sm text-neutral-500 mt-1">
+          Доступ только для администраторов сайта.
+        </p>
 
         <div className="mt-6 space-y-4">
           <div>
@@ -77,9 +83,9 @@ export default function AdminLogin() {
             {submitting ? <Loader2 className="size-4 animate-spin" /> : "Войти"}
           </Button>
         </div>
-        <p className="mt-6 text-xs text-neutral-400">
+        {/* <p className="mt-6 text-xs text-neutral-400">
           Демо: admin@belarustours.by · admin123
-        </p>
+        </p> */}
       </form>
     </div>
   );

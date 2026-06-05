@@ -7,7 +7,10 @@ export default function Contacts() {
   if (!settings) return null;
 
   return (
-    <div className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24" data-testid="contacts-page">
+    <div
+      className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
+      data-testid="contacts-page"
+    >
       <p className="overline text-[#C2410C]">Контакты</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
         Свяжитесь с нами
@@ -66,11 +69,11 @@ export default function Contacts() {
 
           <div className="rounded-2xl overflow-hidden border border-neutral-200 aspect-[16/10]">
             <iframe
-              title="Карта"
-              src="https://yandex.ru/map-widget/v1/?ll=27.561481%2C53.902284&z=12"
-              className="w-full h-full"
-              loading="lazy"
-            />
+              src="https://yandex.ru/map-widget/v1/?um=constructor%3Ad656038b4365b20357ff3750659f955d0a5138ed85e430156cf91f0ec9121d43&amp;source=constructor"
+              width="580"
+              height="360"
+              frameborder="0"
+            ></iframe>
           </div>
         </div>
 

@@ -1174,8 +1174,8 @@ export default function TourPage() {
     p-6
     bg-white
     shadow-sm
-    sticky
-    top-32
+    lg:sticky
+    lg:top-32
   "
             data-testid="tour-sticky-sidebar"
           >
@@ -1322,18 +1322,26 @@ export default function TourPage() {
       >
         <DialogContent
           className="
-            w-[calc(100vw-24px)]
-            max-w-[calc(100vw-24px)]
-            sm:max-w-[1000px]
-            max-h-[calc(100dvh-24px)]
-            overflow-hidden
-            rounded-2xl
-            p-0
-          "
+    fixed
+    left-1/2
+    top-1/2
+    z-50
+    w-[calc(100vw-24px)]
+    max-w-[calc(100vw-24px)]
+    -translate-x-1/2
+    -translate-y-1/2
+    sm:max-w-[1000px]
+    h-[calc(100dvh-24px)]
+    max-h-[calc(100dvh-24px)]
+    overflow-hidden
+    rounded-2xl
+    p-0
+  "
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           {selectedRoom && (
-            <div className="flex max-h-[calc(100dvh-24px)] w-full min-w-0 flex-col">
+            <div className="flex h-[calc(100dvh-24px)] w-full min-w-0 flex-col">
+              {" "}
               <div className="shrink-0 px-4 pt-4 pb-3 sm:px-6 sm:pt-6">
                 <DialogHeader className="min-w-0 pr-8 text-left">
                   <DialogTitle className="font-heading text-lg sm:text-2xl break-words">
@@ -1348,7 +1356,6 @@ export default function TourPage() {
                   </DialogDescription>
                 </DialogHeader>
               </div>
-
               <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6">
                 <div className="flex min-w-0 flex-col gap-3">
                   {selectedRoom.room.description && (
