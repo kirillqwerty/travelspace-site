@@ -1,0 +1,17 @@
+{
+  "name": "TRAVELSPACE",
+  "short_name": "TRAVELSPACE",
+  "description": "Автобусные туры из Минска в Грузию, Дагестан, Санкт-Петербург и Карелию.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d9480f",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

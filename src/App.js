@@ -1,7 +1,7 @@
 import "@/App.css";
 import "@/index.css";
 import {
-  HashRouter,
+  BrowserRouter,
   Routes,
   Route,
   Navigate,
@@ -111,8 +111,7 @@ export default function App() {
         animate={{ opacity: showIntro ? 0 : 1 }}
         transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
       >
-        {/* <BrowserRouter> */}
-        <HashRouter>
+        <BrowserRouter>
           <AuthProvider>
             <ScrollToTop />
             <Routes>
@@ -272,8 +271,7 @@ export default function App() {
             </Routes>
             <Toaster richColors position="top-right" />
           </AuthProvider>
-        </HashRouter>
-        {/* </BrowserRouter> */}
+        </BrowserRouter>
       </motion.div>
     </>
   );
