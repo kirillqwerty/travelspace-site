@@ -4,19 +4,11 @@ import { Link } from "react-router-dom";
 export default function About() {
   return (
     <div data-testid="about-page">
-      <section className="relative h-[55vh] overflow-hidden">
-        <img
-          src="https://images.pexels.com/photos/9628139/pexels-photo-9628139.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=900&w=1600"
-          alt="О компании"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-        <div className="relative h-full section-container flex flex-col justify-end pb-12 text-white">
-          <p className="text-white/85">О компании</p>
-          <h1 className="font-heading text-5xl lg:text-7xl mt-2 max-w-3xl">
-            Делаем путешествия простыми
-          </h1>
-        </div>
+      <section className="section-container pt-32 lg:pt-36 pb-10 lg:pb-14">
+        <p className="overline text-[#C2410C]">О компании</p>
+        <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
+          Делаем путешествия простыми
+        </h1>
       </section>
 
       <section className="section-container py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-start">

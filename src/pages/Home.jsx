@@ -171,32 +171,9 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {destinationTours.slice(0, 4).map((tour) => (
-              <div
-                key={tour.id || tour.slug}
-                className="
-        h-full
-        min-h-[520px]
-
-        [&>a]:h-full
-        [&>div]:h-full
-
-        [&_img]:h-[320px]
-        [&_img]:object-cover
-
-        [&_h3]:text-3xl
-        [&_h3]:sm:text-4xl
-        [&_h3]:leading-tight
-
-        [&_p]:text-lg
-        [&_p]:leading-relaxed
-
-        [&_.price]:text-2xl
-      "
-              >
-                <TourCard tour={tour} size="large" />
-              </div>
+              <TourCard key={tour.id || tour.slug} tour={tour} />
             ))}
           </div>
         </div>

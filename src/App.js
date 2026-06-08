@@ -372,10 +372,10 @@ function DirectionRedirect() {
 }
 
 export default function App() {
-  const INTRO_DURATION = 0;
+  const INTRO_DURATION = 1700;
 
-  const [showIntro, setShowIntro] = useState(false);
-  const [startHeroVideo, setStartHeroVideo] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
+  const [startHeroVideo, setStartHeroVideo] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -393,7 +393,7 @@ export default function App() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: showIntro ? 0 : 1 }}
-        transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
       >
         <BrowserRouter>
           <AuthProvider>
