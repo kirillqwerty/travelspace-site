@@ -60,6 +60,16 @@ const DEPARTURE_CITY_GENITIVE = {
   Жлобин: "Жлобина",
   Бобруйск: "Бобруйска",
   Москва: "Москвы",
+  Витебск: "Витебска",
+  Могилев: "Могилева",
+  Могилёв: "Могилёва",
+  Новополоцк: "Новополоцка",
+  Брест: "Бреста",
+  Гродно: "Гродно",
+  Барановичи: "Барановичей",
+  Орша: "Орши",
+  Жодино: "Жодино",
+  Полоцк: "Полоцка",
 };
 
 function getDepartureCities(tour) {
@@ -463,7 +473,7 @@ export default function TourPage() {
               {(tour.badges || []).map((b) => (
                 <Badge
                   key={b}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide border shadow-sm ${
+                  className={`pointer-events-none rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide border shadow-sm ${
                     BADGE_STYLES[b] ||
                     "bg-black/40 backdrop-blur-md text-white border-white/10"
                   }`}
@@ -471,12 +481,6 @@ export default function TourPage() {
                   {b}
                 </Badge>
               ))}
-            </div>
-
-            <div className="mb-3">
-              <span className={glassText}>
-                {tour.region_name || tour.direction_name}
-              </span>
             </div>
 
             <div className="mt-3 max-w-5xl">
@@ -501,10 +505,6 @@ export default function TourPage() {
 
                 <span className="inline-flex items-center gap-1.5">
                   <Bus className="size-4" /> {formatDepartureFrom(tour)}
-                </span>
-
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="size-4" /> {tour.region_name}
                 </span>
               </div>
             </div>
@@ -746,16 +746,31 @@ export default function TourPage() {
                     </AccordionTrigger>
 
                     <AccordionContent>
-                      <div className="pl-[100px] pb-2">
-                        <p className="text-neutral-700 leading-relaxed">
-                          {d.description}
-                        </p>
+                      <div className="pb-3 sm:pl-[100px]">
+                        <div className="grid gap-3 sm:grid-cols-[220px_1fr] sm:items-start">
+                          {d.image && (
+                            <div className="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+                              <img
+                                src={mediaUrl(d.image)}
+                                alt={d.title || `День ${d.day}`}
+                                className="h-[120px] w-full object-cover sm:h-[140px]"
+                                loading="lazy"
+                              />
+                            </div>
+                          )}
 
-                        {d.notes && (
-                          <p className="text-sm text-neutral-500 mt-3">
-                            {d.notes}
-                          </p>
-                        )}
+                          <div>
+                            <p className="text-sm leading-relaxed text-neutral-700 sm:text-[15px]">
+                              {d.description}
+                            </p>
+
+                            {d.notes && (
+                              <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                                {d.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </AccordionContent>
                   </AccordionItem>

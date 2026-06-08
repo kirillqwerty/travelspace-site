@@ -99,7 +99,7 @@ export default function Catalog() {
         ))}
       </div> */}
 
-      <div
+      {/* <div
         className="mt-4 flex flex-wrap items-center gap-2"
         data-testid="catalog-badge-filter"
       >
@@ -127,9 +127,9 @@ export default function Catalog() {
             }`}
           >
             {b}
-          </button>
+          </buttoокейn>
         ))}
-      </div>
+      </div> */}
 
       <div className="mt-12">
         {loading ? (

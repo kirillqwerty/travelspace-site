@@ -1,22 +1,18 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
-/**
- * Cached site-level data used across the site.
- * - settings: company settings
- * - tours: list of public tours (replaces former "directions")
- * - specialists: managers grouped by region_slug
- */
 export function useSiteData() {
   const [data, setData] = useState({
     settings: null,
     tours: [],
     specialists: [],
+    articles: [],
     ready: false,
   });
 
   useEffect(() => {
     let cancelled = false;
+
     Promise.all([
       api
         .get("/settings")
@@ -30,10 +26,22 @@ export function useSiteData() {
         .get("/specialists")
         .then((r) => r.data)
         .catch(() => []),
-    ]).then(([settings, tours, specialists]) => {
+      api
+        .get("/articles")
+        .then((r) => r.data)
+        .catch(() => []),
+    ]).then(([settings, tours, specialists, articles]) => {
       if (cancelled) return;
-      setData({ settings, tours, specialists, ready: true });
+
+      setData({
+        settings,
+        tours,
+        specialists,
+        articles,
+        ready: true,
+      });
     });
+
     return () => {
       cancelled = true;
     };

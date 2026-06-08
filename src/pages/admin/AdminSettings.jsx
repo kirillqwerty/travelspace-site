@@ -92,6 +92,15 @@ export default function AdminSettings() {
           />
         </Group>
 
+        <Group title="Телефоны в шапке и футере">
+          <div className="sm:col-span-2 space-y-3">
+            <HeaderPhonesField
+              value={data.header_phones || []}
+              onChange={(v) => update("header_phones", v)}
+            />
+          </div>
+        </Group>
+
         <Group title="Мессенджеры">
           <Field
             label="Viber"
@@ -134,6 +143,72 @@ function Group({ title, children }) {
     <div>
       <p className="overline text-neutral-500 mb-3">{title}</p>
       <div className="grid sm:grid-cols-2 gap-3">{children}</div>
+    </div>
+  );
+}
+
+function HeaderPhonesField({ value = [], onChange }) {
+  const items = value.length
+    ? value
+    : [
+        {
+          label: "Грузия и Дагестан",
+          phone: "636-99-11",
+          link: "+375296369911",
+        },
+        { label: "Питер и Карелия", phone: "636-22-99", link: "+375296362299" },
+      ];
+
+  const updateItem = (index, patch) => {
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  const addItem = () =>
+    onChange([...items, { label: "", phone: "", link: "" }]);
+
+  const removeItem = (index) =>
+    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, index) => (
+        <div
+          key={index}
+          className="grid gap-2 rounded-xl border border-neutral-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+        >
+          <Field
+            label="Подпись"
+            value={item.label}
+            onChange={(v) => updateItem(index, { label: v })}
+          />
+          <Field
+            label="Номер на сайте"
+            value={item.phone}
+            onChange={(v) => updateItem(index, { phone: v })}
+          />
+          <Field
+            label="Номер для tel:"
+            value={item.link}
+            onChange={(v) => updateItem(index, { link: v })}
+          />
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => removeItem(index)}
+              className="w-full"
+            >
+              Удалить
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      <Button type="button" variant="outline" onClick={addItem}>
+        Добавить телефон
+      </Button>
     </div>
   );
 }

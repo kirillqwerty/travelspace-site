@@ -3,6 +3,8 @@ import { useSiteData } from "@/lib/useSiteData";
 import { Mail, MapPin, Phone } from "lucide-react";
 import footerFilm from "../assets/footer-image.png";
 
+const phoneTel = (phone) => String(phone || "").replace(/[^\d]/g, "");
+
 const SOCIAL_LINKS = [
   {
     label: "Telegram",
@@ -58,6 +60,16 @@ export default function Footer() {
   const { settings } = useSiteData();
 
   const currentYear = new Date().getFullYear();
+  const footerPhones = settings?.header_phones?.length
+    ? settings.header_phones
+    : [
+        {
+          label: "Грузия и Дагестан",
+          phone: "636-99-11",
+          link: "+375296369911",
+        },
+        { label: "Питер и Карелия", phone: "636-22-99", link: "+375296362299" },
+      ];
 
   return (
     <footer className="mt-20 bg-black text-white" data-testid="site-footer">
@@ -88,18 +100,15 @@ export default function Footer() {
               <Phone className="mt-1 size-4 shrink-0 text-[#F97316]" />
               <div>
                 <p>Тел.:</p>
-                <a
-                  href="tel:+375636999111"
-                  className="block hover:text-[#F97316]"
-                >
-                  A1/MTS: 636-99-11 · Грузия и Дагестан
-                </a>
-                <a
-                  href="tel:+375636222999"
-                  className="block hover:text-[#F97316]"
-                >
-                  A1/MTS: 636-22-99 · Питер и Карелия
-                </a>
+                {footerPhones.map((item) => (
+                  <a
+                    key={item.link || item.phone}
+                    href={`tel:${phoneTel(item.link || item.phone)}`}
+                    className="block hover:text-[#F97316]"
+                  >
+                    A1/MTS: {item.phone} · {item.label}
+                  </a>
+                ))}
               </div>
             </div>
 
@@ -108,10 +117,10 @@ export default function Footer() {
               <div>
                 <p>Эл. почта:</p>
                 <a
-                  href="mailto:info@travel-space.by"
+                  href={`mailto:${settings?.email || "info@travel-space.by"}`}
                   className="hover:text-[#F97316]"
                 >
-                  info@travel-space.by
+                  {settings?.email || "info@travel-space.by"}
                 </a>
               </div>
             </div>
@@ -143,7 +152,17 @@ export default function Footer() {
             <div>
               <p>График работы:</p>
               <p>{settings?.work_hours || "По будням с 11:00 до 19:00"}</p>
-              <p>На связи в instagram 24/7</p>
+              <p>
+                На связи в{" "}
+                <a
+                  className="text-[#F97316] transition hover:-translate-y-0.5 hover:opacity-90"
+                  href="https://www.instagram.com/travelspace.by/"
+                  target="_blank"
+                >
+                  instagram{" "}
+                </a>
+                24/7
+              </p>
             </div>
 
             <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
