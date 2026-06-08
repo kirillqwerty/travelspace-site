@@ -2,9 +2,51 @@ import { useSiteData } from "@/lib/useSiteData";
 import { Phone, Mail, MapPin, Clock, BadgeCheck } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
 
+const DEFAULT_PHONES = [
+  {
+    label: "Грузия и Дагестан",
+    phone: "636-99-11",
+    link: "+375296369911",
+  },
+  {
+    label: "Питер и Карелия",
+    phone: "636-22-99",
+    link: "+375296362299",
+  },
+];
+
+const phoneTel = (phone) => String(phone || "").replace(/[^\d]/g, "");
+
+function getContactPhones(settings) {
+  if (
+    Array.isArray(settings?.contact_phones) &&
+    settings.contact_phones.length
+  ) {
+    return settings.contact_phones.filter((item) => item?.phone);
+  }
+
+  if (Array.isArray(settings?.header_phones) && settings.header_phones.length) {
+    return settings.header_phones.filter((item) => item?.phone);
+  }
+
+  if (settings?.phone) {
+    return [
+      {
+        label: "Общий номер",
+        phone: settings.phone,
+        link: settings.phone_link || settings.phone,
+      },
+    ];
+  }
+
+  return DEFAULT_PHONES;
+}
+
 export default function Contacts() {
   const { settings, tours } = useSiteData();
   if (!settings) return null;
+
+  const contactPhones = getContactPhones(settings);
 
   return (
     <div
@@ -19,13 +61,23 @@ export default function Contacts() {
       <div className="mt-12 grid lg:grid-cols-2 gap-10">
         <div className="space-y-6 text-neutral-800">
           <div className="rounded-2xl border border-neutral-200 p-6 space-y-4">
-            <Row icon={Phone} label="Телефон">
-              <a
-                href={`tel:${settings.phone_link}`}
-                className="hover:text-[#C2410C]"
-              >
-                {settings.phone}
-              </a>
+            <Row icon={Phone} label="Телефоны">
+              <div className="space-y-2">
+                {contactPhones.map((item, index) => (
+                  <a
+                    key={`${item.link || item.phone}-${index}`}
+                    href={`tel:${phoneTel(item.link || item.phone)}`}
+                    className="block rounded-xl bg-orange-50/60 px-3 py-2 transition hover:bg-orange-100 hover:text-[#C2410C]"
+                  >
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                      {item.label || "Менеджер"}
+                    </span>
+                    <span className="mt-0.5 block text-sm font-semibold text-neutral-900">
+                      A1/MTS: {item.phone}
+                    </span>
+                  </a>
+                ))}
+              </div>
             </Row>
             <Row icon={Mail} label="Email">
               <a
@@ -43,7 +95,6 @@ export default function Contacts() {
             </Row>
           </div>
 
-          {/* Personalization block (moved here from home per requirements doc) */}
           <div className="rounded-2xl bg-neutral-50 border border-neutral-200 p-6">
             <p className="overline text-[#C2410C]">Помочь с выбором</p>
             <h2 className="font-heading text-2xl sm:text-3xl mt-2">
@@ -72,7 +123,7 @@ export default function Contacts() {
               src="https://yandex.ru/map-widget/v1/?um=constructor%3Ad656038b4365b20357ff3750659f955d0a5138ed85e430156cf91f0ec9121d43&amp;source=constructor"
               width="580"
               height="360"
-              frameborder="0"
+              title="Карта офиса TRAVELSPACE"
             ></iframe>
           </div>
         </div>
@@ -99,7 +150,7 @@ function Row({ icon: Icon, label, children }) {
       </span>
       <div className="flex-1">
         <p className="overline text-neutral-500">{label}</p>
-        <p className="mt-1 text-sm">{children}</p>
+        <div className="mt-1 text-sm">{children}</div>
       </div>
     </div>
   );

@@ -9,8 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
-import mtsLogo from "../assets/mts.png";
-import a1Logo from "../assets/a1.png";
 
 const DEFAULT_CALL_DIRECTIONS = [
   {
@@ -22,8 +20,6 @@ const DEFAULT_CALL_DIRECTIONS = [
     phones: [{ phone: "636-22-99" }],
   },
 ];
-
-const operatorLogos = [mtsLogo, a1Logo];
 
 const phoneTel = (phone) => {
   return String(phone || "").replace(/[^\d]/g, "");
@@ -38,6 +34,16 @@ export default function StickyMobileBar() {
 
   const callDirections = useMemo(() => {
     if (settings?.call_directions?.length) return settings.call_directions;
+
+    if (settings?.header_phones?.length) {
+      return settings.header_phones
+        .filter((item) => item?.phone)
+        .map((item) => ({
+          label: item.label || "Менеджер",
+          phones: [item],
+        }));
+    }
+
     return DEFAULT_CALL_DIRECTIONS;
   }, [settings]);
 
@@ -113,18 +119,16 @@ export default function StickyMobileBar() {
                 {(selectedDirection.phones || []).map((item) => (
                   <a
                     key={`${item.operator}-${item.link}`}
-                    href={`tel:${phoneTel(item.phone)}`}
+                    href={`tel:${phoneTel(item.link || item.phone)}`}
                     className="rounded-2xl border border-neutral-200 px-4 py-3 hover:border-[#C2410C]"
                   >
-                    <div className="flex items-center gap-1.5">
-                      {operatorLogos.map((logo, index) => (
-                        <img
-                          key={index}
-                          src={logo}
-                          alt=""
-                          className="w-5 h-5 object-contain"
-                        />
-                      ))}
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <span className="rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                        МТС
+                      </span>
+                      <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-600">
+                        A1
+                      </span>
                     </div>
                     <span className="block text-lg font-bold text-neutral-900">
                       {item.phone}
