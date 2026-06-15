@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Phone,
   ChevronRight,
   BadgeCheck,
   Bus,
@@ -12,7 +11,6 @@ import {
   ShieldCheck,
   ArrowRight,
   Quote,
-  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -20,56 +18,96 @@ import { useSiteData } from "@/lib/useSiteData";
 import TourCard from "@/components/TourCard";
 import LeadDialog from "@/components/LeadDialog";
 import { mediaUrl } from "@/lib/media";
+import PageSeo from "@/components/PageSeo";
 
-const BENEFITS = [
-  {
-    icon: BadgeCheck,
-    title: "Сами туроператоры",
-    desc: "Не посредник: формируем туры под себя и отвечаем за качество.",
-  },
-  {
-    icon: Bus,
-    title: "Отправление из Минска",
-    desc: "Комфортабельные автобусы, опытные водители, продуманные стоянки.",
-  },
-  {
-    icon: Users,
-    title: "Поддержка менеджера",
-    desc: "С момента заявки и до возвращения — всегда на связи.",
-  },
-  {
-    icon: MapIcon,
-    title: "Понятные программы",
-    desc: "Без скрытых трансферов и сюрпризов: всё показано в маршруте.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Проверенные маршруты",
-    desc: "Каждый тур мы прошли сами, прежде чем пустить группу.",
-  },
-  {
-    icon: Wallet,
-    title: "Оплата через ЕРИП",
-    desc: "Удобно и безопасно: оплата после общения с менеджером.",
-  },
-  {
-    icon: Armchair,
-    title: "Выбор места в автобусе",
-    desc: "Возможен за доп. плату — наличие уточнит менеджер.",
-  },
-];
+const BENEFIT_ICONS = {
+  badge: BadgeCheck,
+  bus: Bus,
+  users: Users,
+  map: MapIcon,
+  shield: ShieldCheck,
+  wallet: Wallet,
+  seat: Armchair,
+};
+
+const DEFAULT_BENEFITS_SECTION = {
+  overline: "Почему едут именно с нами",
+  title: "Заботимся о каждой детали поездки",
+  items: [
+    {
+      icon: "badge",
+      title: "Сами туроператоры",
+      desc: "Не посредник: формируем туры под себя и отвечаем за качество.",
+    },
+    {
+      icon: "bus",
+      title: "Отправление из Минска",
+      desc: "Комфортабельные автобусы, опытные водители, продуманные стоянки.",
+    },
+    {
+      icon: "users",
+      title: "Поддержка менеджера",
+      desc: "С момента заявки и до возвращения — всегда на связи.",
+    },
+    {
+      icon: "map",
+      title: "Понятные программы",
+      desc: "Без скрытых трансферов и сюрпризов: всё показано в маршруте.",
+    },
+    {
+      icon: "shield",
+      title: "Проверенные маршруты",
+      desc: "Каждый тур мы прошли сами, прежде чем пустить группу.",
+    },
+    {
+      icon: "wallet",
+      title: "Оплата через ЕРИП",
+      desc: "Удобно и безопасно: оплата после общения с менеджером.",
+    },
+    {
+      icon: "seat",
+      title: "Выбор места в автобусе",
+      desc: "Возможен за доп. плату — наличие уточнит менеджер.",
+    },
+  ],
+};
+
+function getBenefitsSection(settings) {
+  const section = settings?.home_benefits || {};
+  const items =
+    Array.isArray(section.items) && section.items.length
+      ? section.items
+      : DEFAULT_BENEFITS_SECTION.items;
+
+  return {
+    overline: section.overline || DEFAULT_BENEFITS_SECTION.overline,
+    title: section.title || DEFAULT_BENEFITS_SECTION.title,
+    items: items.filter((item) => item?.title || item?.desc),
+  };
+}
 
 export default function Home() {
-  const { tours, specialists } = useSiteData();
+  const { tours, specialists, settings } = useSiteData();
   const [reviews, setReviews] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const videoRef = useRef(null);
+  const benefitsSection = getBenefitsSection(settings);
 
   useEffect(() => {
     api.get("/reviews").then((r) => setReviews(r.data));
     api.get("/promotions").then((r) => setPromotions(r.data || []));
   }, []);
+
+  const getPromotionTourSlug = (promotion) => {
+    if (Array.isArray(promotion?.related_tour_slugs)) {
+      return promotion.related_tour_slugs.find((slug) =>
+        String(slug || "").trim(),
+      );
+    }
+
+    return String(promotion?.related_tour_slug || "").trim();
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -99,6 +137,12 @@ export default function Home() {
 
   return (
     <div className="space-y-0">
+      <PageSeo
+        pageKey="home"
+        path="/"
+        title="TRAVELSPACE — автобусные туры из Минска"
+        description="Автобусные туры из Минска в Грузию, Дагестан, Санкт-Петербург и Карелию. Продуманные программы, заботливые гиды и понятная цена."
+      />
       {/* ======================= HERO ======================= */}
       <section
         className="relative min-h-screen flex items-center overflow-hidden"
@@ -186,26 +230,32 @@ export default function Home() {
       >
         <div className="section-container">
           <div className="max-w-2xl mb-8 lg:mb-10">
-            <p className="overline text-[#C2410C]">Почему едут именно с нами</p>
+            <p className="overline text-[#C2410C]">
+              {benefitsSection.overline}
+            </p>
             <h2 className="font-heading text-4xl sm:text-5xl mt-2">
-              Заботимся о каждой детали поездки
+              {benefitsSection.title}
             </h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6">
-            {BENEFITS.map((b) => (
-              <div
-                key={b.title}
-                className="rounded-2xl border border-neutral-200 p-6 hover:border-[#C2410C]/60 transition-colors bg-white"
-              >
-                <div className="size-11 rounded-xl bg-orange-50 grid place-items-center text-[#C2410C] mb-4">
-                  <b.icon className="size-5" />
+            {benefitsSection.items.map((b, index) => {
+              const Icon = BENEFIT_ICONS[b.icon] || BadgeCheck;
+
+              return (
+                <div
+                  key={`${b.title || "benefit"}-${index}`}
+                  className="rounded-2xl border border-neutral-200 p-6 hover:border-[#C2410C]/60 transition-colors bg-white"
+                >
+                  <div className="size-11 rounded-xl bg-orange-50 grid place-items-center text-[#C2410C] mb-4">
+                    <Icon className="size-5" />
+                  </div>
+                  <h3 className="font-heading text-xl">{b.title}</h3>
+                  <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
+                    {b.desc}
+                  </p>
                 </div>
-                <h3 className="font-heading text-xl">{b.title}</h3>
-                <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                  {b.desc}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -321,9 +371,9 @@ export default function Home() {
                       {p.description}
                     </p>
 
-                    {p.related_tour_slug && (
+                    {getPromotionTourSlug(p) && (
                       <Link
-                        to={`/tours/${p.related_tour_slug}`}
+                        to={`/tours/${getPromotionTourSlug(p)}`}
                         className="
               mt-6
               inline-flex

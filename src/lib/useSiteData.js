@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { isTourShownInCatalog } from "@/lib/tourVisibility";
 
 export function useSiteData() {
   const [data, setData] = useState({
@@ -35,7 +36,7 @@ export function useSiteData() {
 
       setData({
         settings,
-        tours,
+        tours: Array.isArray(tours) ? tours.filter(isTourShownInCatalog) : [],
         specialists,
         articles,
         ready: true,

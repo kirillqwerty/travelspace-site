@@ -1,7 +1,10 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-export const API_BASE = `${BACKEND_URL}/api`;
+const rawBackendUrl = process.env.REACT_APP_BACKEND_URL;
+const defaultBackendUrl = process.env.NODE_ENV === "production" ? "" : "http://localhost:8000";
+
+export const BACKEND_URL = (rawBackendUrl ?? defaultBackendUrl).replace(/\/$/, "");
+export const API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : "/api";
 
 export const api = axios.create({
   baseURL: API_BASE,

@@ -1,6 +1,15 @@
 import { useSiteData } from "@/lib/useSiteData";
-import { Phone, Mail, MapPin, Clock, BadgeCheck } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  BadgeCheck,
+  ExternalLink,
+  Navigation,
+} from "lucide-react";
 import LeadForm from "@/components/LeadForm";
+import PageSeo from "@/components/PageSeo";
 
 const DEFAULT_PHONES = [
   {
@@ -42,17 +51,40 @@ function getContactPhones(settings) {
   return DEFAULT_PHONES;
 }
 
+function buildMapData(settings) {
+  const address = settings?.address || "Минск, Площадь Свободы 23, офис 16А";
+  const encoded = encodeURIComponent(address);
+
+  return {
+    iframeSrc:
+      settings?.map_embed_url ||
+      settings?.map_iframe_url ||
+      `https://yandex.ru/map-widget/v1/?text=${encoded}&z=16`,
+    mapUrl: settings?.map_url || `https://yandex.ru/maps/?text=${encoded}&z=16`,
+    routeUrl:
+      settings?.map_route_url ||
+      `https://yandex.ru/maps/?rtext=~${encoded}&rtt=auto`,
+  };
+}
+
 export default function Contacts() {
   const { settings, tours } = useSiteData();
   if (!settings) return null;
 
   const contactPhones = getContactPhones(settings);
+  const map = buildMapData(settings);
 
   return (
     <div
       className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
       data-testid="contacts-page"
     >
+      <PageSeo
+        pageKey="contacts"
+        path="/contacts"
+        title="Контакты TRAVELSPACE"
+        description="Свяжитесь с TRAVELSPACE: телефоны, email, офис, режим работы и форма заявки на подбор тура."
+      />
       <p className="overline text-[#C2410C]">Контакты</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
         Свяжитесь с нами
@@ -118,13 +150,34 @@ export default function Contacts() {
             </div>
           </div>
 
-          <div className="rounded-2xl overflow-hidden border border-neutral-200 aspect-[16/10]">
-            <iframe
-              src="https://yandex.ru/map-widget/v1/?um=constructor%3Ad656038b4365b20357ff3750659f955d0a5138ed85e430156cf91f0ec9121d43&amp;source=constructor"
-              width="580"
-              height="360"
-              title="Карта офиса TRAVELSPACE"
-            ></iframe>
+          <div className="rounded-2xl overflow-hidden border border-neutral-200 bg-white">
+            <div className="aspect-[16/10] bg-neutral-100">
+              <iframe
+                src={map.iframeSrc}
+                width="100%"
+                height="100%"
+                title="Карта офиса TRAVELSPACE"
+                className="h-full w-full"
+              ></iframe>
+            </div>
+            <div className="flex flex-col gap-2 border-t border-neutral-200 p-3 sm:flex-row">
+              <a
+                href={map.mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium hover:border-[#C2410C] hover:text-[#C2410C]"
+              >
+                <ExternalLink className="size-4" /> Открыть на карте
+              </a>
+              <a
+                href={map.routeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#C2410C] px-4 py-2 text-sm font-medium text-white hover:bg-[#9A3412]"
+              >
+                <Navigation className="size-4" /> Построить маршрут
+              </a>
+            </div>
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
+import PageSeo from "@/components/PageSeo";
 
 export default function Promotions() {
   const formatDate = (date) => {
@@ -43,6 +44,12 @@ export default function Promotions() {
       className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
       data-testid="promotions-page"
     >
+      <PageSeo
+        pageKey="promotions"
+        path="/promotions"
+        title="Акции и спецпредложения на туры | TRAVELSPACE"
+        description="Актуальные акции, скидки и спецпредложения на автобусные туры из Минска."
+      />
       <p className="overline text-[#C2410C]">Акции</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
         Спецпредложения сезона
@@ -74,7 +81,7 @@ export default function Promotions() {
               </p>
               {p.valid_until && (
                 <p className="mt-4 text-xs text-neutral-500 inline-flex items-center gap-1">
-                  <Calendar className="size-3.5" /> Действует до
+                  <Calendar className="size-3.5" /> Действует до{" "}
                   {formatDate(p.valid_until)}
                 </p>
               )}

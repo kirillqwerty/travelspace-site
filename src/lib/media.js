@@ -1,5 +1,10 @@
-// const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
-const API_BASE_URL = "https://api.travelspace.by";
+import { BACKEND_URL } from "@/lib/api";
+
+function getOriginFallback() {
+  if (typeof window !== "undefined") return window.location.origin;
+  return "https://travelspace.by";
+}
+
 export function mediaUrl(url) {
   if (!url) return "";
 
@@ -7,5 +12,6 @@ export function mediaUrl(url) {
     return url;
   }
 
-  return `${API_BASE_URL}${url.startsWith("/") ? url : `/${url}`}`;
+  const base = BACKEND_URL || getOriginFallback();
+  return `${base}${url.startsWith("/") ? url : `/${url}`}`;
 }

@@ -295,6 +295,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import StickyMobileBar from "@/components/StickyMobileBar";
 import CookieBanner from "@/components/CookieBanner";
+import MarketingScripts from "@/components/MarketingScripts";
+import { initAttribution, trackPageView } from "@/lib/analytics";
 
 import Home from "@/pages/Home";
 import Catalog from "@/pages/Catalog";
@@ -324,6 +326,20 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname]);
+
+  return null;
+}
+
+function RouteAnalytics() {
+  const location = useLocation();
+
+  useEffect(() => {
+    initAttribution();
+    trackPageView({
+      path: location.pathname + location.search,
+      title: typeof document !== "undefined" ? document.title : undefined,
+    });
+  }, [location.pathname, location.search]);
 
   return null;
 }
@@ -398,6 +414,8 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <ScrollToTop />
+            <RouteAnalytics />
+            <MarketingScripts />
 
             <Routes>
               <Route

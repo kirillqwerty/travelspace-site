@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { Star } from "lucide-react";
+import PageSeo from "@/components/PageSeo";
 
 export default function Reviews() {
   const [items, setItems] = useState([]);
@@ -16,6 +17,7 @@ export default function Reviews() {
       className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
       data-testid="reviews-page"
     >
+      <PageSeo pageKey="reviews" path="/reviews" title="Отзывы туристов | TRAVELSPACE" description="Реальные отзывы туристов о поездках, маршрутах и работе TRAVELSPACE." />
       <p className="overline text-[#C2410C]">Отзывы</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
         Что о нас говорят туристы

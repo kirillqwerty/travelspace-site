@@ -1,6 +1,8 @@
+import PageSeo from "@/components/PageSeo";
 export default function Legal() {
   return (
     <div className="section-container section-pad max-w-3xl" data-testid="legal-page">
+      <PageSeo pageKey="legal" path="/legal" title="Юридическая информация | TRAVELSPACE" description="Политика конфиденциальности, согласие на обработку персональных данных, договор и реквизиты TRAVELSPACE." />
       <p className="overline text-[#C2410C]">Документы</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">Юридическая информация</h1>
 

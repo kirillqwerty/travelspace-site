@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import PageSeo from "@/components/PageSeo";
 
 export default function Faq() {
   const [items, setItems] = useState([]);
@@ -15,6 +16,7 @@ export default function Faq() {
 
   return (
     <div className="section-container section-pad" data-testid="faq-page">
+      <PageSeo pageKey="faq" path="/faq" title="Частые вопросы о турах | TRAVELSPACE" description="Ответы на частые вопросы о бронировании, оплате, поездках, документах и автобусных турах TRAVELSPACE." />
       <p className="overline text-[#C2410C]">FAQ</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">Частые вопросы</h1>
       <p className="text-neutral-600 mt-3 max-w-2xl">Собрали то, о чём спрашивают чаще всего. Если вашего вопроса нет — напишите менеджеру.</p>

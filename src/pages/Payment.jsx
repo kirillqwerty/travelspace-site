@@ -6,6 +6,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import PageSeo from "@/components/PageSeo";
 
 const STEPS = [
   {
@@ -38,6 +39,7 @@ const STEPS = [
 export default function Payment() {
   return (
     <div className="section-container section-pad" data-testid="payment-page">
+      <PageSeo pageKey="payment" path="/payment" title="Оплата тура через ЕРИП | TRAVELSPACE" description="Как оплатить тур TRAVELSPACE через ЕРИП после бронирования и заключения договора." />
       <p className="overline text-[#C2410C]">Оплата</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
         Оплата тура через ЕРИП

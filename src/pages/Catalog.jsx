@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import TourCard from "@/components/TourCard";
+import PageSeo from "@/components/PageSeo";
+import { isTourShownInCatalog } from "@/lib/tourVisibility";
 
 const BADGES = [
   "Хит",
@@ -25,7 +27,11 @@ export default function Catalog() {
 
     api
       .get("/tours")
-      .then((r) => setTours(r.data))
+      .then((r) =>
+        setTours(
+          Array.isArray(r.data) ? r.data.filter(isTourShownInCatalog) : [],
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,6 +46,7 @@ export default function Catalog() {
 
   const filtered = useMemo(() => {
     return tours.filter((t) => {
+      if (!isTourShownInCatalog(t)) return false;
       if (region && t.region_slug !== region) return false;
       if (badge && !(t.badges || []).includes(badge)) return false;
       return true;
@@ -58,6 +65,12 @@ export default function Catalog() {
       className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
       data-testid="catalog-page"
     >
+      <PageSeo
+        pageKey="tours"
+        path="/tours"
+        title="Каталог автобусных туров из Минска | TRAVELSPACE"
+        description="Выбирайте автобусные туры из Минска по направлениям, датам и форматам отдыха. TRAVELSPACE поможет подобрать подходящий тур."
+      />
       <p className="overline text-[#C2410C]">Каталог туров</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
         Все автобусные туры из Минска

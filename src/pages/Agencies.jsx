@@ -1,9 +1,11 @@
 import LeadForm from "@/components/LeadForm";
 import { Bus, Users, ShieldCheck, BadgeCheck } from "lucide-react";
+import PageSeo from "@/components/PageSeo";
 
 export default function Agencies() {
   return (
     <div data-testid="agencies-page">
+      <PageSeo pageKey="agencies" path="/agencies" title="Сотрудничество с турагентствами | TRAVELSPACE" description="TRAVELSPACE сотрудничает с турагентствами по Беларуси: блоки мест, материалы, поддержка менеджера и прозрачные условия." />
       <section className="section-container pt-32 lg:pt-36 pb-10 lg:pb-14">
         <p className="overline text-[#C2410C]">Агентствам</p>
         <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">

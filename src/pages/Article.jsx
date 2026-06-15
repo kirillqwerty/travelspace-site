@@ -1,8 +1,80 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import LeadForm from "@/components/LeadForm";
 import { useSiteData } from "@/lib/useSiteData";
+import PageSeo from "@/components/PageSeo";
+import { mediaUrl } from "@/lib/media";
+import { RichText, splitRichTextBlocks } from "@/lib/richText";
+
+function articleImages(article) {
+  const gallery = Array.isArray(article?.gallery)
+    ? article.gallery
+    : Array.isArray(article?.images)
+      ? article.images
+      : [];
+
+  return gallery.filter(Boolean).filter((image) => image !== article?.cover);
+}
+
+function ArticleBody({ article }) {
+  const blocks = splitRichTextBlocks(article.content);
+  const images = articleImages(article);
+  const usedImageIndexes = new Set();
+
+  if (!blocks.length) return null;
+
+  return (
+    <div className="mt-10 space-y-7 text-base leading-relaxed text-neutral-800">
+      {blocks.map((block, index) => {
+        const imageIndex = Math.floor(index / 2);
+        const shouldShowImage = index % 2 === 1 && images[imageIndex];
+
+        if (shouldShowImage) usedImageIndexes.add(imageIndex);
+
+        return (
+          <div key={`article-block-${index}`} className="space-y-7">
+            <RichText
+              text={block}
+              paragraphClassName="text-[17px] leading-8 text-neutral-800"
+            />
+
+            {shouldShowImage && (
+              <figure className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 shadow-sm">
+                <img
+                  src={mediaUrl(images[imageIndex])}
+                  alt={article.title}
+                  className="h-auto w-full object-cover"
+                  loading="lazy"
+                />
+              </figure>
+            )}
+          </div>
+        );
+      })}
+
+      {images.filter((_, index) => !usedImageIndexes.has(index)).length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {images
+            .filter((_, index) => !usedImageIndexes.has(index))
+            .map((image, index) => (
+              <figure
+                key={`${image}-${index}`}
+                className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100"
+              >
+                <img
+                  src={mediaUrl(image)}
+                  alt={article.title}
+                  className="aspect-[4/3] h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </figure>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Article() {
   const { slug } = useParams();
@@ -13,34 +85,115 @@ export default function Article() {
   useEffect(() => {
     setA(null);
     setError(false);
-    api.get(`/articles/${slug}`).then((r) => setA(r.data)).catch(() => setError(true));
+    api
+      .get(`/articles/${slug}`)
+      .then((r) => setA(r.data))
+      .catch(() => setError(true));
   }, [slug]);
+
+  const relatedTours = useMemo(() => {
+    if (!a?.related_tour_slugs?.length) return [];
+    return tours.filter((tour) => a.related_tour_slugs.includes(tour.slug));
+  }, [a, tours]);
 
   if (error) {
     return (
       <div className="section-container section-pad text-center">
+        <PageSeo
+          title="Статья не найдена | TRAVELSPACE"
+          description="Статья не найдена."
+          path={`/blog/${slug}`}
+          noIndex
+        />
         <h1 className="font-heading text-3xl">Статья не найдена</h1>
-        <Link to="/blog" className="text-[#C2410C] underline mt-4 inline-block">К блогу</Link>
+        <Link to="/blog" className="text-[#C2410C] underline mt-4 inline-block">
+          К блогу
+        </Link>
       </div>
     );
   }
-  if (!a) return <div className="section-container section-pad text-neutral-400">Загрузка…</div>;
+  if (!a) {
+    return (
+      <div className="section-container section-pad text-neutral-400">
+        <PageSeo
+          title="Блог | TRAVELSPACE"
+          description="Загрузка статьи."
+          path={`/blog/${slug}`}
+          noIndex
+        />
+        Загрузка…
+      </div>
+    );
+  }
+
+  const articleTitle = a.seo_title || `${a.title} | TRAVELSPACE`;
+  const articleDescription = a.seo_description || a.excerpt || a.content;
+  const articleImage = a.seo_image || a.cover || articleImages(a)[0];
 
   return (
-    <article className="section-container py-12 lg:py-20 max-w-3xl" data-testid="article-page">
-      <Link to="/blog" className="text-xs text-neutral-500 hover:text-[#C2410C]">← В блог</Link>
+    <article
+      className="section-container py-12 lg:py-20 max-w-4xl"
+      data-testid="article-page"
+    >
+      <PageSeo
+        pageKey="article"
+        title={articleTitle}
+        description={articleDescription}
+        image={articleImage}
+        path={`/blog/${a.slug || slug}`}
+        type="article"
+      />
+      <Link
+        to="/blog"
+        className="text-xs text-neutral-500 hover:text-[#C2410C]"
+      >
+        ← В блог
+      </Link>
       <p className="text-xs text-neutral-500 mt-6">{a.published_at}</p>
-      <h1 className="font-heading text-4xl sm:text-5xl mt-2">{a.title}</h1>
+      <h1 className="font-heading text-4xl sm:text-5xl mt-2 max-w-3xl">
+        {a.title}
+      </h1>
+      {a.excerpt && (
+        <p className="mt-5 max-w-3xl text-lg leading-8 text-neutral-600">
+          {a.excerpt}
+        </p>
+      )}
       {a.cover && (
-        <div className="mt-8 aspect-[16/9] rounded-2xl overflow-hidden">
-          <img src={a.cover} alt={a.title} className="w-full h-full object-cover" />
+        <div className="mt-8 aspect-[16/9] rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-100">
+          <img
+            src={mediaUrl(a.cover)}
+            alt={a.title}
+            className="w-full h-full object-cover"
+          />
         </div>
       )}
-      <div className="prose max-w-none mt-10 text-base text-neutral-800 leading-relaxed whitespace-pre-line">{a.content}</div>
+
+      <ArticleBody article={a} />
+
+      {relatedTours.length > 0 && (
+        <div className="mt-12 rounded-2xl border border-orange-100 bg-orange-50/60 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C2410C]">
+            Подходящие туры
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {relatedTours.map((tour) => (
+              <Link
+                key={tour.slug}
+                to={`/tours/${tour.slug}`}
+                className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[#C2410C] ring-1 ring-orange-100 hover:bg-orange-100"
+              >
+                {tour.title}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-16 rounded-2xl border border-neutral-200 p-6 sm:p-8 bg-neutral-50">
         <h3 className="font-heading text-2xl">Хотите такой же тур?</h3>
-        <p className="text-sm text-neutral-600 mt-1">Оставьте телефон, менеджер подберёт и расскажет о ближайших датах.</p>
+        <p className="text-sm text-neutral-600 mt-1">
+          Оставьте телефон, менеджер подберёт и расскажет о ближайших датах.
+        </p>
         <div className="mt-5">
           <LeadForm tours={tours} compact />
         </div>

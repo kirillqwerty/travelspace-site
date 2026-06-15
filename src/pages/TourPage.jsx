@@ -31,6 +31,8 @@ import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
+import PageSeo from "@/components/PageSeo";
+import { trackTourView } from "@/lib/analytics";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -503,11 +505,43 @@ function getTourHeroImage(tour, variant = "desktop") {
 
 function renderRichInline(text, keyPrefix = "rich") {
   const parts = String(text || "").split(
-    /(\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|\*[^*]+\*)/g,
+    /(\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s]+|\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|\*[^*]+\*)/g,
   );
 
   return parts.map((part, index) => {
     const key = `${keyPrefix}-${index}`;
+
+    if (part.startsWith("[") && part.includes("](")) {
+      const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (match) {
+        const [, label, href] = match;
+        return (
+          <a
+            key={key}
+            href={href}
+            target={href.startsWith("http") ? "_blank" : undefined}
+            rel={href.startsWith("http") ? "noreferrer" : undefined}
+            className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
+          >
+            {label}
+          </a>
+        );
+      }
+    }
+
+    if (/^https?:\/\//i.test(part)) {
+      return (
+        <a
+          key={key}
+          href={part}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
+        >
+          {part}
+        </a>
+      );
+    }
 
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={key}>{part.slice(2, -2)}</strong>;
@@ -618,9 +652,21 @@ export default function TourPage() {
     setSelectedRoomPrice(firstMealPrice?.price || null);
   }, [selectedRoom]);
 
+  useEffect(() => {
+    if (tour?.slug) {
+      trackTourView(tour);
+    }
+  }, [tour?.slug]);
+
   if (error) {
     return (
       <div className="section-container section-pad text-center">
+        <PageSeo
+          title="Тур не найден | TRAVELSPACE"
+          description="Тур не найден."
+          path={`/tours/${slug}`}
+          noIndex
+        />
         <h1 className="font-heading text-3xl">Тур не найден</h1>
         <Link
           to="/tours"
@@ -635,6 +681,12 @@ export default function TourPage() {
   if (!tour) {
     return (
       <div className="pt-32 lg:pt-36 min-h-screen">
+        <PageSeo
+          title="Тур | TRAVELSPACE"
+          description="Загрузка тура."
+          path={`/tours/${slug}`}
+          noIndex
+        />
         <div className="section-container text-neutral-400">Загрузка...</div>
       </div>
     );
@@ -643,9 +695,45 @@ export default function TourPage() {
   const chains = getTourChains(tour);
   const dates = chains.flatMap((chain) => chain.dates || []);
   const dateStrings = dates.map(fmtDateRange).filter(Boolean);
+  const tourPath = `/tours/${tour.slug || slug}`;
+  const tourSeoTitle =
+    tour.seo_title || `${tour.title} — автобусный тур из Минска | TRAVELSPACE`;
+  const tourSeoDescription =
+    tour.seo_description ||
+    tour.short_description ||
+    tour.tagline ||
+    tour.description ||
+    `${tour.title}. Даты, программа, отели и стоимость тура.`;
+  const tourSeoImage =
+    tour.seo_image || tour.og_image || tour.hero_image || tour.gallery?.[0];
+  const tourStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "TouristTrip",
+    name: tour.title,
+    description: tourSeoDescription,
+    url: `https://travelspace.by${tourPath}`,
+    image: tourSeoImage ? mediaUrl(tourSeoImage) : undefined,
+    offers: hasPriceValue(tour.price_from)
+      ? {
+          "@type": "Offer",
+          price: String(tour.price_from),
+          priceCurrency: tour.currency || "BYN",
+          availability: "https://schema.org/InStock",
+        }
+      : undefined,
+  };
 
   return (
     <div data-testid="tour-page">
+      <PageSeo
+        pageKey="tour"
+        title={tourSeoTitle}
+        description={tourSeoDescription}
+        image={tourSeoImage}
+        path={tourPath}
+        type="article"
+        structuredData={tourStructuredData}
+      />
       <section className="relative">
         <div className="relative min-h-[620px] lg:min-h-[680px] overflow-hidden">
           <picture>
@@ -933,7 +1021,7 @@ export default function TourPage() {
                     Math.max(images.length - 1, 0),
                   );
                   const currentImage = images[currentIndex];
-
+                  const hasProgramImage = Boolean(currentImage);
                   const setProgramSlide = (nextIndex) => {
                     setProgramSlideByKey((prev) => ({
                       ...prev,
@@ -958,8 +1046,14 @@ export default function TourPage() {
                       </AccordionTrigger>
 
                       <AccordionContent>
-                        <div className="pb-3 sm:pl-[116px]">
-                          <div className="grid gap-4 lg:grid-cols-[280px_1fr] lg:items-start">
+                        <div className="pb-4 sm:pl-[116px]">
+                          <div
+                            className={
+                              hasProgramImage
+                                ? "grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start"
+                                : "block"
+                            }
+                          >
                             {currentImage && (
                               <div className="min-w-0">
                                 <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
@@ -1031,16 +1125,22 @@ export default function TourPage() {
                               </div>
                             )}
 
-                            <div>
+                            <div
+                              className={
+                                hasProgramImage
+                                  ? "min-w-0"
+                                  : "max-w-[760px] lg:max-w-[860px]"
+                              }
+                            >
                               <RichText
                                 text={d.description}
-                                className="text-sm leading-relaxed text-neutral-700 sm:text-[15px]"
+                                className="text-sm leading-relaxed text-neutral-700 sm:text-[15px] lg:text-base lg:leading-8"
                               />
 
                               {d.notes && (
                                 <RichText
                                   text={d.notes}
-                                  className="mt-2 text-xs leading-relaxed text-neutral-500"
+                                  className="mt-3 text-xs leading-relaxed text-neutral-500 sm:text-sm"
                                 />
                               )}
                             </div>
@@ -1451,7 +1551,11 @@ export default function TourPage() {
                     </AccordionTrigger>
 
                     <AccordionContent className="text-neutral-700 leading-relaxed">
-                      {item.answer}
+                      <RichText
+                        text={item.answer}
+                        className="space-y-3"
+                        paragraphClassName="text-sm leading-7"
+                      />
                     </AccordionContent>
                   </AccordionItem>
                 ))}
@@ -1621,15 +1725,15 @@ export default function TourPage() {
                             }}
                             className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition hover:border-[#C2410C] hover:bg-orange-50/40"
                           >
-                            <div className="grid grid-cols-[1fr_auto] items-center gap-4">
-                              <span className="min-w-0 whitespace-nowrap font-medium">
+                            <div className="flex min-w-0 flex-col gap-1 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
+                              <span className="min-w-0 break-words text-sm font-medium sm:whitespace-nowrap sm:text-base">
                                 {fmtDateRangeCompact(d)}
                               </span>
 
                               <DatePriceInline
                                 item={d}
                                 fallbackTour={tour}
-                                className="whitespace-nowrap text-right font-heading text-xl text-[#C2410C]"
+                                className="text-left font-heading text-base text-[#C2410C] sm:whitespace-nowrap sm:text-right sm:text-xl"
                               />
                             </div>
                           </button>

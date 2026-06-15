@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { api, formatApiErrorDetail } from "@/lib/api";
+import { createEventId, getAttribution, trackLeadSubmit } from "@/lib/analytics";
 import { isValidPhone, maskPhone } from "@/lib/phoneMask";
 
 /**
@@ -53,7 +54,7 @@ export default function LeadForm({
     tour_slug: tour_slug || "",
     date: date || "",
     comment: "",
-    consent: false,
+    consent: true,
     company: "",
     email: "",
   });
@@ -95,19 +96,33 @@ export default function LeadForm({
     if (!validate()) return;
     setSubmitting(true);
     try {
+      const eventId = createEventId("lead");
+      const attribution = getAttribution();
+      const currentPage =
+        typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : null;
+      const pageUrl = typeof window !== "undefined" ? window.location.href : null;
+      const selectedTourTitle = form.tour || tour || null;
+      const selectedTourSlug = form.tour_slug || tour_slug || null;
+
       const payload = {
         name: form.name || null,
         phone: form.phone,
-        tour: form.tour || tour || null,
-        tour_slug: form.tour_slug || tour_slug || null,
+        tour: selectedTourTitle,
+        tour_slug: selectedTourSlug,
         region: region || null,
         date: form.date || null,
         comment: form.comment || null,
         consent: form.consent,
         form_type: variant,
-        source_page:
-          source_page ||
-          (typeof window !== "undefined" ? window.location.pathname : null),
+        source_page: source_page || currentPage,
+        event_id: eventId,
+        page_url: pageUrl,
+        landing_page: attribution.landing_page,
+        referrer: attribution.referrer,
+        utm: attribution.utm,
+        click_ids: attribution.click_ids,
         extra:
           variant === "agency"
             ? {
@@ -124,6 +139,12 @@ export default function LeadForm({
               : null,
       };
       await api.post("/leads", payload);
+      trackLeadSubmit({
+        eventId,
+        tourTitle: selectedTourTitle,
+        tourSlug: selectedTourSlug,
+        formType: variant,
+      });
       toast.success(
         "Заявка отправлена! Менеджер свяжется с вами в ближайшее время.",
       );
@@ -134,7 +155,7 @@ export default function LeadForm({
         tour_slug: tour_slug || "",
         date: date || "",
         comment: "",
-        consent: false,
+        consent: true,
         company: "",
         email: "",
       });
@@ -352,10 +373,10 @@ export default function LeadForm({
           data-testid="lead-consent-checkbox"
         />
         <span>
-          Я согласен на обработку
+          Я согласен на обработку{" "}
           <a href="/legal" className="underline hover:text-[#C2410C]">
             персональных данных
-          </a>
+          </a>{" "}
           и принимаю условия публичного договора.
         </span>
       </label>
