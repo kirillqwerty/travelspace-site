@@ -3,7 +3,6 @@ import { api } from "@/lib/api";
 import {
   Inbox,
   Map,
-  Users,
   MessageSquare,
   FileText,
   Loader2,
@@ -26,13 +25,6 @@ const CARDS = [
     icon: Map,
     to: "/admin/tours",
     accent: "#7C2D12",
-  },
-  {
-    key: "specialists",
-    label: "Специалисты",
-    icon: Users,
-    to: "/admin/specialists",
-    accent: "#171717",
   },
   // {
   //   key: "reviews",

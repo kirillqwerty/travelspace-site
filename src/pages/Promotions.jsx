@@ -7,6 +7,7 @@ import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
+import { RichText } from "@/lib/richText";
 
 export default function Promotions() {
   const formatDate = (date) => {
@@ -76,9 +77,10 @@ export default function Promotions() {
                 <Tag className="size-3.5" /> Акция
               </div>
               <h2 className="font-heading text-2xl mt-2">{p.title}</h2>
-              <p className="text-sm text-neutral-600 mt-3 leading-relaxed">
-                {p.description}
-              </p>
+              <RichText
+                text={p.description}
+                className="mt-3 text-sm leading-6 text-neutral-600"
+              />
               {p.valid_until && (
                 <p className="mt-4 text-xs text-neutral-500 inline-flex items-center gap-1">
                   <Calendar className="size-3.5" /> Действует до{" "}

@@ -14,8 +14,53 @@ import {
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { api, formatApiErrorDetail } from "@/lib/api";
-import { createEventId, getAttribution, trackLeadSubmit } from "@/lib/analytics";
+import {
+  createEventId,
+  getAttribution,
+  trackLeadSubmit,
+} from "@/lib/analytics";
 import { isValidPhone, maskPhone } from "@/lib/phoneMask";
+
+function parseDateTime(value) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+
+  const time = Date.parse(value);
+
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+function isDepartureDateActual(date) {
+  if (!date || typeof date === "string") return true;
+
+  const sourceTime = parseDateTime(date.start || date.date_start || date.end);
+  if (sourceTime === Number.MAX_SAFE_INTEGER) return true;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return sourceTime >= today.getTime();
+}
+
+function collectTourDates(tour) {
+  if (!tour) return [];
+
+  const dates = [];
+
+  if (Array.isArray(tour.dates)) {
+    dates.push(...tour.dates);
+  }
+
+  if (Array.isArray(tour.chains)) {
+    tour.chains.forEach((chain) => {
+      if (chain?.active === false) return;
+      if (Array.isArray(chain?.dates)) {
+        dates.push(...chain.dates);
+      }
+    });
+  }
+
+  return dates;
+}
 
 /**
  * Reusable lead form.
@@ -102,7 +147,8 @@ export default function LeadForm({
         typeof window !== "undefined"
           ? window.location.pathname + window.location.search
           : null;
-      const pageUrl = typeof window !== "undefined" ? window.location.href : null;
+      const pageUrl =
+        typeof window !== "undefined" ? window.location.href : null;
       const selectedTourTitle = form.tour || tour || null;
       const selectedTourSlug = form.tour_slug || tour_slug || null;
 
@@ -178,22 +224,38 @@ export default function LeadForm({
   const formatDate = (date) => {
     if (!date) return "";
 
-    const [year, month, day] = date.split("-");
+    const [year, month, day] = String(date).split("-");
     return `${day}.${month}.${year}`;
   };
   const availableDates = useMemo(() => {
-    if (dates?.length) return dates;
+    const sourceDates = dates?.length ? dates : collectTourDates(selectedTour);
+    const seen = new Set();
 
-    return (selectedTour?.dates || [])
-      .filter((d) => d && (d.status === undefined || d.status !== "hidden"))
+    return sourceDates
+      .filter((d) => {
+        if (!d) return false;
+        if (typeof d === "string") return true;
+        return d.status !== "hidden" && isDepartureDateActual(d);
+      })
+      .sort((a, b) => {
+        if (typeof a === "string" || typeof b === "string") return 0;
+        return (
+          parseDateTime(a.start || a.end) - parseDateTime(b.start || b.end)
+        );
+      })
       .map((d) =>
         typeof d === "string"
-          ? formatDate(d)
+          ? d
           : [formatDate(d.start), formatDate(d.end)]
               .filter(Boolean)
               .join(" → "),
       )
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((label) => {
+        if (seen.has(label)) return false;
+        seen.add(label);
+        return true;
+      });
   }, [dates, selectedTour]);
 
   return (
@@ -319,9 +381,9 @@ export default function LeadForm({
             <SelectTrigger className="mt-1" data-testid="lead-date-select">
               <SelectValue placeholder="Без выбора даты" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[240px] overflow-y-auto">
               {availableDates.map((d) => (
-                <SelectItem key={d} value={d}>
+                <SelectItem key={d} value={d} className="py-2">
                   {d}
                 </SelectItem>
               ))}

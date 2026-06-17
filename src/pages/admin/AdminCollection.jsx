@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import {
   Select,
@@ -18,14 +18,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trash2, Upload, X, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Upload,
+  X,
+  Loader2,
+  Copy,
+  Check,
+} from "lucide-react";
 import { toast } from "sonner";
 import { mediaUrl } from "@/lib/media";
 import { formatDate } from "@/lib/formatDate";
+import { RICH_TEXT_ICONS } from "@/lib/richText";
 
 const TITLES = {
   tours: "Туры",
-  specialists: "Специалисты",
   reviews: "Отзывы",
   articles: "Статьи блога",
   promotions: "Акции",
@@ -128,23 +137,6 @@ const SCHEMAS = {
         type: "switch",
         defaultValue: false,
       },
-    ],
-  },
-  specialists: {
-    label: (s) => s.name,
-    description: (s) => s.role,
-    image: (s) => s.photo,
-    fields: [
-      { key: "name", label: "Имя", type: "text" },
-      { key: "role", label: "Должность", type: "text" },
-      { key: "phone", label: "Телефон (форматированный)", type: "text" },
-      { key: "phone_link", label: "Телефон (для tel:)", type: "text" },
-      { key: "viber", label: "Viber номер", type: "text" },
-      { key: "telegram", label: "Telegram (без @)", type: "text" },
-      { key: "whatsapp", label: "WhatsApp номер", type: "text" },
-      { key: "photo", label: "Фото", type: "image" },
-      { key: "order", label: "Порядок", type: "number" },
-      { key: "active", label: "Активен", type: "switch" },
     ],
   },
   // reviews: {
@@ -262,6 +254,22 @@ const SCHEMAS = {
 
 const TOUR_JSON_HINT =
   "Для тура можно добавить поля: highlights (массив строк) — главные впечатления; what_to_see (массив строк) — что посмотреть; gallery (массив URL) — галерея; program (массив дней) — программа по дням; included / excluded — что входит и что нет; important_info — важно знать; hotels — отели; dates — массив дат; faq — массив вопросов.";
+
+const TOUR_EXTRA_KEYS = [
+  "badges",
+  "gallery",
+  "highlights",
+  "what_to_see",
+  "included",
+  "excluded",
+  "important_info",
+  "program",
+  "chains",
+  "dates",
+  "hotels",
+  "faq",
+  "map_embed",
+];
 
 const normalizeDateRecord = (d = {}, record = {}) => ({
   id: d.id || uid(),
@@ -389,6 +397,7 @@ const normalizeRoomRecord = (room = {}) => ({
 const normalizeHotelRecord = (h = {}) => ({
   id: h.id || uid(),
   name: h.name || "",
+  anchor_slug: h.anchor_slug || h.anchor || h.slug || "",
   description: h.description || "",
   images: Array.isArray(h.images)
     ? h.images.filter(Boolean)
@@ -760,21 +769,6 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
   const [extraJson, setExtraJson] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [saving, setSaving] = useState(false);
-  const TOUR_EXTRA_KEYS = [
-    "badges",
-    "gallery",
-    "highlights",
-    "what_to_see",
-    "included",
-    "excluded",
-    "important_info",
-    "program",
-    "chains",
-    "dates",
-    "hotels",
-    "faq",
-    "map_embed",
-  ];
   useEffect(() => {
     if (!open) return;
     if (!record) return;
@@ -810,7 +804,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
     );
     setJsonError("");
   }, [open, record, schema, collectionName]);
-  const update = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const update = useCallback((k, v) => setForm((p) => ({ ...p, [k]: v })), []);
 
   // const submit = (e) => {
   //   e.preventDefault();
@@ -843,6 +837,23 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
           : [];
       payload.departure_city =
         payload.departure_cities[0] || form.departure_city || "";
+
+      payload.program = Array.isArray(form.program)
+        ? form.program.map((day, index) => {
+            const images = Array.isArray(day.images)
+              ? day.images.filter(Boolean)
+              : day.image
+                ? [day.image]
+                : [];
+
+            return {
+              ...day,
+              day: String(day.day || index + 1),
+              images,
+              image: images[0] || "",
+            };
+          })
+        : [];
     }
 
     if (collectionName === "articles") {
@@ -946,13 +957,22 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                     placeholder={f.placeholder}
                   />
                 ) : f.type === "textarea" ? (
-                  <Textarea
-                    value={form[f.key] ?? ""}
-                    onChange={(e) => update(f.key, e.target.value)}
-                    rows={f.rows || 3}
-                    placeholder={f.placeholder}
-                    className="mt-1"
-                  />
+                  f.key.startsWith("seo_") ? (
+                    <Textarea
+                      value={form[f.key] ?? ""}
+                      onChange={(e) => update(f.key, e.target.value)}
+                      rows={f.rows || 3}
+                      placeholder={f.placeholder}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <RichTextarea
+                      value={form[f.key] ?? ""}
+                      onChange={(v) => update(f.key, v)}
+                      rows={f.rows || 3}
+                      placeholder={f.placeholder}
+                    />
+                  )
                 ) : f.type === "number" ? (
                   <Input
                     type="number"
@@ -1022,7 +1042,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
           </details> */}
 
             {collectionName === "tours" && (
-              <TourExtraFields form={form} setForm={setForm} />
+              <MemoTourExtraFields form={form} setForm={setForm} />
             )}
           </div>
 
@@ -1081,8 +1101,82 @@ function DateInput({ value, onChange, placeholder = "дд.мм.гггг" }) {
     />
   );
 }
+
+function RichTextarea({
+  value = "",
+  onChange,
+  rows = 3,
+  placeholder = "",
+  className = "",
+}) {
+  const textareaRef = useRef(null);
+
+  const insertToken = (token) => {
+    const textarea = textareaRef.current;
+    const currentValue = String(value ?? "");
+    const start = textarea?.selectionStart ?? currentValue.length;
+    const end = textarea?.selectionEnd ?? currentValue.length;
+    const before = currentValue.slice(0, start);
+    const after = currentValue.slice(end);
+    const prefix = before && !/\s$/.test(before) ? " " : "";
+    const suffix = after && !/^\s/.test(after) ? " " : "";
+    const inserted = `${prefix}${token}${suffix}`;
+    const nextValue = `${before}${inserted}${after}`;
+    const nextCursor = start + inserted.length;
+
+    onChange(nextValue);
+
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
+  return (
+    <div className="mt-1 space-y-2">
+      <div className="flex flex-wrap items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-1">
+        <span className="px-2 text-[11px] font-medium text-neutral-500">
+          Смайлы:
+        </span>
+
+        {RICH_TEXT_ICONS.map((item) => (
+          <button
+            key={item.token}
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => insertToken(item.token)}
+            className="inline-flex items-center gap-1 rounded-md border border-transparent px-2 py-1 text-xs text-neutral-700 transition hover:border-orange-200 hover:bg-white hover:text-[#C2410C]"
+            title={`Вставить ${item.label}`}
+          >
+            <img
+              src={item.icon}
+              alt=""
+              aria-hidden="true"
+              className="size-4 shrink-0 object-contain"
+            />
+            <span className="hidden sm:inline">{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <Textarea
+        ref={textareaRef}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        placeholder={placeholder}
+        className={`leading-6 ${className}`}
+      />
+
+      <p className="text-xs text-neutral-500">
+        Enter — новая строка, пустая строка — отдельный абзац. Для акцентов:
+        <b> **жирный**</b>, _курсив_, __подчёркнутый__, [ссылка](https://...).
+      </p>
+    </div>
+  );
+}
 const slugify = (text = "") =>
-  text
+  String(text || "")
     .toLowerCase()
     .trim()
     .replace(/[а-яё]/g, (char) => {
@@ -1127,74 +1221,150 @@ const slugify = (text = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const cleanHotelAnchorSlug = (value = "") => {
+  const rawValue = String(value || "").trim();
+  const hashValue = rawValue.includes("#")
+    ? rawValue.split("#").pop()
+    : rawValue;
+
+  return slugify(String(hashValue || "").replace(/^hotel-/i, ""));
+};
+
+const getHotelAnchorHash = (hotel = {}) => {
+  const slug = cleanHotelAnchorSlug(
+    hotel.anchor_slug || hotel.anchor || hotel.slug || hotel.name || hotel.id,
+  );
+
+  return slug ? `#hotel-${slug}` : "";
+};
+
+const getHotelAnchorPath = (tourSlug, hotel = {}) => {
+  const hash = getHotelAnchorHash(hotel);
+  return hash ? `/tours/${tourSlug || "slug-tura"}${hash}` : "";
+};
+
+const buildHotelAnchorUrl = (tourSlug, hotel = {}) => {
+  const path = getHotelAnchorPath(tourSlug, hotel);
+  if (!path) return "";
+
+  return typeof window !== "undefined"
+    ? `${window.location.origin}${path}`
+    : path;
+};
+
+const copyToClipboard = (value) => {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(value);
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  return Promise.resolve();
+};
+
 function TourExtraFields({ form, setForm }) {
-  const update = (key, value) => {
-    setForm((p) => ({ ...p, [key]: value }));
-  };
+  const update = useCallback(
+    (key, value) => {
+      setForm((prev) => {
+        if (prev[key] === value) return prev;
+        return { ...prev, [key]: value };
+      });
+    },
+    [setForm],
+  );
+
+  const tourSlug = useMemo(
+    () => form.slug || slugify(form.title || ""),
+    [form.slug, form.title],
+  );
+
+  const updateBadges = useCallback((v) => update("badges", v), [update]);
+  const updateGallery = useCallback((v) => update("gallery", v), [update]);
+  const updateHighlights = useCallback(
+    (v) => update("highlights", v),
+    [update],
+  );
+  const updateWhatToSee = useCallback(
+    (v) => update("what_to_see", v),
+    [update],
+  );
+  const updateIncluded = useCallback((v) => update("included", v), [update]);
+  const updateExcluded = useCallback((v) => update("excluded", v), [update]);
+  const updateImportantInfo = useCallback(
+    (v) => update("important_info", v),
+    [update],
+  );
+  const updateProgram = useCallback((v) => update("program", v), [update]);
+  const updateChains = useCallback((v) => update("chains", v), [update]);
+  const updateFaq = useCallback((v) => update("faq", v), [update]);
 
   return (
     <div className="space-y-6 rounded-xl border border-neutral-200 p-4">
       <h3 className="font-medium">Дополнительная информация</h3>
 
-      <BadgesField
-        value={form.badges || []}
-        onChange={(v) => update("badges", v)}
-      />
+      <MemoBadgesField value={form.badges || []} onChange={updateBadges} />
 
-      <ImageListField
+      <MemoImageListField
         label="Галерея"
         value={form.gallery || []}
-        onChange={(v) => update("gallery", v)}
+        onChange={updateGallery}
       />
 
-      <StringListField
+      <MemoStringListField
         label="Главные впечатления"
         value={form.highlights || []}
-        onChange={(v) => update("highlights", v)}
+        onChange={updateHighlights}
         placeholder="Сулакский каньон — самый глубокий в Европе"
       />
 
-      <StringListField
+      <MemoStringListField
         label="Что посмотреть"
         value={form.what_to_see || []}
-        onChange={(v) => update("what_to_see", v)}
+        onChange={updateWhatToSee}
         placeholder="Дербент и крепость Нарын-Кала"
       />
 
-      <StringListField
+      <MemoStringListField
         label="Что входит"
         value={form.included || []}
-        onChange={(v) => update("included", v)}
+        onChange={updateIncluded}
         placeholder="Проезд автобусом"
       />
 
-      <StringListField
+      <MemoStringListField
         label="Что не входит"
         value={form.excluded || []}
-        onChange={(v) => update("excluded", v)}
+        onChange={updateExcluded}
         placeholder="Личные расходы"
       />
 
-      <StringListField
+      <MemoStringListField
         label="Важная информация"
         value={form.important_info || []}
-        onChange={(v) => update("important_info", v)}
+        onChange={updateImportantInfo}
         placeholder="Документ: внутренний или загранпаспорт"
       />
 
-      <ProgramField
-        value={form.program || []}
-        onChange={(v) => update("program", v)}
-      />
+      <MemoProgramField value={form.program || []} onChange={updateProgram} />
 
-      <ChainsField
+      <MemoChainsField
         value={form.chains || []}
-        onChange={(v) => update("chains", v)}
+        onChange={updateChains}
+        tourSlug={tourSlug}
         tourCurrency={form.currency || "BYN"}
         tourPrice={form.price_from || ""}
       />
 
-      <FaqField value={form.faq || []} onChange={(v) => update("faq", v)} />
+      <MemoFaqField value={form.faq || []} onChange={updateFaq} />
 
       {/* <div>
         <Label>Карта / embed</Label>
@@ -1274,21 +1444,27 @@ const reorderArray = (list, fromIndex, toIndex) => {
 };
 
 function ImageListField({ label, value, onChange }) {
-  const items = value.length ? value : [""];
+  const sourceItems = Array.isArray(value) ? value : [];
+  const items = sourceItems.length ? sourceItems : [""];
   const [draggedIndex, setDraggedIndex] = useState(null);
 
   const updateItem = (index, text) => {
     const next = [...items];
     next[index] = text;
-    onChange(next.filter(Boolean));
+    onChange(next);
   };
 
-  const addItem = () => onChange([...items.filter(Boolean), ""]);
-  const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
+  const addItem = () => {
+    onChange([...items, ""]);
+  };
+
+  const removeItem = (index) => {
+    onChange(items.filter((_, i) => i !== index).filter(Boolean));
+  };
 
   const moveItem = (fromIndex, toIndex) => {
-    const cleanItems = items.filter(Boolean);
-    onChange(reorderArray(cleanItems, fromIndex, toIndex));
+    const filledItems = items.filter(Boolean);
+    onChange(reorderArray(filledItems, fromIndex, toIndex));
   };
 
   return (
@@ -1337,6 +1513,7 @@ function ImageListField({ label, value, onChange }) {
               type="button"
               variant="outline"
               onClick={() => removeItem(index)}
+              aria-label="Удалить фото"
             >
               <X className="size-4" />
             </Button>
@@ -1348,7 +1525,11 @@ function ImageListField({ label, value, onChange }) {
         type="button"
         variant="outline"
         className="mt-2"
-        onClick={addItem}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          addItem();
+        }}
       >
         <Plus className="size-4 mr-1" /> Добавить фото
       </Button>
@@ -1648,8 +1829,12 @@ function ImageInput({ value, onChange }) {
 }
 
 function getProgramItemImages(item) {
-  if (Array.isArray(item?.images) && item.images.length) {
-    return item.images.filter(Boolean);
+  // В редакторе нельзя фильтровать пустые строки:
+  // кнопка "Добавить фото" добавляет пустой слот, куда потом загружается картинка.
+  // Если отфильтровать Boolean здесь, новый слот сразу исчезает и кнопка выглядит "некликабельной".
+  if (Array.isArray(item?.images)) {
+    if (item.images.length) return item.images;
+    return item?.image ? [item.image] : [];
   }
 
   return item?.image ? [item.image] : [];
@@ -1676,9 +1861,11 @@ function ProgramField({ value, onChange }) {
   };
 
   const updateImages = (index, images) => {
+    const nextImages = Array.isArray(images) ? images : [];
+
     updateItem(index, {
-      images,
-      image: images[0] || "",
+      images: nextImages,
+      image: nextImages.find(Boolean) || "",
     });
   };
 
@@ -1731,17 +1918,12 @@ function ProgramField({ value, onChange }) {
             </div>
 
             <div>
-              <Textarea
+              <RichTextarea
                 value={item.description || ""}
-                onChange={(e) =>
-                  updateItem(index, { description: e.target.value })
-                }
-                placeholder="Описание дня. Можно выделять: **жирный**, _курсив_, __подчеркнутый__"
+                onChange={(value) => updateItem(index, { description: value })}
+                rows={5}
+                placeholder="Описание дня. Абзацы, переносы строк и смайлы поддерживаются."
               />
-              <p className="mt-1 text-xs text-neutral-500">
-                Для акцентов используйте: <b>**жирный**</b>, _курсив_,
-                __подчеркнутый__.
-              </p>
             </div>
 
             <ImageListField
@@ -1947,7 +2129,7 @@ function DatesField({
   );
 }
 
-function ChainsField({ value, onChange, tourCurrency, tourPrice }) {
+function ChainsField({ value, onChange, tourSlug, tourCurrency, tourPrice }) {
   const items = value.length
     ? value
     : [
@@ -2026,25 +2208,24 @@ function ChainsField({ value, onChange, tourCurrency, tourPrice }) {
               </Button>
             </div>
 
-            <Textarea
+            <RichTextarea
               value={chain.description || ""}
-              onChange={(e) =>
-                updateItem(index, { description: e.target.value })
-              }
+              onChange={(value) => updateItem(index, { description: value })}
               placeholder="Комментарий к цепочке, если нужен"
               rows={2}
             />
 
-            <DatesField
+            <MemoDatesField
               value={chain.dates || []}
               onChange={(dates) => updateItem(index, { dates })}
               defaultCurrency={tourCurrency}
               defaultPrice={tourPrice}
             />
 
-            <ChainHotelsField
+            <MemoChainHotelsField
               value={chain.hotels || []}
               dates={chain.dates || []}
+              tourSlug={tourSlug}
               onChange={(hotels) => updateItem(index, { hotels })}
             />
           </div>
@@ -2063,13 +2244,15 @@ function ChainsField({ value, onChange, tourCurrency, tourPrice }) {
   );
 }
 
-function ChainHotelsField({ value, dates, onChange }) {
+function ChainHotelsField({ value, dates, tourSlug, onChange }) {
+  const [copiedHotelId, setCopiedHotelId] = useState("");
   const items = value.length
     ? value
     : [
         {
           id: uid(),
           name: "",
+          anchor_slug: "",
           description: "",
           images: [],
           image: "",
@@ -2079,6 +2262,27 @@ function ChainHotelsField({ value, dates, onChange }) {
           active: true,
         },
       ];
+
+  const copyHotelLink = useCallback(
+    async (hotel, fallbackId) => {
+      const link = buildHotelAnchorUrl(tourSlug, hotel);
+      if (!link) return;
+
+      try {
+        await copyToClipboard(link);
+        setCopiedHotelId(fallbackId);
+        window.setTimeout(() => {
+          setCopiedHotelId((current) =>
+            current === fallbackId ? "" : current,
+          );
+        }, 1800);
+      } catch (error) {
+        console.error("Hotel admin link copy failed", error);
+        toast.error("Не удалось скопировать ссылку");
+      }
+    },
+    [tourSlug],
+  );
 
   const updateItem = (index, patch) => {
     const next = [...items];
@@ -2092,6 +2296,7 @@ function ChainHotelsField({ value, dates, onChange }) {
       {
         id: uid(),
         name: "",
+        anchor_slug: "",
         description: "",
         image: "",
         meal: "",
@@ -2128,11 +2333,54 @@ function ChainHotelsField({ value, dates, onChange }) {
               </Button>
             </div>
 
-            <Textarea
+            <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-3">
+              <Label className="text-xs">
+                Якорь для прямой ссылки на отель
+              </Label>
+              <Input
+                value={item.anchor_slug || ""}
+                onChange={(e) =>
+                  updateItem(index, {
+                    anchor_slug: cleanHotelAnchorSlug(e.target.value),
+                  })
+                }
+                placeholder="Например: sweet-house"
+                className="mt-1 bg-white"
+              />
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="min-w-0 text-xs text-neutral-500">
+                  Ссылку можно отправить клиенту:{" "}
+                  <span className="break-all font-mono text-[#C2410C]">
+                    {getHotelAnchorPath(tourSlug, item) ||
+                      `/tours/${tourSlug || "slug-tura"}#hotel-sweet-house`}
+                  </span>
+                </p>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => copyHotelLink(item, item.id || String(index))}
+                  className={`h-9 shrink-0 rounded-full px-3 text-xs ${
+                    copiedHotelId === (item.id || String(index))
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-orange-200 text-[#C2410C] hover:bg-orange-50"
+                  }`}
+                >
+                  {copiedHotelId === (item.id || String(index)) ? (
+                    <Check className="mr-1 size-3.5" />
+                  ) : (
+                    <Copy className="mr-1 size-3.5" />
+                  )}
+                  {copiedHotelId === (item.id || String(index))
+                    ? "Скопировано"
+                    : "Копировать"}
+                </Button>
+              </div>
+            </div>
+
+            <RichTextarea
               value={item.description || ""}
-              onChange={(e) =>
-                updateItem(index, { description: e.target.value })
-              }
+              onChange={(value) => updateItem(index, { description: value })}
               placeholder="Описание отеля"
             />
 
@@ -2162,7 +2410,7 @@ function ChainHotelsField({ value, dates, onChange }) {
               />
             </div>
 
-            <RoomsField
+            <MemoRoomsField
               value={item.rooms || []}
               dates={dates}
               onChange={(rooms) => updateItem(index, { rooms })}
@@ -2254,11 +2502,9 @@ function RoomsField({ value, dates, onChange }) {
               </Button>
             </div>
 
-            <Textarea
+            <RichTextarea
               value={room.description || ""}
-              onChange={(e) =>
-                updateItem(index, { description: e.target.value })
-              }
+              onChange={(value) => updateItem(index, { description: value })}
               placeholder="Описание номера"
             />
 
@@ -2275,14 +2521,14 @@ function RoomsField({ value, dates, onChange }) {
             />
 
             {/* CHANGE: цены номера по конкретным датам цепочки */}
-            <RoomDatePricesField
+            <MemoRoomDatePricesField
               value={room.date_prices || []}
               dates={dates}
               defaultCurrency={room.currency || "BYN"}
               onChange={(date_prices) => updateItem(index, { date_prices })}
             />
 
-            <RoomUnavailableDatesField
+            <MemoRoomUnavailableDatesField
               value={room.unavailable_dates || []}
               dates={dates}
               onChange={(unavailable_dates) =>
@@ -2681,9 +2927,9 @@ function FaqField({ value, onChange }) {
               </Button>
             </div>
 
-            <Textarea
+            <RichTextarea
               value={item.answer || ""}
-              onChange={(e) => updateItem(index, { answer: e.target.value })}
+              onChange={(value) => updateItem(index, { answer: value })}
               placeholder="Ответ"
             />
           </div>
@@ -2766,3 +3012,30 @@ function BadgesField({ value, onChange }) {
     </div>
   );
 }
+
+function areTourExtraFieldsEqual(prevProps, nextProps) {
+  const prev = prevProps.form || {};
+  const next = nextProps.form || {};
+  const prevSlug = prev.slug || slugify(prev.title || "");
+  const nextSlug = next.slug || slugify(next.title || "");
+
+  return (
+    prevSlug === nextSlug &&
+    prev.currency === next.currency &&
+    prev.price_from === next.price_from &&
+    TOUR_EXTRA_KEYS.every((key) => prev[key] === next[key])
+  );
+}
+
+const MemoTourExtraFields = memo(TourExtraFields, areTourExtraFieldsEqual);
+const MemoBadgesField = memo(BadgesField);
+const MemoImageListField = memo(ImageListField);
+const MemoStringListField = memo(StringListField);
+const MemoProgramField = memo(ProgramField);
+const MemoChainsField = memo(ChainsField);
+const MemoDatesField = memo(DatesField);
+const MemoChainHotelsField = memo(ChainHotelsField);
+const MemoRoomsField = memo(RoomsField);
+const MemoRoomDatePricesField = memo(RoomDatePricesField);
+const MemoRoomUnavailableDatesField = memo(RoomUnavailableDatesField);
+const MemoFaqField = memo(FaqField);

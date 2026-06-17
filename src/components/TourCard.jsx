@@ -79,7 +79,7 @@ function formatDepartureFrom(tour) {
 
 function PriceView({
   item,
-  priceClassName = "font-heading text-3xl font-bold text-neutral-900",
+  priceClassName = "font-heading text-3xl font-bold text-neutral-900 whitespace-nowrap",
   currencyClassName = "text-sm font-medium text-[#C2410C]",
 }) {
   return (
@@ -133,14 +133,14 @@ export default function TourCard({ tour, size = "default" }) {
     <Link
       to={`/tours/${tour.slug}`}
       className="
-        group card-img-zoom-trigger relative block overflow-hidden rounded-3xl
-        border border-orange-100
-        bg-white
-        shadow-[0_8px_30px_rgba(15,23,42,0.06)]
-        hover:shadow-[0_22px_60px_rgba(194,65,12,0.16)]
-        hover:-translate-y-1
-        transition-all duration-300
-      "
+    group card-img-zoom-trigger relative flex h-full flex-col overflow-hidden rounded-3xl
+    border border-orange-100
+    bg-white
+    shadow-[0_8px_30px_rgba(15,23,42,0.06)]
+    hover:shadow-[0_22px_60px_rgba(194,65,12,0.16)]
+    hover:-translate-y-1
+    transition-all duration-300
+  "
       data-testid={`tour-card-${tour.slug}`}
     >
       <div
@@ -193,12 +193,13 @@ export default function TourCard({ tour, size = "default" }) {
         </div>
       </div>
 
-      <div className="p-5">
+      <div className="flex flex-1 flex-col p-5">
+        {" "}
         <p className="text-sm leading-relaxed text-neutral-700 line-clamp-2 min-h-[2.6em]">
           {description}
         </p>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex min-h-[72px] flex-wrap items-start gap-2">
+          {" "}
           <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-medium text-[#C2410C]">
             <Calendar className="size-3.5" />
             {tour.duration}
@@ -208,15 +209,14 @@ export default function TourCard({ tour, size = "default" }) {
             {formatDepartureFrom(tour)}
           </span>
         </div>
-
-        <div className="mt-5 flex items-end justify-between border-t border-orange-100/80 pt-4">
+        <div className="mt-auto flex items-end justify-between border-t border-orange-100/80 pt-4">
+          {" "}
           <div>
             <p className="text-[11px] uppercase tracking-wide text-neutral-500">
               {tour.price_type || "от"}
             </p>
             <PriceView item={tour} />
           </div>
-
           <span
             className="
               grid size-11 place-items-center rounded-2xl

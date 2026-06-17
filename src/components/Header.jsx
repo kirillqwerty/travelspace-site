@@ -317,7 +317,7 @@ export default function Header() {
           </Link>
 
           {/* DESKTOP NAV */}
-          <nav className="hidden shrink-0 items-center gap-0.5 text-[11px] font-medium lg:flex xl:gap-1 xl:text-[12px] 2xl:text-[13px]">
+          <nav className="hidden shrink-0 items-center gap-0.5 text-[11px] font-medium leading-none lg:flex xl:gap-1 xl:text-[12px] 2xl:text-[13px]">
             <div
               className="relative"
               onMouseEnter={() => setToursOpen(true)}
@@ -425,7 +425,7 @@ export default function Header() {
                   key={n.to}
                   to={n.to}
                   className={({ isActive }) =>
-                    `whitespace-nowrap rounded-full px-0.5 py-1.5 xl:px-1 2xl:px-1.5
+                    `inline-flex items-center whitespace-nowrap rounded-full px-0.5 py-1.5 xl:px-1 2xl:px-1.5
                     transition-all duration-200
                     hover:bg-white/15 hover:text-[#F97316]
                     hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]
@@ -463,15 +463,15 @@ export default function Header() {
                 </span>
               </div>
 
-              <div className="flex min-w-0 flex-col items-start gap-1">
+              <div className="flex min-w-0 flex-col items-stretch gap-1">
                 {headerPhones.map((item) => (
                   <a
                     key={item.link || item.phone}
                     href={`tel:${phoneTel(item.link || item.phone)}`}
-                    className="group flex max-w-full min-w-0 items-center gap-1.5 whitespace-nowrap text-[13px] font-bold leading-none transition-colors hover:text-[#F97316] xl:text-[14px] 2xl:text-[15px]"
+                    className="group grid max-w-full min-w-0 grid-cols-[74px_minmax(0,1fr)] items-center gap-1 whitespace-nowrap text-[13px] font-bold leading-none transition-colors hover:text-[#F97316] xl:grid-cols-[82px_minmax(0,1fr)] xl:text-[14px] 2xl:text-[15px]"
                     title={`${item.label || "Направление"}: ${item.phone}`}
                   >
-                    <span className="shrink-0">{item.phone}</span>
+                    <span className="shrink-0 tabular-nums">{item.phone}</span>
                     {item.label && (
                       <span className="min-w-0 overflow-hidden text-ellipsis text-[10px] font-semibold leading-none opacity-90 sm:max-w-[150px] xl:max-w-[215px] 2xl:max-w-[245px]">
                         · {item.label}

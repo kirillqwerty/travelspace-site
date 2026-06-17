@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { api } from "@/lib/api";
 import {
   Accordion,
@@ -26,6 +26,8 @@ import {
   Phone,
   Hotel,
   WalletCards,
+  Copy,
+  Check,
 } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
@@ -33,6 +35,7 @@ import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
 import { trackTourView } from "@/lib/analytics";
+import { RichText } from "@/lib/richText";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -383,6 +386,180 @@ function groupDatesByMonth(dates = []) {
   }, []);
 }
 
+function getDateTime(date, field = "start") {
+  const value = date?.[field] || date?.start || date?.end || "";
+  const time = Date.parse(value);
+
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+function isDateActual(date) {
+  const startTime = getDateTime(date, "start");
+  const fallbackEndTime = getDateTime(date, "end");
+  const compareTime =
+    startTime !== Number.MAX_SAFE_INTEGER ? startTime : fallbackEndTime;
+
+  if (compareTime === Number.MAX_SAFE_INTEGER) return true;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return compareTime >= today.getTime();
+}
+
+function cleanAnchorSlug(value = "") {
+  const rawValue = String(value || "").trim();
+  const hashValue = rawValue.includes("#")
+    ? rawValue.split("#").pop()
+    : rawValue;
+
+  return String(hashValue || "")
+    .toLowerCase()
+    .replace(/^hotel-/, "")
+    .replace(/[а-яё]/g, (char) => {
+      const map = {
+        а: "a",
+        б: "b",
+        в: "v",
+        г: "g",
+        д: "d",
+        е: "e",
+        ё: "e",
+        ж: "zh",
+        з: "z",
+        и: "i",
+        й: "y",
+        к: "k",
+        л: "l",
+        м: "m",
+        н: "n",
+        о: "o",
+        п: "p",
+        р: "r",
+        с: "s",
+        т: "t",
+        у: "u",
+        ф: "f",
+        х: "h",
+        ц: "ts",
+        ч: "ch",
+        ш: "sh",
+        щ: "sch",
+        ъ: "",
+        ы: "y",
+        ь: "",
+        э: "e",
+        ю: "yu",
+        я: "ya",
+      };
+
+      return map[char] || char;
+    })
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function makeHotelAnchorId(value = "") {
+  const slug = cleanAnchorSlug(value);
+  return slug ? `hotel-${slug}` : "";
+}
+
+function getHotelAnchorAliases(hotel, chain, chainIndex, hotelIndex) {
+  const indexFallback = `${chainIndex + 1}-${hotelIndex + 1}`;
+  const chainTitle = chain?.title || chain?.name || "";
+
+  return Array.from(
+    new Set(
+      [
+        // Ручной якорь из админки всегда главный.
+        makeHotelAnchorId(hotel?.anchor_slug || hotel?.anchor || hotel?.slug),
+        // Стабильная ссылка по id отеля. Она не ломается, если меняется название отеля/цепочки.
+        makeHotelAnchorId(hotel?.id),
+        makeHotelAnchorId(hotel?.name),
+        // Старые ссылки, которые уже могли быть скопированы кнопкой до исправления.
+        makeHotelAnchorId(chainTitle ? `${chainTitle}-${hotelIndex + 1}` : ""),
+        makeHotelAnchorId(chainTitle),
+        makeHotelAnchorId(chain?.id ? `${chain.id}-${hotelIndex + 1}` : ""),
+        makeHotelAnchorId(indexFallback),
+      ].filter(Boolean),
+    ),
+  );
+}
+
+function getHotelAnchorId(hotel, chain, chainIndex, hotelIndex) {
+  const aliases = getHotelAnchorAliases(hotel, chain, chainIndex, hotelIndex);
+  return aliases[0] || `hotel-${chainIndex + 1}-${hotelIndex + 1}`;
+}
+
+function getAnchorCandidates(hash = "") {
+  const rawHash = decodeURIComponent(String(hash || "").replace(/^#/, "")).trim();
+  const cleanSlug = cleanAnchorSlug(rawHash);
+
+  return Array.from(
+    new Set(
+      [
+        rawHash,
+        rawHash.toLowerCase(),
+        cleanSlug,
+        cleanSlug ? `hotel-${cleanSlug}` : "",
+      ].filter(Boolean),
+    ),
+  );
+}
+
+function getAnchorTarget(hash = "") {
+  const candidates = getAnchorCandidates(hash);
+
+  return candidates
+    .map((candidate) => document.getElementById(candidate))
+    .find(Boolean);
+}
+
+function scrollToAnchorTarget(target, behavior = "smooth") {
+  if (!target) return;
+
+  const offset = window.innerWidth < 768 ? 92 : 116;
+  const top = target.getBoundingClientRect().top + window.scrollY - offset;
+
+  window.scrollTo({
+    top: Math.max(0, top),
+    behavior,
+  });
+}
+
+function copyToClipboard(value) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(value);
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  return Promise.resolve();
+}
+
+function getUpcomingDatesFromChains(chains = []) {
+  return chains
+    .flatMap((chain, chainIndex) =>
+      (chain.dates || []).map((date, dateIndex) => ({
+        ...date,
+        _chainId: chain.id || `chain-${chainIndex}`,
+        _chainTitle: chain.title || `Цепочка ${chainIndex + 1}`,
+        _dateListKey: `${chain.id || chainIndex}-${date.id || date.start || dateIndex}`,
+      })),
+    )
+    .filter((date) => date.status !== "hidden" && isDateActual(date))
+    .sort((a, b) => getDateTime(a) - getDateTime(b));
+}
+
 function shouldShowFromPrice(item, defaultValue = true) {
   const value = String(
     item?.price_type ||
@@ -430,7 +607,9 @@ function isRoomUnavailableOnDate(room, date) {
 }
 
 function buildLegacyChain(tour) {
-  const dates = (tour.dates || []).filter((d) => d.status !== "hidden");
+  const dates = (tour.dates || []).filter(
+    (d) => d.status !== "hidden" && isDateActual(d),
+  );
   const hotels = tour.hotels || [];
 
   if (!dates.length && !hotels.length) return [];
@@ -457,7 +636,9 @@ function getTourChains(tour) {
       .map((chain, index) => ({
         ...chain,
         title: chain.title || chain.name || `Цепочка ${index + 1}`,
-        dates: (chain.dates || []).filter((d) => d.status !== "hidden"),
+        dates: (chain.dates || []).filter(
+          (d) => d.status !== "hidden" && isDateActual(d),
+        ),
         hotels: (chain.hotels || []).filter((h) => h.active !== false),
       }));
   }
@@ -503,100 +684,9 @@ function getTourHeroImage(tour, variant = "desktop") {
   return tour?.hero_image;
 }
 
-function renderRichInline(text, keyPrefix = "rich") {
-  const parts = String(text || "").split(
-    /(\[[^\]]+\]\([^)]+\)|https?:\/\/[^\s]+|\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|\*[^*]+\*)/g,
-  );
-
-  return parts.map((part, index) => {
-    const key = `${keyPrefix}-${index}`;
-
-    if (part.startsWith("[") && part.includes("](")) {
-      const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-      if (match) {
-        const [, label, href] = match;
-        return (
-          <a
-            key={key}
-            href={href}
-            target={href.startsWith("http") ? "_blank" : undefined}
-            rel={href.startsWith("http") ? "noreferrer" : undefined}
-            className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
-          >
-            {label}
-          </a>
-        );
-      }
-    }
-
-    if (/^https?:\/\//i.test(part)) {
-      return (
-        <a
-          key={key}
-          href={part}
-          target="_blank"
-          rel="noreferrer"
-          className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
-        >
-          {part}
-        </a>
-      );
-    }
-
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={key}>{part.slice(2, -2)}</strong>;
-    }
-
-    if (part.startsWith("__") && part.endsWith("__")) {
-      return (
-        <span key={key} className="underline underline-offset-2">
-          {part.slice(2, -2)}
-        </span>
-      );
-    }
-
-    if (part.startsWith("_") && part.endsWith("_")) {
-      return <em key={key}>{part.slice(1, -1)}</em>;
-    }
-
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return <em key={key}>{part.slice(1, -1)}</em>;
-    }
-
-    return part;
-  });
-}
-
-function RichText({ text, className = "", paragraphClassName = "" }) {
-  const lines = String(text || "")
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!lines.length) return null;
-
-  return (
-    <div className={className}>
-      {lines.map((line, index) => {
-        const cleanLine = line.replace(/^[-•]\s*/, "");
-        const isListLike = /^[-•]\s*/.test(line);
-
-        return (
-          <p
-            key={`${cleanLine}-${index}`}
-            className={`${index > 0 ? "mt-2" : ""} ${paragraphClassName}`}
-          >
-            {isListLike && <span className="mr-2 text-[#C2410C]">•</span>}
-            {renderRichInline(cleanLine, `rich-${index}`)}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function TourPage() {
   const { slug } = useParams();
+  const location = useLocation();
   const [tour, setTour] = useState(null);
   const [error, setError] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
@@ -609,11 +699,36 @@ export default function TourPage() {
   const [selectedMealPlan, setSelectedMealPlan] = useState("breakfast");
   const [selectedRoomPrice, setSelectedRoomPrice] = useState(null);
   const [hotelSlideById, setHotelSlideById] = useState({});
+  const [copiedHotelAnchorId, setCopiedHotelAnchorId] = useState("");
   const [roomSlide, setRoomSlide] = useState(0);
   const [tourGallerySlide, setTourGallerySlide] = useState(0);
   const [programSlideByKey, setProgramSlideByKey] = useState({});
   const [roomCardSlideById, setRoomCardSlideById] = useState({});
   const { tours } = useSiteData();
+  const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
+
+  const copyHotelAnchorLink = useCallback(
+    async (anchorId) => {
+      if (!anchorId) return;
+
+      const path = `/tours/${tour?.slug || slug}#${anchorId}`;
+      const link =
+        typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
+
+      try {
+        await copyToClipboard(link);
+        setCopiedHotelAnchorId(anchorId);
+        window.setTimeout(() => {
+          setCopiedHotelAnchorId((current) =>
+            current === anchorId ? "" : current,
+          );
+        }, 1800);
+      } catch (error) {
+        console.error("Hotel link copy failed", error);
+      }
+    },
+    [slug, tour?.slug],
+  );
 
   useEffect(() => {
     setTour(null);
@@ -658,6 +773,68 @@ export default function TourPage() {
     }
   }, [tour?.slug]);
 
+  useEffect(() => {
+    if (!tour || !location.hash) return;
+
+    let cancelled = false;
+    const timerIds = [];
+
+    const schedule = (callback, delay) => {
+      const timerId = window.setTimeout(callback, delay);
+      timerIds.push(timerId);
+      return timerId;
+    };
+
+    const scrollToHash = (hash, attempt = 0, settleAttempt = 0) => {
+      if (cancelled || !hash) return;
+
+      const target = getAnchorTarget(hash);
+
+      if (target) {
+        window.requestAnimationFrame(() => {
+          if (!cancelled) {
+            scrollToAnchorTarget(
+              target,
+              attempt <= 1 && settleAttempt === 0 ? "auto" : "smooth",
+            );
+          }
+        });
+
+        // После первого скролла продолжаем несколько раз поправлять позицию:
+        // на проде картинки/аккордеоны/шрифты могут догружаться и сдвигать карточку ниже.
+        if (settleAttempt < 8) {
+          schedule(
+            () => scrollToHash(hash, attempt, settleAttempt + 1),
+            settleAttempt === 0 ? 180 : 260,
+          );
+        }
+
+        return;
+      }
+
+      if (attempt < 50) {
+        schedule(() => scrollToHash(hash, attempt + 1, 0), 100);
+      }
+    };
+
+    const startScroll = () => {
+      scrollToHash(window.location.hash || location.hash);
+    };
+
+    schedule(startScroll, 0);
+    schedule(startScroll, 250);
+
+    window.addEventListener("hashchange", startScroll);
+    window.addEventListener("load", startScroll);
+
+    return () => {
+      cancelled = true;
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("hashchange", startScroll);
+      window.removeEventListener("load", startScroll);
+    };
+  }, [tour?.id, tour?.slug, chains.length, location.hash]);
+
   if (error) {
     return (
       <div className="section-container section-pad text-center">
@@ -692,8 +869,7 @@ export default function TourPage() {
     );
   }
 
-  const chains = getTourChains(tour);
-  const dates = chains.flatMap((chain) => chain.dates || []);
+  const dates = getUpcomingDatesFromChains(chains);
   const dateStrings = dates.map(fmtDateRange).filter(Boolean);
   const tourPath = `/tours/${tour.slug || slug}`;
   const tourSeoTitle =
@@ -1046,21 +1222,18 @@ export default function TourPage() {
                       </AccordionTrigger>
 
                       <AccordionContent>
-                        <div className="pb-4 sm:pl-[116px]">
-                          <div
-                            className={
-                              hasProgramImage
-                                ? "grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start"
-                                : "block"
-                            }
-                          >
+                        <div className="pb-5">
+                          <div className="flex min-w-0 flex-col gap-4">
                             {currentImage && (
-                              <div className="min-w-0">
+                              <div
+                                className="min-w-0 w-full lg:w-[520px] lg:max-w-[520px]"
+                                data-testid={`program-day-carousel-${index}`}
+                              >
                                 <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
                                   <img
                                     src={mediaUrl(currentImage)}
                                     alt={d.title || getProgramDayTitle(d)}
-                                    className="aspect-[16/10] h-auto w-full object-cover sm:aspect-[16/9] lg:aspect-[4/3]"
+                                    className="block aspect-[16/10] h-auto w-full object-cover sm:aspect-[16/9]"
                                     loading="lazy"
                                   />
 
@@ -1068,6 +1241,7 @@ export default function TourPage() {
                                     <>
                                       <button
                                         type="button"
+                                        aria-label="Предыдущее фото дня"
                                         onClick={() =>
                                           setProgramSlide(
                                             currentIndex === 0
@@ -1075,13 +1249,14 @@ export default function TourPage() {
                                               : currentIndex - 1,
                                           )
                                         }
-                                        className="absolute left-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow transition hover:bg-white"
+                                        className="absolute left-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow transition hover:bg-white"
                                       >
                                         ‹
                                       </button>
 
                                       <button
                                         type="button"
+                                        aria-label="Следующее фото дня"
                                         onClick={() =>
                                           setProgramSlide(
                                             currentIndex === images.length - 1
@@ -1089,10 +1264,28 @@ export default function TourPage() {
                                               : currentIndex + 1,
                                           )
                                         }
-                                        className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow transition hover:bg-white"
+                                        className="absolute right-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow transition hover:bg-white"
                                       >
                                         ›
                                       </button>
+
+                                      <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+                                        {images.map((image, imageIndex) => (
+                                          <button
+                                            key={`${image}-dot-${imageIndex}`}
+                                            type="button"
+                                            aria-label={`Показать фото дня ${imageIndex + 1}`}
+                                            onClick={() =>
+                                              setProgramSlide(imageIndex)
+                                            }
+                                            className={`size-1.5 rounded-full transition ${
+                                              currentIndex === imageIndex
+                                                ? "bg-white"
+                                                : "bg-white/45"
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
                                     </>
                                   )}
                                 </div>
@@ -1125,16 +1318,10 @@ export default function TourPage() {
                               </div>
                             )}
 
-                            <div
-                              className={
-                                hasProgramImage
-                                  ? "min-w-0"
-                                  : "max-w-[760px] lg:max-w-[860px]"
-                              }
-                            >
+                            <div className="w-full min-w-0 max-w-none">
                               <RichText
                                 text={d.description}
-                                className="text-sm leading-relaxed text-neutral-700 sm:text-[15px] lg:text-base lg:leading-8"
+                                className="text-sm leading-6 text-neutral-700 sm:text-[15px] sm:leading-7 lg:text-base lg:leading-7"
                               />
 
                               {d.notes && (
@@ -1203,9 +1390,10 @@ export default function TourPage() {
                         </h3>
 
                         {chain.description && (
-                          <p className="mt-1 text-sm text-neutral-600">
-                            {chain.description}
-                          </p>
+                          <RichText
+                            text={chain.description}
+                            className="mt-1 text-sm leading-6 text-neutral-600"
+                          />
                         )}
                       </div>
 
@@ -1247,11 +1435,37 @@ export default function TourPage() {
                     </div>
 
                     <div className="mt-5 grid gap-5">
-                      {(chain.hotels || []).map((h) => (
+                      {(chain.hotels || []).map((h, hotelIndex) => {
+                        const hotelAnchorAliases = getHotelAnchorAliases(
+                          h,
+                          chain,
+                          chainIndex,
+                          hotelIndex,
+                        );
+                        const hotelAnchorId =
+                          hotelAnchorAliases[0] ||
+                          getHotelAnchorId(h, chain, chainIndex, hotelIndex);
+                        const secondaryHotelAnchorIds = hotelAnchorAliases.filter(
+                          (anchorId) => anchorId !== hotelAnchorId,
+                        );
+                        const isHotelLinkCopied =
+                          copiedHotelAnchorId === hotelAnchorId;
+
+                        return (
                         <div
-                          key={h.id}
-                          className="rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-50"
+                          key={h.id || hotelIndex}
+                          id={hotelAnchorId}
+                          className="scroll-mt-32 rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-50"
                         >
+                          {secondaryHotelAnchorIds.map((anchorId) => (
+                            <span
+                              key={anchorId}
+                              id={anchorId}
+                              className="block h-0 scroll-mt-32"
+                              aria-hidden="true"
+                            />
+                          ))}
+
                           <div className="flex flex-col">
                             {getHotelImages(h).length > 0 && (
                               <div className="relative bg-neutral-100">
@@ -1338,11 +1552,50 @@ export default function TourPage() {
                             )}
 
                             <div className="p-5">
-                              <h4 className="font-heading text-xl">{h.name}</h4>
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <h4 className="font-heading text-xl">{h.name}</h4>
 
-                              <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                                {h.description}
-                              </p>
+                                <button
+                                  type="button"
+                                  onClick={() => copyHotelAnchorLink(hotelAnchorId)}
+                                  className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                    isHotelLinkCopied
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                      : "border-orange-200 bg-white text-[#C2410C] hover:border-[#C2410C] hover:bg-orange-50"
+                                  }`}
+                                  title="Скопировать прямую ссылку на этот отель"
+                                >
+                                  {isHotelLinkCopied ? (
+                                    <Check className="size-3.5" />
+                                  ) : (
+                                    <Copy className="size-3.5" />
+                                  )}
+                                  {isHotelLinkCopied ? "Ссылка скопирована" : "Ссылка на отель"}
+                                </button>
+                              </div>
+
+                              {h.description && (
+                                <Accordion
+                                  type="single"
+                                  collapsible
+                                  className="mt-4 rounded-xl border border-neutral-200 bg-white px-4"
+                                >
+                                  <AccordionItem
+                                    value={`hotel-description-${hotelAnchorId}`}
+                                    className="border-0"
+                                  >
+                                    <AccordionTrigger className="py-3 text-left text-sm font-medium hover:no-underline">
+                                      Описание отеля
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                      <RichText
+                                        text={h.description}
+                                        className="pb-3 text-sm leading-6 text-neutral-600"
+                                      />
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                </Accordion>
+                              )}
 
                               <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
                                 {h.meal && (
@@ -1471,9 +1724,10 @@ export default function TourPage() {
                                               </p>
 
                                               {room.description && (
-                                                <p className="mt-1 line-clamp-2 text-xs text-neutral-500">
-                                                  {room.description}
-                                                </p>
+                                                <RichText
+                                                  text={room.description}
+                                                  className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500"
+                                                />
                                               )}
 
                                               {/* CHANGE: ценник номера в карточке отеля рядом с действием бронирования */}
@@ -1499,7 +1753,8 @@ export default function TourPage() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -1611,7 +1866,7 @@ export default function TourPage() {
                       <ul className="space-y-2">
                         {group.items.map((d) => (
                           <li
-                            key={d.id || fmtDateRange(d)}
+                            key={d._dateListKey || d.id || fmtDateRange(d)}
                             className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg bg-neutral-50 px-3 py-2 text-[13px]"
                           >
                             <span className="min-w-0 whitespace-nowrap">
@@ -1791,9 +2046,10 @@ export default function TourPage() {
               <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6">
                 <div className="flex min-w-0 flex-col gap-3">
                   {selectedRoom.room.description && (
-                    <p className="text-sm text-neutral-700">
-                      {selectedRoom.room.description}
-                    </p>
+                    <RichText
+                      text={selectedRoom.room.description}
+                      className="text-sm leading-6 text-neutral-700"
+                    />
                   )}
 
                   {selectedRoom.room.video_url && (

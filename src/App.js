@@ -321,11 +321,13 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
+    if (hash) return;
+
     window.scrollTo({ top: 0, behavior: "instant" });
-  }, [pathname]);
+  }, [pathname, hash]);
 
   return null;
 }

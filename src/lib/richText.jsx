@@ -1,9 +1,44 @@
 import { Fragment } from "react";
 
-const INLINE_RE = /(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|https?:\/\/[^\s]+)/g;
+import checkIcon from "@/assets/rich-icons/check.svg";
+import minusIcon from "@/assets/rich-icons/minus.svg";
+import warningIcon from "@/assets/rich-icons/warning.svg";
+import triangleIcon from "@/assets/rich-icons/triangle.svg";
+
+export const RICH_TEXT_ICONS = [
+  { token: ":check:", label: "Галочка", icon: checkIcon },
+  { token: ":minus:", label: "Минус", icon: minusIcon },
+  { token: ":warning:", label: "Внимание", icon: warningIcon },
+  { token: ":triangle:", label: "Маркер", icon: triangleIcon },
+];
+
+const ICON_BY_TOKEN = RICH_TEXT_ICONS.reduce((acc, item) => {
+  acc[item.token] = item;
+  return acc;
+}, {});
+
+const INLINE_RE = /(:check:|:minus:|:warning:|:triangle:|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|https?:\/\/[^\s]+)/g;
 
 function isSafeUrl(url = "") {
   return /^https?:\/\//i.test(url) || url.startsWith("/");
+}
+
+function renderRichIcon(token, key) {
+  const item = ICON_BY_TOKEN[token];
+
+  if (!item) return token;
+
+  return (
+    <img
+      key={key}
+      src={item.icon}
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
+      className="mx-0.5 inline-block h-[1.15em] w-[1.15em] shrink-0 object-contain align-[-0.18em]"
+    />
+  );
 }
 
 function renderInline(text = "", keyPrefix = "rt") {
@@ -18,7 +53,9 @@ function renderInline(text = "", keyPrefix = "rt") {
 
     const key = `${keyPrefix}-${index++}`;
 
-    if (match.startsWith("[") && match.includes("](")) {
+    if (ICON_BY_TOKEN[match]) {
+      parts.push(renderRichIcon(match, key));
+    } else if (match.startsWith("[") && match.includes("](")) {
       const matchLink = match.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (matchLink) {
         const [, label, href] = matchLink;
@@ -87,6 +124,7 @@ function renderInline(text = "", keyPrefix = "rt") {
 
 export function splitRichTextBlocks(text = "") {
   return String(text || "")
+    .replace(/\r\n/g, "\n")
     .split(/\n\s*\n/g)
     .map((block) => block.trim())
     .filter(Boolean);
@@ -103,7 +141,10 @@ export function RichText({ text, className = "", paragraphClassName = "" }) {
         const lines = block.split("\n");
 
         return (
-          <p key={`block-${blockIndex}`} className={paragraphClassName}>
+          <p
+            key={`block-${blockIndex}`}
+            className={`${blockIndex > 0 ? "mt-2" : ""} ${paragraphClassName}`.trim()}
+          >
             {lines.map((line, lineIndex) => (
               <Fragment key={`line-${blockIndex}-${lineIndex}`}>
                 {lineIndex > 0 && <br />}

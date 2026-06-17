@@ -7,35 +7,136 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { Loader2, ArrowLeft, Phone } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
 
-/**
- * Two-step messenger picker.
- *  Step 1: choose tour (formerly "direction").
- *  Step 2: choose specialist responsible for that tour's region → opens deep link.
- */
 const MESSENGER_META = {
   viber: { name: "Viber", color: "#7360F2" },
   telegram: { name: "Telegram", color: "#0088CC" },
   whatsapp: { name: "WhatsApp", color: "#25D366" },
 };
 
+const DEFAULT_HEADER_PHONES = [
+  { label: "Грузия", phone: "636-99-11", link: "6369911" },
+  { label: "Дагестан, Питер и Карелия", phone: "636-22-99", link: "6362299" },
+];
+
+const REGION_CONTACT_KEYWORDS = {
+  dagestan: ["дагестан"],
+  kareliya: ["карел"],
+  "sankt-peterburg": ["питер", "петербург", "санкт"],
+  "saint-petersburg": ["питер", "петербург", "санкт"],
+  kobuleti: ["груз", "кобулети"],
+  georgia: ["груз", "кобулети"],
+  "georgia-kobuleti": ["груз", "кобулети"],
+};
+
+const REGION_DISPLAY_NAMES = {
+  dagestan: "Дагестан",
+  kareliya: "Карелия",
+  "sankt-peterburg": "Санкт-Петербург",
+  "saint-petersburg": "Санкт-Петербург",
+  kobuleti: "Грузия",
+  georgia: "Грузия",
+  "georgia-kobuleti": "Грузия",
+};
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .trim();
+}
+
+function normalizePhoneDigits(value) {
+  return String(value || "").replace(/[^\d]/g, "");
+}
+
+function toInternationalPhone(value) {
+  const raw = String(value || "").trim();
+  const digits = normalizePhoneDigits(raw);
+
+  if (!digits) return "";
+
+  if (raw.startsWith("+") && digits.length >= 10) {
+    return `+${digits}`;
+  }
+
+  if (digits.startsWith("375") && digits.length === 12) {
+    return `+${digits}`;
+  }
+
+  if (digits.length === 7) {
+    return `+37529${digits}`;
+  }
+
+  if (digits.length === 9 && digits.startsWith("29")) {
+    return `+375${digits}`;
+  }
+
+  if (digits.length >= 10) {
+    return `+${digits}`;
+  }
+
+  return digits;
+}
+
 function messengerLink(type, contact) {
-  if (!contact) return "#";
+  const value = String(contact || "").trim();
+  if (!value) return "#";
+
   switch (type) {
     case "viber":
-      return `viber://chat?number=${encodeURIComponent(contact)}`;
-    case "telegram":
-      return contact.startsWith("@")
-        ? `https://t.me/${contact.slice(1)}`
-        : `https://t.me/${contact}`;
+      return `viber://chat?number=${encodeURIComponent(toInternationalPhone(value))}`;
+    case "telegram": {
+      if (value.startsWith("@")) return `https://t.me/${value.slice(1)}`;
+
+      const digits = normalizePhoneDigits(value);
+      if (digits) return `tg://resolve?phone=${digits}`;
+
+      return `https://t.me/${value}`;
+    }
     case "whatsapp": {
-      const cleaned = contact.replace(/[^\d]/g, "");
+      const cleaned = normalizePhoneDigits(toInternationalPhone(value));
       return `https://wa.me/${cleaned}`;
     }
     default:
       return "#";
   }
+}
+
+function getRegionKeywords(region) {
+  const slug = normalizeText(region?.slug);
+  const predefined = REGION_CONTACT_KEYWORDS[slug] || [];
+  const fromRegion = [region?.name, region?.title, slug]
+    .map(normalizeText)
+    .filter(Boolean);
+
+  return Array.from(new Set([...predefined, ...fromRegion]));
+}
+
+function getDirectionName(region) {
+  const slug = normalizeText(region?.slug);
+  return (
+    REGION_DISPLAY_NAMES[slug] || region?.name || region?.title || "Направление"
+  );
+}
+
+function getHeaderPhoneForRegion(headerPhones, region) {
+  const phones =
+    Array.isArray(headerPhones) && headerPhones.length
+      ? headerPhones
+      : DEFAULT_HEADER_PHONES;
+
+  const keywords = getRegionKeywords(region);
+
+  return (
+    phones.find((item) => {
+      const label = normalizeText(item?.label);
+      return keywords.some((keyword) => keyword && label.includes(keyword));
+    }) ||
+    phones[0] ||
+    null
+  );
 }
 
 export default function MessengerModal({
@@ -45,46 +146,91 @@ export default function MessengerModal({
 }) {
   const [type, setType] = useState(defaultType);
   const [tours, setTours] = useState([]);
-  const [specialists, setSpecialists] = useState([]);
-  const [picked, setPicked] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [missingContactSlug, setMissingContactSlug] = useState("");
 
   useEffect(() => {
     if (!open) return;
+
+    let cancelled = false;
     setType(defaultType);
-    setPicked(null);
+    setMissingContactSlug("");
     setLoading(true);
+
     Promise.all([
-      api.get("/tours").then((r) => r.data),
-      api.get("/specialists").then((r) => r.data),
+      api
+        .get("/tours")
+        .then((r) => r.data)
+        .catch(() => []),
+      api
+        .get("/settings")
+        .then((r) => r.data)
+        .catch(() => ({})),
     ])
-      .then(([t, s]) => {
-        setTours(t);
-        setSpecialists(s);
+      .then(([nextTours, nextSettings]) => {
+        if (cancelled) return;
+        setTours(Array.isArray(nextTours) ? nextTours : []);
+        setSettings(nextSettings || {});
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, defaultType]);
 
-  // Group tours by region_slug so the user picks a region once (one button per region).
+  const headerPhones = settings?.header_phones?.length
+    ? settings.header_phones
+    : DEFAULT_HEADER_PHONES;
+
   const regions = useMemo(() => {
     const map = new Map();
-    tours.forEach((t) => {
-      if (!t.region_slug) return;
-      if (!map.has(t.region_slug)) {
-        map.set(t.region_slug, {
-          slug: t.region_slug,
-          name: t.region_name || t.title,
-          short: t.tagline || t.short_description || "",
+
+    tours.forEach((tour) => {
+      if (!tour.region_slug) return;
+
+      if (!map.has(tour.region_slug)) {
+        const region = {
+          slug: tour.region_slug,
+          name: tour.region_name || tour.title,
+          title: tour.title,
+          short: tour.tagline || tour.short_description || "",
+        };
+
+        map.set(tour.region_slug, {
+          ...region,
+          name: getDirectionName(region),
         });
       }
     });
+
     return Array.from(map.values());
   }, [tours]);
 
   const meta = MESSENGER_META[type];
-  const filteredSpecs = picked
-    ? specialists.filter((s) => (s.regions || []).includes(picked.slug))
-    : [];
+  const officePhone = toInternationalPhone(
+    settings?.phone || headerPhones?.[0]?.link || headerPhones?.[0]?.phone,
+  );
+
+  const openMessengerForRegion = (region) => {
+    const directionPhone = getHeaderPhoneForRegion(headerPhones, region);
+    const contact = toInternationalPhone(
+      directionPhone?.link || directionPhone?.phone,
+    );
+
+    if (!contact) {
+      setMissingContactSlug(region.slug);
+      return;
+    }
+
+    const href = messengerLink(type, contact);
+    setMissingContactSlug("");
+    window.open(href, "_blank", "noopener,noreferrer");
+    onOpenChange?.(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,109 +241,59 @@ export default function MessengerModal({
       >
         <DialogHeader>
           <DialogTitle className="font-heading text-2xl flex items-center gap-2">
-            <span style={{ color: meta.color }} className="text-base">●</span> Написать в {meta.name}
+            <span style={{ color: meta.color }} className="text-base">
+              ●
+            </span>{" "}
+            Написать в {meta.name}
           </DialogTitle>
           <DialogDescription>
-            {!picked
-              ? "Выберите тур, и мы соединим вас с профильным менеджером."
-              : `Менеджеры по туру «${picked.name}»:`}
+            Выберите направление — чат откроется сразу на номер из шапки сайта.
           </DialogDescription>
         </DialogHeader>
-
-        {/* <div className="flex gap-2 -mt-2 mb-2">
-          {Object.entries(MESSENGER_META).map(([t, m]) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setType(t)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                t === type
-                  ? "border-neutral-900 text-neutral-900"
-                  : "border-neutral-200 text-neutral-500 hover:border-neutral-400"
-              }`}
-              data-testid={`messenger-type-${t}`}
-            >
-              {m.name}
-            </button>
-          ))}
-        </div> */}
 
         {loading ? (
           <div className="py-10 grid place-items-center text-neutral-400">
             <Loader2 className="size-5 animate-spin" />
           </div>
-        ) : !picked ? (
-          <div className="grid grid-cols-2 gap-2">
-            {regions.map((d) => (
-              <button
-                key={d.slug}
-                type="button"
-                onClick={() => setPicked(d)}
-                className="text-left rounded-xl border border-neutral-200 px-4 py-3 hover:border-[#C2410C] hover:bg-orange-50/40 transition"
-                data-testid={`messenger-region-${d.slug}`}
-              >
-                <p className="font-medium text-sm">{d.name}</p>
-                <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">{d.short}</p>
-              </button>
-            ))}
-          </div>
         ) : (
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => setPicked(null)}
-              className="text-xs text-neutral-500 hover:text-neutral-900 inline-flex items-center gap-1"
-              data-testid="messenger-back"
-            >
-              <ArrowLeft className="size-3" /> Назад к турам
-            </button>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              {regions.map((direction) => {
+                const isMissing = missingContactSlug === direction.slug;
+                const directionPhone = getHeaderPhoneForRegion(
+                  headerPhones,
+                  direction,
+                );
 
-            {filteredSpecs.map((s) => {
-              const contact = s[type];
-              const href = messengerLink(type, contact);
-              const disabled = !contact;
-              return (
-                <a
-                  key={s.id}
-                  href={disabled ? undefined : href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`flex items-center gap-3 rounded-xl border p-3 transition ${
-                    disabled
-                      ? "opacity-50 cursor-not-allowed border-neutral-200"
-                      : "border-neutral-200 hover:border-[#C2410C] hover:bg-orange-50/40"
-                  }`}
-                  data-testid={`messenger-specialist-${s.id}`}
-                >
-                  <img
-                    src={s.photo}
-                    alt={s.name}
-                    className="size-12 rounded-full object-cover bg-neutral-100"
-                    loading="lazy"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{s.name}</p>
-                    <p className="text-xs text-neutral-500 truncate">{s.role}</p>
-                  </div>
-                  <span
-                    className="text-xs font-medium"
-                    style={{ color: meta.color }}
+                return (
+                  <button
+                    key={direction.slug}
+                    type="button"
+                    onClick={() => openMessengerForRegion(direction)}
+                    className={`text-left rounded-xl border px-4 py-3 transition ${
+                      isMissing
+                        ? "border-red-200 bg-red-50"
+                        : "border-neutral-200 hover:border-[#C2410C] hover:bg-orange-50/40"
+                    }`}
+                    data-testid={`messenger-region-${direction.slug}`}
                   >
-                    Написать →
-                  </span>
-                </a>
-              );
-            })}
+                    <p className="font-medium text-sm">{direction.name}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">
+                      {directionPhone?.phone || direction.short}
+                    </p>
+                    {isMissing && (
+                      <p className="mt-2 text-[11px] text-red-600">
+                        Контакт для этого направления пока не указан в шапке.
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-            {filteredSpecs.length === 0 && (
-              <p className="text-sm text-neutral-500 py-6 text-center">
-                По этому туру менеджер не назначен. Позвоните по общему номеру.
-              </p>
-            )}
-
-            <div className="pt-2 mt-2 border-t border-neutral-100">
+            <div className="pt-2 border-t border-neutral-100">
               <a
-                href="tel:+375296369911"
+                href={`tel:${normalizePhoneDigits(officePhone)}`}
                 className="inline-flex items-center gap-2 text-sm text-neutral-700 hover:text-[#C2410C]"
               >
                 <Phone className="size-4" /> Или позвоните в офис

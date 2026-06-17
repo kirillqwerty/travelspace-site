@@ -6,7 +6,6 @@ export function useSiteData() {
   const [data, setData] = useState({
     settings: null,
     tours: [],
-    specialists: [],
     articles: [],
     ready: false,
   });
@@ -24,20 +23,15 @@ export function useSiteData() {
         .then((r) => r.data)
         .catch(() => []),
       api
-        .get("/specialists")
-        .then((r) => r.data)
-        .catch(() => []),
-      api
         .get("/articles")
         .then((r) => r.data)
         .catch(() => []),
-    ]).then(([settings, tours, specialists, articles]) => {
+    ]).then(([settings, tours, articles]) => {
       if (cancelled) return;
 
       setData({
         settings,
         tours: Array.isArray(tours) ? tours.filter(isTourShownInCatalog) : [],
-        specialists,
         articles,
         ready: true,
       });

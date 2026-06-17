@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" fill="none">
+  <defs>
+    <linearGradient id="ringGradient" x1="170" y1="1080" x2="1084" y2="174" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E45710"/>
+      <stop offset="1" stop-color="#FF6100"/>
+    </linearGradient>
+    <linearGradient id="checkGradient" x1="390" y1="790" x2="875" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#28C843"/>
+      <stop offset="1" stop-color="#31C948"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="627" cy="627" r="470" stroke="url(#ringGradient)" stroke-width="72" fill="none"/>
+
+  <polyline
+    points="395,628 545,777 849,473"
+    stroke="url(#checkGradient)"
+    stroke-width="92"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg>

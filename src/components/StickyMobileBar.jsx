@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Phone, MessageCircle, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Phone, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,16 +21,60 @@ const DEFAULT_CALL_DIRECTIONS = [
   },
 ];
 
+const AMO_CHAT_SCRIPT_ID = "amo_social_button_script";
+
 const phoneTel = (phone) => {
   return String(phone || "").replace(/[^\d]/g, "");
+};
+
+const loadAmoChat = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  window.amo_social_button = {
+    ...(window.amo_social_button || {}),
+    id: "447237",
+    hash: "6bab43c6691ca7cffab67abbbd292eb62f59225a86aef839e38119f4e8d95d48",
+    locale: "ru",
+    setMeta: function (p) {
+      this.params = (this.params || []).concat([p]);
+    },
+  };
+
+  window.amoSocialButton =
+    window.amoSocialButton ||
+    function () {
+      (window.amoSocialButton.q = window.amoSocialButton.q || []).push(
+        arguments,
+      );
+    };
+
+  if (document.getElementById(AMO_CHAT_SCRIPT_ID)) return;
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.id = AMO_CHAT_SCRIPT_ID;
+  script.src = "https://gso.amocrm.ru/js/button.js";
+
+  document.head.appendChild(script);
+};
+
+const openAmoChat = () => {
+  loadAmoChat();
+
+  if (typeof window !== "undefined" && window.amoSocialButton) {
+    window.amoSocialButton("runChatShow");
+  }
 };
 
 export default function StickyMobileBar() {
   const { settings, tours } = useSiteData();
   const [leadOpen, setLeadOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [selectedDirection, setSelectedDirection] = useState(null);
+
+  useEffect(() => {
+    loadAmoChat();
+  }, []);
 
   const callDirections = useMemo(() => {
     if (settings?.call_directions?.length) return settings.call_directions;
@@ -39,7 +83,7 @@ export default function StickyMobileBar() {
       return settings.header_phones
         .filter((item) => item?.phone)
         .map((item) => ({
-          label: item.label || "Менеджер",
+          label: item.label || "Направление",
           phones: [item],
         }));
     }
@@ -66,14 +110,16 @@ export default function StickyMobileBar() {
         >
           <Phone className="size-3.5" /> Звонок
         </button>
+
         <Button
-          onClick={() => setChatOpen(true)}
+          onClick={openAmoChat}
           variant="outline"
           className="rounded-full text-xs font-semibold py-3 h-auto border-neutral-300"
           data-testid="sticky-messenger-btn"
         >
           <MessageCircle className="size-3.5" /> Чат
         </Button>
+
         <Button
           onClick={() => setLeadOpen(true)}
           className="rounded-full text-xs font-semibold py-3 h-auto bg-[#C2410C] hover:bg-[#9A3412] text-white"
@@ -115,47 +161,35 @@ export default function StickyMobileBar() {
               >
                 ← выбрать другое направление
               </button>
+
               <div className="grid gap-2">
-                {(selectedDirection.phones || []).map((item) => (
-                  <a
-                    key={`${item.operator}-${item.link}`}
-                    href={`tel:${phoneTel(item.link || item.phone)}`}
-                    className="rounded-2xl border border-neutral-200 px-4 py-3 hover:border-[#C2410C]"
-                  >
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <span className="rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
-                        МТС
+                {(selectedDirection.phones || []).map((item, index) => {
+                  const phone = item.link || item.phone;
+
+                  return (
+                    <a
+                      key={`${selectedDirection.label}-${phone}-${index}`}
+                      href={`tel:${phoneTel(phone)}`}
+                      className="rounded-2xl border border-neutral-200 px-4 py-3 hover:border-[#C2410C]"
+                    >
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <span className="rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                          МТС
+                        </span>
+                        <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-600">
+                          A1
+                        </span>
+                      </div>
+
+                      <span className="block text-lg font-bold text-neutral-900">
+                        {item.phone}
                       </span>
-                      <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-600">
-                        A1
-                      </span>
-                    </div>
-                    <span className="block text-lg font-bold text-neutral-900">
-                      {item.phone}
-                    </span>
-                  </a>
-                ))}
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={chatOpen} onOpenChange={setChatOpen}>
-        <DialogContent className="max-w-sm rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>Онлайн-чат</DialogTitle>
-          </DialogHeader>
-          <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-5 text-sm text-neutral-600">
-            Здесь будет виджет чата AmoCRM. Кнопка больше не открывает Telegram.
-          </div>
-          <Button
-            onClick={() => setChatOpen(false)}
-            variant="outline"
-            className="rounded-full"
-          >
-            <X className="mr-2 size-4" /> Закрыть
-          </Button>
         </DialogContent>
       </Dialog>
 

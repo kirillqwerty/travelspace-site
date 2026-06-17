@@ -19,6 +19,7 @@ import TourCard from "@/components/TourCard";
 import LeadDialog from "@/components/LeadDialog";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
+import { RichText } from "@/lib/richText";
 
 const BENEFIT_ICONS = {
   badge: BadgeCheck,
@@ -87,7 +88,7 @@ function getBenefitsSection(settings) {
 }
 
 export default function Home() {
-  const { tours, specialists, settings } = useSiteData();
+  const { tours, settings } = useSiteData();
   const [reviews, setReviews] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
@@ -367,9 +368,10 @@ export default function Home() {
                       {p.title}
                     </h3>
 
-                    <p className="text-base text-neutral-600 mt-3 leading-relaxed flex-1">
-                      {p.description}
-                    </p>
+                    <RichText
+                      text={p.description}
+                      className="mt-3 flex-1 text-base leading-7 text-neutral-600"
+                    />
 
                     {getPromotionTourSlug(p) && (
                       <Link
