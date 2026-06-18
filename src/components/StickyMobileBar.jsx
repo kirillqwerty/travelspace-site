@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Phone, MessageCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,49 +21,8 @@ const DEFAULT_CALL_DIRECTIONS = [
   },
 ];
 
-const AMO_CHAT_SCRIPT_ID = "amo_social_button_script";
-
 const phoneTel = (phone) => {
   return String(phone || "").replace(/[^\d]/g, "");
-};
-
-const loadAmoChat = () => {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-
-  window.amo_social_button = {
-    ...(window.amo_social_button || {}),
-    id: "447237",
-    hash: "6bab43c6691ca7cffab67abbbd292eb62f59225a86aef839e38119f4e8d95d48",
-    locale: "ru",
-    setMeta: function (p) {
-      this.params = (this.params || []).concat([p]);
-    },
-  };
-
-  window.amoSocialButton =
-    window.amoSocialButton ||
-    function () {
-      (window.amoSocialButton.q = window.amoSocialButton.q || []).push(
-        arguments,
-      );
-    };
-
-  if (document.getElementById(AMO_CHAT_SCRIPT_ID)) return;
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.id = AMO_CHAT_SCRIPT_ID;
-  script.src = "https://gso.amocrm.ru/js/button.js";
-
-  document.head.appendChild(script);
-};
-
-const openAmoChat = () => {
-  loadAmoChat();
-
-  if (typeof window !== "undefined" && window.amoSocialButton) {
-    window.amoSocialButton("runChatShow");
-  }
 };
 
 export default function StickyMobileBar() {
@@ -71,10 +30,6 @@ export default function StickyMobileBar() {
   const [leadOpen, setLeadOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [selectedDirection, setSelectedDirection] = useState(null);
-
-  useEffect(() => {
-    loadAmoChat();
-  }, []);
 
   const callDirections = useMemo(() => {
     if (settings?.call_directions?.length) return settings.call_directions;
@@ -96,7 +51,7 @@ export default function StickyMobileBar() {
   return (
     <>
       <div
-        className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-3 py-2.5 grid grid-cols-3 gap-2"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-3 py-2.5 grid grid-cols-2 gap-2"
         data-testid="sticky-mobile-bar"
       >
         <button
@@ -110,15 +65,6 @@ export default function StickyMobileBar() {
         >
           <Phone className="size-3.5" /> Звонок
         </button>
-
-        <Button
-          onClick={openAmoChat}
-          variant="outline"
-          className="rounded-full text-xs font-semibold py-3 h-auto border-neutral-300"
-          data-testid="sticky-messenger-btn"
-        >
-          <MessageCircle className="size-3.5" /> Чат
-        </Button>
 
         <Button
           onClick={() => setLeadOpen(true)}

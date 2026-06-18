@@ -1222,12 +1222,55 @@ const slugify = (text = "") =>
     .replace(/^-+|-+$/g, "");
 
 const cleanHotelAnchorSlug = (value = "") => {
-  const rawValue = String(value || "").trim();
+  const map = {
+    а: "a",
+    б: "b",
+    в: "v",
+    г: "g",
+    д: "d",
+    е: "e",
+    ё: "e",
+    ж: "zh",
+    з: "z",
+    и: "i",
+    й: "y",
+    к: "k",
+    л: "l",
+    м: "m",
+    н: "n",
+    о: "o",
+    п: "p",
+    р: "r",
+    с: "s",
+    т: "t",
+    у: "u",
+    ф: "f",
+    х: "h",
+    ц: "ts",
+    ч: "ch",
+    ш: "sh",
+    щ: "sch",
+    ъ: "",
+    ы: "y",
+    ь: "",
+    э: "e",
+    ю: "yu",
+    я: "ya",
+  };
+
+  const rawValue = String(value || "");
+
   const hashValue = rawValue.includes("#")
     ? rawValue.split("#").pop()
     : rawValue;
 
-  return slugify(String(hashValue || "").replace(/^hotel-/i, ""));
+  return String(hashValue || "")
+    .replace(/^hotel-/i, "")
+    .toLowerCase()
+    .replace(/[а-яё]/g, (char) => map[char] || char)
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9._-]+/g, "")
+    .replace(/-{2,}/g, "-");
 };
 
 const getHotelAnchorHash = (hotel = {}) => {
@@ -1235,7 +1278,7 @@ const getHotelAnchorHash = (hotel = {}) => {
     hotel.anchor_slug || hotel.anchor || hotel.slug || hotel.name || hotel.id,
   );
 
-  return slug ? `#hotel-${slug}` : "";
+  return slug ? `#${slug}` : "";
 };
 
 const getHotelAnchorPath = (tourSlug, hotel = {}) => {

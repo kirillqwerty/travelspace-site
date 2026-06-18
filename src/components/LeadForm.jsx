@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,6 +93,8 @@ export default function LeadForm({
   compact = false,
   ctaLabel,
 }) {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -206,6 +209,7 @@ export default function LeadForm({
         email: "",
       });
       onSuccess?.();
+      navigate("/thanks");
     } catch (err) {
       toast.error(
         formatApiErrorDetail(err.response?.data?.detail) ||

@@ -487,12 +487,14 @@ export default function Footer() {
                 })}
               </div>
 
-              <Link
-                to="/legal#offer"
-                className="text-base font-bold hover:text-[#F97316]"
+              <a
+                href="/public-contract.pdf"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-full border border-white/25 px-5 py-3 text-base font-bold transition hover:border-[#F97316] hover:text-[#F97316]"
               >
                 Публичный договор
-              </Link>
+              </a>
             </div>
           </div>
         </div>
