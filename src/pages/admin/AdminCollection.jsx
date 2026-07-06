@@ -565,6 +565,7 @@ export default function AdminCollection({ name }) {
   const [editing, setEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState(null);
 
   const load = async () => {
     console.log("AdminCollection load started:", `/admin/${name}`);
@@ -641,6 +642,32 @@ export default function AdminCollection({ name }) {
     await api.delete(`/admin/${name}/${id}`);
     setItems((p) => p.filter((x) => x.id !== id));
     toast.success("Удалено");
+  };
+
+  const onDuplicateTour = async (item) => {
+    if (name !== "tours" || !item?.id) return;
+
+    const title = schema.label?.(item) || item.title || "тур";
+    if (!confirm(`Создать дубликат тура «${title}»?`)) return;
+
+    try {
+      setDuplicatingId(item.id);
+      const response = await api.post(`/admin/tours/${item.id}/duplicate`);
+      toast.success(
+        "Дубликат создан. Он выключен и скрыт из каталога до публикации.",
+      );
+      await load();
+      setEditing(normalizeRecord(response.data, name));
+    } catch (e) {
+      console.error("Duplicate tour error:", e);
+      toast.error(
+        e?.response?.data?.detail ||
+          e?.message ||
+          "Не удалось создать дубликат",
+      );
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   return (
@@ -721,7 +748,24 @@ export default function AdminCollection({ name }) {
                     )}
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {name === "tours" && (
+                      <button
+                        type="button"
+                        onClick={() => onDuplicateTour(it)}
+                        disabled={duplicatingId === it.id}
+                        className="text-xs text-sky-700 hover:underline disabled:pointer-events-none disabled:opacity-60 inline-flex items-center gap-1"
+                        data-testid={`admin-duplicate-${it.id}`}
+                      >
+                        {duplicatingId === it.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Copy className="size-3.5" />
+                        )}
+                        Дублировать
+                      </button>
+                    )}
+
                     <button
                       onClick={() => setEditing(normalizeRecord(it, name))}
                       className="text-xs text-[#C2410C] hover:underline inline-flex items-center gap-1"

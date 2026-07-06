@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import {
   Accordion,
   AccordionItem,
@@ -26,8 +26,7 @@ import {
   Phone,
   Hotel,
   WalletCards,
-  Copy,
-  Check,
+  Download,
 } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
@@ -372,7 +371,7 @@ function getDateMonthLabel(date) {
 }
 
 function groupDatesByMonth(dates = []) {
-  return (dates || []).reduce((groups, date) => {
+  return sortDatesByStart(dates).reduce((groups, date) => {
     const title = getDateMonthLabel(date);
     const last = groups[groups.length - 1];
 
@@ -391,6 +390,24 @@ function getDateTime(date, field = "start") {
   const time = Date.parse(value);
 
   return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+function sortDatesByStart(dates = []) {
+  return [...(dates || [])]
+    .map((date, index) => ({ date, index }))
+    .sort((a, b) => {
+      const startDiff =
+        getDateTime(a.date, "start") - getDateTime(b.date, "start");
+
+      if (startDiff !== 0) return startDiff;
+
+      const endDiff = getDateTime(a.date, "end") - getDateTime(b.date, "end");
+
+      if (endDiff !== 0) return endDiff;
+
+      return a.index - b.index;
+    })
+    .map(({ date }) => date);
 }
 
 function isDateActual(date) {
@@ -492,7 +509,9 @@ function getHotelAnchorId(hotel, chain, chainIndex, hotelIndex) {
 }
 
 function getAnchorCandidates(hash = "") {
-  const rawHash = decodeURIComponent(String(hash || "").replace(/^#/, "")).trim();
+  const rawHash = decodeURIComponent(
+    String(hash || "").replace(/^#/, ""),
+  ).trim();
   const cleanSlug = cleanAnchorSlug(rawHash);
 
   return Array.from(
@@ -525,25 +544,6 @@ function scrollToAnchorTarget(target, behavior = "smooth") {
     top: Math.max(0, top),
     behavior,
   });
-}
-
-function copyToClipboard(value) {
-  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(value);
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = value;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textarea);
-
-  return Promise.resolve();
 }
 
 function getUpcomingDatesFromChains(chains = []) {
@@ -607,8 +607,8 @@ function isRoomUnavailableOnDate(room, date) {
 }
 
 function buildLegacyChain(tour) {
-  const dates = (tour.dates || []).filter(
-    (d) => d.status !== "hidden" && isDateActual(d),
+  const dates = sortDatesByStart(
+    (tour.dates || []).filter((d) => d.status !== "hidden" && isDateActual(d)),
   );
   const hotels = tour.hotels || [];
 
@@ -636,8 +636,10 @@ function getTourChains(tour) {
       .map((chain, index) => ({
         ...chain,
         title: chain.title || chain.name || `Цепочка ${index + 1}`,
-        dates: (chain.dates || []).filter(
-          (d) => d.status !== "hidden" && isDateActual(d),
+        dates: sortDatesByStart(
+          (chain.dates || []).filter(
+            (d) => d.status !== "hidden" && isDateActual(d),
+          ),
         ),
         hotels: (chain.hotels || []).filter((h) => h.active !== false),
       }));
@@ -699,36 +701,122 @@ export default function TourPage() {
   const [selectedMealPlan, setSelectedMealPlan] = useState("breakfast");
   const [selectedRoomPrice, setSelectedRoomPrice] = useState(null);
   const [hotelSlideById, setHotelSlideById] = useState({});
-  const [copiedHotelAnchorId, setCopiedHotelAnchorId] = useState("");
   const [roomSlide, setRoomSlide] = useState(0);
   const [tourGallerySlide, setTourGallerySlide] = useState(0);
   const [programSlideByKey, setProgramSlideByKey] = useState({});
   const [roomCardSlideById, setRoomCardSlideById] = useState({});
+  const [roomScrollerHints, setRoomScrollerHints] = useState({});
+  const roomScrollerRefs = useRef({});
+  const roomLastCardRefs = useRef({});
+  const roomHintObservers = useRef({});
   const { tours } = useSiteData();
   const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
 
-  const copyHotelAnchorLink = useCallback(
-    async (anchorId) => {
-      if (!anchorId) return;
+  const setRoomScrollerHasMore = useCallback((carouselKey, hasMore) => {
+    setRoomScrollerHints((prev) => {
+      if (prev[carouselKey]?.hasMore === hasMore) return prev;
 
-      const path = `/tours/${tour?.slug || slug}#${anchorId}`;
-      const link =
-        typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
+      return {
+        ...prev,
+        [carouselKey]: { hasMore },
+      };
+    });
+  }, []);
 
-      try {
-        await copyToClipboard(link);
-        setCopiedHotelAnchorId(anchorId);
-        window.setTimeout(() => {
-          setCopiedHotelAnchorId((current) =>
-            current === anchorId ? "" : current,
-          );
-        }, 1800);
-      } catch (error) {
-        console.error("Hotel link copy failed", error);
+  const disconnectRoomHintObserver = useCallback((carouselKey) => {
+    roomHintObservers.current[carouselKey]?.disconnect();
+    delete roomHintObservers.current[carouselKey];
+  }, []);
+
+  const updateRoomScrollerHintByLastCard = useCallback(
+    (carouselKey) => {
+      const scroller = roomScrollerRefs.current[carouselKey];
+      const lastCard = roomLastCardRefs.current[carouselKey];
+      if (!scroller || !lastCard) return;
+
+      const hasOverflow = scroller.scrollWidth > scroller.clientWidth + 4;
+      if (!hasOverflow) {
+        setRoomScrollerHasMore(carouselKey, false);
+        return;
       }
+
+      const scrollerRect = scroller.getBoundingClientRect();
+      const lastCardRect = lastCard.getBoundingClientRect();
+      const visibleWidth = Math.max(
+        0,
+        Math.min(lastCardRect.right, scrollerRect.right) -
+          Math.max(lastCardRect.left, scrollerRect.left),
+      );
+      const visibleRatio = lastCardRect.width
+        ? visibleWidth / lastCardRect.width
+        : 0;
+
+      setRoomScrollerHasMore(carouselKey, visibleRatio < 0.6);
     },
-    [slug, tour?.slug],
+    [setRoomScrollerHasMore],
   );
+
+  const observeRoomLastCard = useCallback(
+    (carouselKey) => {
+      const scroller = roomScrollerRefs.current[carouselKey];
+      const lastCard = roomLastCardRefs.current[carouselKey];
+      if (!scroller || !lastCard) return;
+
+      disconnectRoomHintObserver(carouselKey);
+
+      const hasOverflow = scroller.scrollWidth > scroller.clientWidth + 4;
+      if (!hasOverflow) {
+        setRoomScrollerHasMore(carouselKey, false);
+        return;
+      }
+
+      if (typeof IntersectionObserver === "undefined") {
+        updateRoomScrollerHintByLastCard(carouselKey);
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          const isLastRoomVisible =
+            entry.isIntersecting && entry.intersectionRatio >= 0.6;
+
+          setRoomScrollerHasMore(carouselKey, !isLastRoomVisible);
+        },
+        {
+          root: scroller,
+          threshold: [0, 0.25, 0.6, 0.85, 1],
+        },
+      );
+
+      observer.observe(lastCard);
+      roomHintObservers.current[carouselKey] = observer;
+      updateRoomScrollerHintByLastCard(carouselKey);
+    },
+    [
+      disconnectRoomHintObserver,
+      setRoomScrollerHasMore,
+      updateRoomScrollerHintByLastCard,
+    ],
+  );
+
+  useEffect(() => {
+    const updateAllRoomHints = () => {
+      window.requestAnimationFrame(() => {
+        Object.keys(roomScrollerRefs.current).forEach(observeRoomLastCard);
+      });
+    };
+
+    updateAllRoomHints();
+    window.addEventListener("resize", updateAllRoomHints);
+
+    return () => {
+      window.removeEventListener("resize", updateAllRoomHints);
+      Object.values(roomHintObservers.current).forEach((observer) =>
+        observer.disconnect(),
+      );
+      roomHintObservers.current = {};
+    };
+  }, [chains, observeRoomLastCard]);
 
   useEffect(() => {
     setTour(null);
@@ -872,6 +960,9 @@ export default function TourPage() {
   const dates = getUpcomingDatesFromChains(chains);
   const dateStrings = dates.map(fmtDateRange).filter(Boolean);
   const tourPath = `/tours/${tour.slug || slug}`;
+  const programPdfUrl = `${API_BASE}/tours/${encodeURIComponent(
+    tour.slug || slug,
+  )}/program.pdf`;
   const tourSeoTitle =
     tour.seo_title || `${tour.title} — автобусный тур из Минска | TRAVELSPACE`;
   const tourSeoDescription =
@@ -993,6 +1084,17 @@ export default function TourPage() {
                   <WalletCards className="size-4 mr-2" /> Даты и цены
                 </Button>
               )}
+
+              <Button
+                asChild
+                variant="outline"
+                className="rounded-full border-white/30 bg-white/15 px-6 py-6 text-white backdrop-blur-md hover:bg-white hover:text-neutral-900"
+                data-testid="tour-hero-program-download"
+              >
+                <a href={programPdfUrl} download>
+                  <Download className="size-4 mr-2" /> Скачать программу
+                </a>
+              </Button>
             </div>
           </div>
         </div>
@@ -1445,314 +1547,395 @@ export default function TourPage() {
                         const hotelAnchorId =
                           hotelAnchorAliases[0] ||
                           getHotelAnchorId(h, chain, chainIndex, hotelIndex);
-                        const secondaryHotelAnchorIds = hotelAnchorAliases.filter(
-                          (anchorId) => anchorId !== hotelAnchorId,
-                        );
-                        const isHotelLinkCopied =
-                          copiedHotelAnchorId === hotelAnchorId;
-
+                        const secondaryHotelAnchorIds =
+                          hotelAnchorAliases.filter(
+                            (anchorId) => anchorId !== hotelAnchorId,
+                          );
                         return (
-                        <div
-                          key={h.id || hotelIndex}
-                          id={hotelAnchorId}
-                          className="scroll-mt-32 rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-50"
-                        >
-                          {secondaryHotelAnchorIds.map((anchorId) => (
-                            <span
-                              key={anchorId}
-                              id={anchorId}
-                              className="block h-0 scroll-mt-32"
-                              aria-hidden="true"
-                            />
-                          ))}
+                          <div
+                            key={h.id || hotelIndex}
+                            id={hotelAnchorId}
+                            className="scroll-mt-32 rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-50"
+                          >
+                            {secondaryHotelAnchorIds.map((anchorId) => (
+                              <span
+                                key={anchorId}
+                                id={anchorId}
+                                className="block h-0 scroll-mt-32"
+                                aria-hidden="true"
+                              />
+                            ))}
 
-                          <div className="flex flex-col">
-                            {getHotelImages(h).length > 0 && (
-                              <div className="relative bg-neutral-100">
-                                {(() => {
-                                  const images = getHotelImages(h);
-                                  const currentIndex =
-                                    hotelSlideById[h.id] || 0;
-                                  const currentImage =
-                                    images[currentIndex] || images[0];
+                            <div className="flex flex-col">
+                              {getHotelImages(h).length > 0 && (
+                                <div className="relative bg-neutral-100">
+                                  {(() => {
+                                    const images = getHotelImages(h);
+                                    const currentIndex =
+                                      hotelSlideById[h.id] || 0;
+                                    const currentImage =
+                                      images[currentIndex] || images[0];
 
-                                  return (
-                                    <>
-                                      <div className="relative aspect-[16/9] w-full overflow-hidden bg-neutral-100">
-                                        <img
-                                          src={mediaUrl(currentImage)}
-                                          alt={h.name}
-                                          className="absolute inset-0 h-full w-full object-cover object-center"
-                                          loading="lazy"
-                                        />
+                                    return (
+                                      <>
+                                        <div className="relative aspect-[16/9] w-full overflow-hidden bg-neutral-100">
+                                          <img
+                                            src={mediaUrl(currentImage)}
+                                            alt={h.name}
+                                            className="absolute inset-0 h-full w-full object-cover object-center"
+                                            loading="lazy"
+                                          />
 
-                                        {images.length > 1 && (
-                                          <>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setHotelSlideById((prev) => ({
-                                                  ...prev,
-                                                  [h.id]:
-                                                    currentIndex === 0
-                                                      ? images.length - 1
-                                                      : currentIndex - 1,
-                                                }))
-                                              }
-                                              className="absolute left-4 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow hover:bg-white"
-                                            >
-                                              ‹
-                                            </button>
+                                          {images.length > 1 && (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setHotelSlideById((prev) => ({
+                                                    ...prev,
+                                                    [h.id]:
+                                                      currentIndex === 0
+                                                        ? images.length - 1
+                                                        : currentIndex - 1,
+                                                  }))
+                                                }
+                                                className="absolute left-4 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow hover:bg-white"
+                                              >
+                                                ‹
+                                              </button>
 
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setHotelSlideById((prev) => ({
-                                                  ...prev,
-                                                  [h.id]:
-                                                    currentIndex ===
-                                                    images.length - 1
-                                                      ? 0
-                                                      : currentIndex + 1,
-                                                }))
-                                              }
-                                              className="absolute right-4 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow hover:bg-white"
-                                            >
-                                              ›
-                                            </button>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setHotelSlideById((prev) => ({
+                                                    ...prev,
+                                                    [h.id]:
+                                                      currentIndex ===
+                                                      images.length - 1
+                                                        ? 0
+                                                        : currentIndex + 1,
+                                                  }))
+                                                }
+                                                className="absolute right-4 top-1/2 z-30 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow hover:bg-white"
+                                              >
+                                                ›
+                                              </button>
 
-                                            <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm">
-                                              {images.map((image, dotIndex) => (
-                                                <button
-                                                  key={`${image}-${dotIndex}`}
-                                                  type="button"
-                                                  onClick={() =>
-                                                    setHotelSlideById(
-                                                      (prev) => ({
-                                                        ...prev,
-                                                        [h.id]: dotIndex,
-                                                      }),
-                                                    )
-                                                  }
-                                                  className={`size-2 rounded-full ${
-                                                    dotIndex === currentIndex
-                                                      ? "bg-white"
-                                                      : "bg-white/45"
-                                                  }`}
-                                                />
-                                              ))}
-                                            </div>
-                                          </>
-                                        )}
-                                      </div>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            )}
-
-                            <div className="p-5">
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                <h4 className="font-heading text-xl">{h.name}</h4>
-
-                                <button
-                                  type="button"
-                                  onClick={() => copyHotelAnchorLink(hotelAnchorId)}
-                                  className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                                    isHotelLinkCopied
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                      : "border-orange-200 bg-white text-[#C2410C] hover:border-[#C2410C] hover:bg-orange-50"
-                                  }`}
-                                  title="Скопировать прямую ссылку на этот отель"
-                                >
-                                  {isHotelLinkCopied ? (
-                                    <Check className="size-3.5" />
-                                  ) : (
-                                    <Copy className="size-3.5" />
-                                  )}
-                                  {isHotelLinkCopied ? "Ссылка скопирована" : "Ссылка на отель"}
-                                </button>
-                              </div>
-
-                              {h.description && (
-                                <Accordion
-                                  type="single"
-                                  collapsible
-                                  className="mt-4 rounded-xl border border-neutral-200 bg-white px-4"
-                                >
-                                  <AccordionItem
-                                    value={`hotel-description-${hotelAnchorId}`}
-                                    className="border-0"
-                                  >
-                                    <AccordionTrigger className="py-3 text-left text-sm font-medium hover:no-underline">
-                                      Описание отеля
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                      <RichText
-                                        text={h.description}
-                                        className="pb-3 text-sm leading-6 text-neutral-600"
-                                      />
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                </Accordion>
-                              )}
-
-                              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
-                                {h.meal && (
-                                  <span>
-                                    <Hotel className="inline size-3.5 -mt-0.5 mr-1" />
-                                    {h.meal}
-                                  </span>
-                                )}
-
-                                {h.location && <span>{h.location}</span>}
-                              </div>
-
-                              {h.rooms?.length > 0 && (
-                                <div className="mt-5">
-                                  <p className="text-sm font-medium">Номера</p>
-
-                                  <div className="mt-3">
-                                    <div className="flex gap-3 overflow-x-auto pb-2">
-                                      {h.rooms.map((room) => {
-                                        const roomImages = (
-                                          room.gallery?.length
-                                            ? room.gallery
-                                            : [room.image]
-                                        ).filter(Boolean);
-                                        const currentIndex =
-                                          roomCardSlideById[room.id] || 0;
-                                        const currentImage =
-                                          roomImages[currentIndex] ||
-                                          roomImages[0];
-
-                                        return (
-                                          <div
-                                            key={room.id}
-                                            className="w-[320px] sm:w-[360px] shrink-0 rounded-xl border border-neutral-200 bg-white p-3"
-                                          >
-                                            {currentImage && (
-                                              <div className="relative mb-3 overflow-hidden rounded-lg bg-neutral-100">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setRoomSlide(0);
-                                                    setSelectedRoom({
-                                                      room,
-                                                      hotel: h,
-                                                      chain,
-                                                    });
-                                                  }}
-                                                  className="block w-full text-left"
-                                                >
-                                                  <img
-                                                    src={mediaUrl(currentImage)}
-                                                    alt={
-                                                      room.title || room.number
-                                                    }
-                                                    className="aspect-[4/3] w-full object-cover"
-                                                    loading="lazy"
-                                                  />
-                                                </button>
-
-                                                {roomImages.length > 1 && (
-                                                  <>
+                                              <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm">
+                                                {images.map(
+                                                  (image, dotIndex) => (
                                                     <button
+                                                      key={`${image}-${dotIndex}`}
                                                       type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setRoomCardSlideById(
+                                                      onClick={() =>
+                                                        setHotelSlideById(
                                                           (prev) => ({
                                                             ...prev,
-                                                            [room.id]:
-                                                              currentIndex === 0
-                                                                ? roomImages.length -
-                                                                  1
-                                                                : currentIndex -
-                                                                  1,
+                                                            [h.id]: dotIndex,
                                                           }),
-                                                        );
-                                                      }}
-                                                      className="absolute left-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow"
-                                                    >
-                                                      ‹
-                                                    </button>
-
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setRoomCardSlideById(
-                                                          (prev) => ({
-                                                            ...prev,
-                                                            [room.id]:
-                                                              currentIndex ===
-                                                              roomImages.length -
-                                                                1
-                                                                ? 0
-                                                                : currentIndex +
-                                                                  1,
-                                                          }),
-                                                        );
-                                                      }}
-                                                      className="absolute right-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow"
-                                                    >
-                                                      ›
-                                                    </button>
-                                                  </>
+                                                        )
+                                                      }
+                                                      className={`size-2 rounded-full ${
+                                                        dotIndex ===
+                                                        currentIndex
+                                                          ? "bg-white"
+                                                          : "bg-white/45"
+                                                      }`}
+                                                    />
+                                                  ),
                                                 )}
                                               </div>
-                                            )}
-
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setRoomSlide(0);
-                                                setSelectedRoom({
-                                                  room,
-                                                  hotel: h,
-                                                  chain,
-                                                });
-                                              }}
-                                              className="w-full text-left"
-                                            >
-                                              <p className="font-medium">
-                                                {room.title ||
-                                                  (room.number
-                                                    ? `Номер ${room.number}`
-                                                    : "Номер")}
-                                              </p>
-
-                                              {room.description && (
-                                                <RichText
-                                                  text={room.description}
-                                                  className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500"
-                                                />
-                                              )}
-
-                                              {/* CHANGE: ценник номера в карточке отеля рядом с действием бронирования */}
-                                              <div className="mt-3 flex items-center justify-between gap-3">
-                                                <p className="text-xs text-[#C2410C]">
-                                                  Посмотреть даты и фото
-                                                </p>
-
-                                                <RoomMinPriceInline
-                                                  room={room}
-                                                  dates={chain.dates || []}
-                                                  className="shrink-0 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[#C2410C]"
-                                                />
-                                              </div>
-                                            </button>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               )}
+
+                              <div className="p-5">
+                                <h4 className="font-heading text-xl">
+                                  {h.name}
+                                </h4>
+
+                                {h.description && (
+                                  <Accordion
+                                    type="single"
+                                    collapsible
+                                    className="mt-4 rounded-xl border border-neutral-200 bg-white px-4"
+                                  >
+                                    <AccordionItem
+                                      value={`hotel-description-${hotelAnchorId}`}
+                                      className="border-0"
+                                    >
+                                      <AccordionTrigger className="py-3 text-left text-sm font-medium hover:no-underline">
+                                        Описание отеля
+                                      </AccordionTrigger>
+                                      <AccordionContent>
+                                        <RichText
+                                          text={h.description}
+                                          className="pb-3 text-sm leading-6 text-neutral-600"
+                                        />
+                                      </AccordionContent>
+                                    </AccordionItem>
+                                  </Accordion>
+                                )}
+
+                                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
+                                  {h.meal && (
+                                    <span>
+                                      <Hotel className="inline size-3.5 -mt-0.5 mr-1" />
+                                      {h.meal}
+                                    </span>
+                                  )}
+
+                                  {h.location && <span>{h.location}</span>}
+                                </div>
+
+                                {h.rooms?.length > 0 && (
+                                  <div className="mt-5">
+                                    {(() => {
+                                      const roomCarouselKey = `${chain.id || chainIndex}-${h.id || hotelIndex}`;
+                                      const showRoomsMoreHint =
+                                        h.rooms.length > 1 &&
+                                        (roomScrollerHints[roomCarouselKey]
+                                          ?.hasMore ??
+                                          true);
+
+                                      return (
+                                        <>
+                                          <p className="text-sm font-medium">
+                                            Номера
+                                          </p>
+
+                                          <div className="relative mt-3">
+                                            <div
+                                              ref={(node) => {
+                                                if (node) {
+                                                  roomScrollerRefs.current[
+                                                    roomCarouselKey
+                                                  ] = node;
+                                                  window.requestAnimationFrame(
+                                                    () =>
+                                                      observeRoomLastCard(
+                                                        roomCarouselKey,
+                                                      ),
+                                                  );
+                                                } else {
+                                                  disconnectRoomHintObserver(
+                                                    roomCarouselKey,
+                                                  );
+                                                  delete roomScrollerRefs
+                                                    .current[roomCarouselKey];
+                                                }
+                                              }}
+                                              className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 pr-3 [-webkit-overflow-scrolling:touch] sm:pr-0"
+                                            >
+                                              {h.rooms.map(
+                                                (room, roomIndex) => {
+                                                  const roomCardKey =
+                                                    room.id ||
+                                                    `${room.title || room.number || "room"}-${roomIndex}`;
+                                                  const roomImages = (
+                                                    room.gallery?.length
+                                                      ? room.gallery
+                                                      : [room.image]
+                                                  ).filter(Boolean);
+                                                  const currentIndex =
+                                                    roomCardSlideById[
+                                                      roomCardKey
+                                                    ] || 0;
+                                                  const currentImage =
+                                                    roomImages[currentIndex] ||
+                                                    roomImages[0];
+
+                                                  return (
+                                                    <div
+                                                      key={roomCardKey}
+                                                      ref={
+                                                        roomIndex ===
+                                                        h.rooms.length - 1
+                                                          ? (node) => {
+                                                              if (node) {
+                                                                roomLastCardRefs.current[
+                                                                  roomCarouselKey
+                                                                ] = node;
+                                                                window.requestAnimationFrame(
+                                                                  () =>
+                                                                    observeRoomLastCard(
+                                                                      roomCarouselKey,
+                                                                    ),
+                                                                );
+                                                              } else {
+                                                                delete roomLastCardRefs
+                                                                  .current[
+                                                                  roomCarouselKey
+                                                                ];
+                                                              }
+                                                            }
+                                                          : undefined
+                                                      }
+                                                      className={`${
+                                                        h.rooms.length > 1
+                                                          ? "w-[82vw] min-w-[280px] max-w-[340px] sm:w-[360px] sm:min-w-0 sm:max-w-none"
+                                                          : "w-full max-w-[340px] sm:w-[360px] sm:max-w-none"
+                                                      } snap-start shrink-0 rounded-xl border border-neutral-200 bg-white p-3`}
+                                                    >
+                                                      {currentImage && (
+                                                        <div className="relative mb-3 overflow-hidden rounded-lg bg-neutral-100">
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                              setRoomSlide(0);
+                                                              setSelectedRoom({
+                                                                room,
+                                                                hotel: h,
+                                                                chain,
+                                                              });
+                                                            }}
+                                                            className="block w-full text-left"
+                                                          >
+                                                            <img
+                                                              src={mediaUrl(
+                                                                currentImage,
+                                                              )}
+                                                              alt={
+                                                                room.title ||
+                                                                room.number
+                                                              }
+                                                              className="aspect-[4/3] w-full object-cover"
+                                                              loading="lazy"
+                                                            />
+                                                          </button>
+
+                                                          {roomImages.length >
+                                                            1 && (
+                                                            <>
+                                                              <button
+                                                                type="button"
+                                                                onClick={(
+                                                                  e,
+                                                                ) => {
+                                                                  e.stopPropagation();
+                                                                  setRoomCardSlideById(
+                                                                    (prev) => ({
+                                                                      ...prev,
+                                                                      [roomCardKey]:
+                                                                        currentIndex ===
+                                                                        0
+                                                                          ? roomImages.length -
+                                                                            1
+                                                                          : currentIndex -
+                                                                            1,
+                                                                    }),
+                                                                  );
+                                                                }}
+                                                                className="absolute left-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow"
+                                                              >
+                                                                ‹
+                                                              </button>
+
+                                                              <button
+                                                                type="button"
+                                                                onClick={(
+                                                                  e,
+                                                                ) => {
+                                                                  e.stopPropagation();
+                                                                  setRoomCardSlideById(
+                                                                    (prev) => ({
+                                                                      ...prev,
+                                                                      [roomCardKey]:
+                                                                        currentIndex ===
+                                                                        roomImages.length -
+                                                                          1
+                                                                          ? 0
+                                                                          : currentIndex +
+                                                                            1,
+                                                                    }),
+                                                                  );
+                                                                }}
+                                                                className="absolute right-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-lg shadow"
+                                                              >
+                                                                ›
+                                                              </button>
+                                                            </>
+                                                          )}
+                                                        </div>
+                                                      )}
+
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                          setRoomSlide(0);
+                                                          setSelectedRoom({
+                                                            room,
+                                                            hotel: h,
+                                                            chain,
+                                                          });
+                                                        }}
+                                                        className="w-full text-left"
+                                                      >
+                                                        <div className="flex min-w-0 items-start justify-between gap-2">
+                                                          <p className="min-w-0 break-words font-medium">
+                                                            {room.title ||
+                                                              (room.number
+                                                                ? `Номер ${room.number}`
+                                                                : "Номер")}
+                                                          </p>
+
+                                                          {showRoomsMoreHint &&
+                                                            roomIndex <
+                                                              h.rooms.length -
+                                                                1 && (
+                                                              <span
+                                                                className="pointer-events-none shrink-0 rounded-full border border-orange-200 bg-white/95 px-2 py-1 text-[10px] font-semibold text-[#C2410C] animate-pulse sm:hidden"
+                                                                aria-hidden="true"
+                                                              >
+                                                                ещё →
+                                                              </span>
+                                                            )}
+                                                        </div>
+
+                                                        {room.description && (
+                                                          <RichText
+                                                            text={
+                                                              room.description
+                                                            }
+                                                            className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500"
+                                                          />
+                                                        )}
+
+                                                        {/* CHANGE: ценник номера в карточке отеля рядом с действием бронирования */}
+                                                        <div className="mt-3 flex items-center justify-between gap-3">
+                                                          <p className="text-xs text-[#C2410C]">
+                                                            Посмотреть даты и
+                                                            фото
+                                                          </p>
+
+                                                          <RoomMinPriceInline
+                                                            room={room}
+                                                            dates={
+                                                              chain.dates || []
+                                                            }
+                                                            className="shrink-0 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-[#C2410C]"
+                                                          />
+                                                        </div>
+                                                      </button>
+                                                    </div>
+                                                  );
+                                                },
+                                              )}
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
                         );
                       })}
                     </div>
@@ -1914,6 +2097,17 @@ export default function TourPage() {
                 <WalletCards className="size-4 mr-2" /> Даты и цены
               </Button>
             )}
+
+            <Button
+              asChild
+              variant="outline"
+              className="w-full mt-3 rounded-full border-orange-200 bg-orange-50 text-[#C2410C] hover:bg-orange-100 py-6 text-base"
+              data-testid="tour-cta-program-download"
+            >
+              <a href={programPdfUrl} download>
+                <Download className="size-4 mr-2" /> Скачать программу
+              </a>
+            </Button>
 
             <a
               href="tel:+375296369911"

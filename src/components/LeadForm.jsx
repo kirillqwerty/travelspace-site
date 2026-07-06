@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { api, formatApiErrorDetail } from "@/lib/api";
 import {
   createEventId,
   getAttribution,
-  trackLeadSubmit,
+  savePendingLeadConversion,
 } from "@/lib/analytics";
 import { isValidPhone, maskPhone } from "@/lib/phoneMask";
 
@@ -107,6 +107,7 @@ export default function LeadForm({
     email: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [errors, setErrors] = useState({});
   useEffect(() => {
     if (selectedDate) {
@@ -141,7 +142,10 @@ export default function LeadForm({
 
   const submit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current || submitting) return;
     if (!validate()) return;
+
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const eventId = createEventId("lead");
@@ -188,7 +192,7 @@ export default function LeadForm({
               : null,
       };
       await api.post("/leads", payload);
-      trackLeadSubmit({
+      savePendingLeadConversion({
         eventId,
         tourTitle: selectedTourTitle,
         tourSlug: selectedTourSlug,
@@ -216,6 +220,7 @@ export default function LeadForm({
           "Не удалось отправить заявку",
       );
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

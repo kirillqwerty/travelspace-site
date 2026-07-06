@@ -6,17 +6,11 @@ import { Button } from "@/components/ui/button";
 import MessengerModal from "@/components/MessengerModal";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
-import { mediaUrl } from "@/lib/media";
 import logoBlack from "../assets/logo-travelspace-black.png";
 import logoWhite from "../assets/logo-travelspace-white.png";
 import socialTelegram from "../assets/social-telegram.png";
 import socialViber from "../assets/social-viber.png";
 import socialWhatsapp from "../assets/social-whatsapp.png";
-import socialInstagram from "../assets/social-instagram.png";
-import socialVk from "../assets/social-vk.png";
-import socialPinterest from "../assets/social-pinterest.png";
-import socialYoutube from "../assets/social-youtube.png";
-import socialTiktok from "../assets/social-tiktok.png";
 
 const PRIMARY_NAV = [
   { to: "/tours", label: "Автобусные туры", dropdown: true },
@@ -46,34 +40,6 @@ const WaSvg = () => (
   </svg>
 );
 
-const SOCIAL_ICON_BY_KEY = {
-  telegram: socialTelegram,
-  tg: socialTelegram,
-  viber: socialViber,
-  vi: socialViber,
-  whatsapp: socialWhatsapp,
-  whatsApp: socialWhatsapp,
-  wa: socialWhatsapp,
-  instagram: socialInstagram,
-  ig: socialInstagram,
-  vk: socialVk,
-  вк: socialVk,
-  pinterest: socialPinterest,
-  p: socialPinterest,
-  youtube: socialYoutube,
-  yt: socialYoutube,
-  tiktok: socialTiktok,
-  tt: socialTiktok,
-};
-
-function getSocialIconAsset(item = {}) {
-  const keys = [item.type, item.label, item.short]
-    .filter(Boolean)
-    .map((value) => String(value).trim().toLowerCase());
-
-  return keys.map((key) => SOCIAL_ICON_BY_KEY[key]).find(Boolean) || null;
-}
-
 const MESSENGER_BTNS = [
   {
     type: "viber",
@@ -98,20 +64,7 @@ const MESSENGER_BTNS = [
   },
 ];
 
-function getHeaderSocialButtons(settings) {
-  const custom = Array.isArray(settings?.social_buttons)
-    ? settings.social_buttons.filter(
-        (item) => item?.active !== false && item?.url,
-      )
-    : [];
-
-  if (custom.length) {
-    return custom.map((item) => ({
-      ...item,
-      iconAsset: getSocialIconAsset(item),
-    }));
-  }
-
+function getHeaderSocialButtons() {
   return MESSENGER_BTNS.map((item) => ({
     type: item.type,
     label: item.label,
@@ -123,14 +76,8 @@ function getHeaderSocialButtons(settings) {
 
 function SocialButton({ item, onMessenger }) {
   const Icon = item.Icon;
-  const localIcon = item.iconAsset || getSocialIconAsset(item);
-  const content = item.icon ? (
-    <img
-      src={mediaUrl(item.icon)}
-      alt=""
-      className="h-full w-full object-contain"
-    />
-  ) : localIcon ? (
+  const localIcon = item.iconAsset;
+  const content = localIcon ? (
     <img src={localIcon} alt="" className="h-full w-full object-contain" />
   ) : Icon ? (
     <Icon className="size-4" />
@@ -140,28 +87,7 @@ function SocialButton({ item, onMessenger }) {
     </span>
   );
 
-  const hasPictureIcon = Boolean(item.icon || localIcon);
-  const className =
-    "grid size-8 place-items-center overflow-hidden rounded-full text-white transition hover:scale-110 2xl:size-9";
-  const style = hasPictureIcon
-    ? undefined
-    : { background: item.color || "#111827" };
-
-  if (item.url) {
-    return (
-      <a
-        href={item.url}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={item.label}
-        title={item.label}
-        className={className}
-        style={style}
-      >
-        {content}
-      </a>
-    );
-  }
+  const hasPictureIcon = Boolean(localIcon);
 
   return (
     <button
@@ -169,8 +95,8 @@ function SocialButton({ item, onMessenger }) {
       onClick={() => onMessenger(item.type || "telegram")}
       aria-label={item.label}
       title={item.label}
-      className={className}
-      style={style}
+      className="grid size-8 place-items-center overflow-hidden rounded-full text-white transition hover:scale-110 2xl:size-9"
+      style={hasPictureIcon ? undefined : { background: item.color || "#111827" }}
     >
       {content}
     </button>
@@ -221,7 +147,7 @@ export default function Header() {
       }));
   }, [articles]);
 
-  const socialButtons = getHeaderSocialButtons(settings);
+  const socialButtons = getHeaderSocialButtons();
 
   const headerPhones = settings?.header_phones?.length
     ? settings.header_phones
@@ -690,83 +616,39 @@ export default function Header() {
                   Написать в мессенджер
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  {socialButtons.map((item, index) =>
-                    item.url ? (
-                      <a
-                        key={`mobile-${item.id || item.url || index}`}
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={closeMenu}
-                        className="grid size-11 place-items-center overflow-hidden rounded-full active:scale-95 transition"
-                        style={
-                          item.icon ||
-                          item.iconAsset ||
-                          getSocialIconAsset(item)
-                            ? undefined
-                            : { background: item.color || "#111827" }
-                        }
-                      >
-                        {item.icon ? (
-                          <img
-                            src={mediaUrl(item.icon)}
-                            alt=""
-                            className="h-full w-full object-contain"
-                          />
-                        ) : item.iconAsset || getSocialIconAsset(item) ? (
-                          <img
-                            src={item.iconAsset || getSocialIconAsset(item)}
-                            alt=""
-                            className="h-full w-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-xs font-bold text-white">
-                            {(item.label || "?").slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </a>
-                    ) : (
-                      <button
-                        key={`mobile-${item.type || index}`}
-                        type="button"
-                        onClick={() => {
-                          closeMenu();
-                          setMessenger({
-                            open: true,
-                            type: item.type || "telegram",
-                          });
-                        }}
-                        aria-label={item.label}
-                        title={item.label}
-                        className="grid size-11 place-items-center overflow-hidden rounded-full active:scale-95 transition"
-                        style={
-                          item.icon ||
-                          item.iconAsset ||
-                          getSocialIconAsset(item)
-                            ? undefined
-                            : { background: item.color || "#111827" }
-                        }
-                      >
-                        {item.icon ? (
-                          <img
-                            src={mediaUrl(item.icon)}
-                            alt=""
-                            className="h-full w-full object-contain"
-                          />
-                        ) : item.iconAsset || getSocialIconAsset(item) ? (
-                          <img
-                            src={item.iconAsset || getSocialIconAsset(item)}
-                            alt=""
-                            className="h-full w-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-xs font-bold text-white">
-                            {(item.label || "?").slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </button>
-                    ),
-                  )}
+                  {socialButtons.map((item, index) => (
+                    <button
+                      key={`mobile-${item.type || index}`}
+                      type="button"
+                      onClick={() => {
+                        closeMenu();
+                        setMessenger({
+                          open: true,
+                          type: item.type || "telegram",
+                        });
+                      }}
+                      aria-label={item.label}
+                      title={item.label}
+                      className="grid size-11 place-items-center overflow-hidden rounded-full active:scale-95 transition"
+                      style={
+                        item.iconAsset
+                          ? undefined
+                          : { background: item.color || "#111827" }
+                      }
+                    >
+                      {item.iconAsset ? (
+                        <img
+                          src={item.iconAsset}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-white">
+                          {(item.label || "?").slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
             </motion.div>

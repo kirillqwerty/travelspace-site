@@ -74,6 +74,57 @@ const DEFAULT_HOME_BENEFITS = {
   ],
 };
 
+const FIXED_FOOTER_SOCIAL_LINKS = [
+  {
+    type: "telegram",
+    label: "Telegram",
+    short: "TG",
+    defaultUrl: "https://t.me/travelspaceby",
+  },
+  {
+    type: "viber",
+    label: "Viber",
+    short: "VB",
+    defaultUrl: "viber://chat?number=%2B375636999111",
+  },
+  {
+    type: "whatsapp",
+    label: "WhatsApp",
+    short: "WA",
+    defaultUrl: "https://wa.me/375636999111",
+  },
+  {
+    type: "instagram",
+    label: "Instagram",
+    short: "IG",
+    defaultUrl: "https://www.instagram.com/travelspace.by",
+  },
+  {
+    type: "vk",
+    label: "VK",
+    short: "VK",
+    defaultUrl: "https://vk.com/travelspace_by",
+  },
+  {
+    type: "pinterest",
+    label: "Pinterest",
+    short: "P",
+    defaultUrl: "https://www.pinterest.com/Travel_Space/",
+  },
+  {
+    type: "youtube",
+    label: "YouTube",
+    short: "YT",
+    defaultUrl: "https://www.youtube.com/@TravelSpace_Minsk",
+  },
+  {
+    type: "tiktok",
+    label: "TikTok",
+    short: "TT",
+    defaultUrl: "https://www.tiktok.com/@travelspace.by",
+  },
+];
+
 export default function AdminSettings() {
   const [data, setData] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -231,24 +282,34 @@ export default function AdminSettings() {
           </div>
         </Group>
 
-        <Group title="Мессенджеры">
+        <Group title="Мессенджеры в шапке">
+          <div className="sm:col-span-2 rounded-xl border border-orange-100 bg-orange-50/60 p-3 text-xs text-neutral-600">
+            В шапке всегда отображаются только Viber, Telegram и WhatsApp. Здесь
+            редактируются только номера/ссылки для этих трёх мессенджеров.
+          </div>
           <Field
-            label="Viber"
+            label="Viber: номер или ссылка"
             value={data.messengers?.viber}
             onChange={(v) => updateNested("messengers", "viber", v)}
+            placeholder="+375296369911 или viber://chat?..."
           />
           <Field
-            label="Telegram"
+            label="Telegram: username или ссылка"
             value={data.messengers?.telegram}
             onChange={(v) => updateNested("messengers", "telegram", v)}
+            placeholder="travelspaceby или https://t.me/travelspaceby"
           />
           <Field
-            label="WhatsApp"
+            label="WhatsApp: номер или ссылка"
             value={data.messengers?.whatsapp}
             onChange={(v) => updateNested("messengers", "whatsapp", v)}
+            placeholder="+375296369911 или https://wa.me/..."
           />
+        </Group>
+
+        <Group title="Соцсети в футере">
           <div className="sm:col-span-2">
-            <SocialButtonsField
+            <FixedFooterSocialLinksField
               value={data.social_buttons || []}
               onChange={(v) => update("social_buttons", v)}
             />
@@ -527,121 +588,70 @@ function HeaderPhonesField({ value = [], onChange }) {
   );
 }
 
-function SocialButtonsField({ value = [], onChange }) {
-  const items = value.length
-    ? value
-    : [
-        { label: "Viber", url: "", icon: "", color: "#7360F2", active: true },
-        {
-          label: "Telegram",
-          url: "",
-          icon: "",
-          color: "#0088CC",
-          active: true,
-        },
-        {
-          label: "WhatsApp",
-          url: "",
-          icon: "",
-          color: "#25D366",
-          active: true,
-        },
-      ];
+function normalizeSocialKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
 
-  const updateItem = (index, patch) => {
-    const next = [...items];
-    next[index] = { ...next[index], ...patch };
-    onChange(next);
-  };
+function getFixedSocialUrl(value = [], fixedItem) {
+  if (!Array.isArray(value)) return fixedItem.defaultUrl;
 
-  const addItem = () =>
-    onChange([
-      ...items,
-      { label: "", url: "", icon: "", color: "#111827", active: true },
-    ]);
+  const fixedKeys = [fixedItem.type, fixedItem.label, fixedItem.short]
+    .map(normalizeSocialKey)
+    .filter(Boolean);
 
-  const removeItem = (index) =>
-    onChange(items.filter((_, itemIndex) => itemIndex !== index));
+  const configured = value.find((item) => {
+    if (!item) return false;
 
-  const uploadIcon = async (index, file) => {
-    if (!file) return;
+    const itemKeys = [item.type, item.label, item.short]
+      .map(normalizeSocialKey)
+      .filter(Boolean);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await api.post("/admin/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    updateItem(index, { icon: response.data.url });
-    toast.success("Иконка загружена");
+    return itemKeys.some((key) => fixedKeys.includes(key));
+  });
+
+  return configured?.href || configured?.url || configured?.link || fixedItem.defaultUrl;
+}
+
+function buildFixedFooterSocialLinks(value = [], changedType, changedUrl) {
+  return FIXED_FOOTER_SOCIAL_LINKS.map((item) => ({
+    type: item.type,
+    label: item.label,
+    short: item.short,
+    url: item.type === changedType ? changedUrl : getFixedSocialUrl(value, item),
+    active: true,
+  }));
+}
+
+function FixedFooterSocialLinksField({ value = [], onChange }) {
+  const updateLink = (type, url) => {
+    onChange(buildFixedFooterSocialLinks(value, type, url));
   };
 
   return (
     <div className="space-y-3">
       <div>
-        <Label>Иконки и ссылки мессенджеров/соцсетей</Label>
+        <Label>Ссылки соцсетей в футере</Label>
         <p className="mt-1 text-xs text-neutral-500">
-          Можно загрузить свою привычную иконку и указать актуальную ссылку.
-          Если список заполнен, шапка использует именно его.
+          Набор иконок зашит в коде: Telegram, Viber, WhatsApp, Instagram, VK,
+          Pinterest, YouTube и TikTok. Добавлять/удалять соцсети, менять иконки
+          и цвета больше не нужно — здесь редактируются только ссылки.
         </p>
       </div>
 
-      {items.map((item, index) => (
-        <div
-          key={index}
-          className="grid gap-2 rounded-xl border border-neutral-200 p-3 sm:grid-cols-[1fr_1.5fr_120px_160px_auto]"
-        >
+      <div className="grid gap-3 lg:grid-cols-2">
+        {FIXED_FOOTER_SOCIAL_LINKS.map((item) => (
           <Field
-            label="Название"
-            value={item.label}
-            onChange={(v) => updateItem(index, { label: v })}
+            key={item.type}
+            label={`${item.label}: ссылка`}
+            value={getFixedSocialUrl(value, item)}
+            onChange={(url) => updateLink(item.type, url)}
+            placeholder={item.defaultUrl}
           />
-          <Field
-            label="Ссылка"
-            value={item.url}
-            onChange={(v) => updateItem(index, { url: v })}
-          />
-          <Field
-            label="Цвет"
-            value={item.color}
-            onChange={(v) => updateItem(index, { color: v })}
-          />
-          <div>
-            <Label className="text-xs">Иконка</Label>
-            <div className="mt-1 flex items-center gap-2">
-              {item.icon && (
-                <img
-                  src={adminImagePreviewUrl(item.icon)}
-                  alt=""
-                  className="size-8 rounded-full object-contain"
-                />
-              )}
-              <label className="cursor-pointer rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50">
-                Загрузить
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => uploadIcon(index, e.target.files?.[0])}
-                />
-              </label>
-            </div>
-          </div>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => removeItem(index)}
-              className="w-full"
-            >
-              Удалить
-            </Button>
-          </div>
-        </div>
-      ))}
-
-      <Button type="button" variant="outline" onClick={addItem}>
-        Добавить иконку
-      </Button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -80,28 +80,82 @@ function toInternationalPhone(value) {
   return digits;
 }
 
+function normalizeExternalUrl(value) {
+  const url = String(value || "").trim();
+  if (!url) return "";
+
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) return url;
+  if (/^t\.me\//i.test(url)) return `https://${url}`;
+
+  return url;
+}
+
+function cleanTelegramUsername(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^@/, "")
+    .replace(/^https?:\/\/t\.me\//i, "")
+    .replace(/^t\.me\//i, "")
+    .replace(/^\/+/, "");
+}
+
 function messengerLink(type, contact) {
   const value = String(contact || "").trim();
-  if (!value) return "#";
+  if (!value) return "";
+
+  const externalUrl = normalizeExternalUrl(value);
 
   switch (type) {
-    case "viber":
+    case "viber": {
+      if (/^viber:\/\//i.test(externalUrl)) return externalUrl;
+
       return `viber://chat?number=${encodeURIComponent(toInternationalPhone(value))}`;
+    }
+
     case "telegram": {
-      if (value.startsWith("@")) return `https://t.me/${value.slice(1)}`;
+      if (/^https?:\/\/t\.me\//i.test(externalUrl)) return externalUrl;
+      if (/^tg:\/\//i.test(externalUrl)) return externalUrl;
+
+      const username = cleanTelegramUsername(value);
+      if (username && !/^\+?\d+$/.test(username))
+        return `https://t.me/${username}`;
 
       const digits = normalizePhoneDigits(value);
-      if (digits) return `tg://resolve?phone=${digits}`;
+      if (digits) return `https://t.me/+${digits}`;
 
-      return `https://t.me/${value}`;
+      return "";
     }
+
     case "whatsapp": {
+      if (/^https?:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(externalUrl)) {
+        return externalUrl;
+      }
+
       const cleaned = normalizePhoneDigits(toInternationalPhone(value));
-      return `https://wa.me/${cleaned}`;
+      return cleaned ? `https://wa.me/${cleaned}` : "";
     }
+
     default:
-      return "#";
+      return "";
   }
+}
+
+function getMessengerLinkProps(href) {
+  const url = String(href || "").toLowerCase();
+
+  // Для мессенджеров не ставим target="_blank" и не используем window.open.
+  // Так Chrome/iOS воспринимает клик как прямой пользовательский переход.
+  if (
+    url.startsWith("viber://") ||
+    url.startsWith("tg://") ||
+    url.includes("t.me/") ||
+    url.includes("wa.me/") ||
+    url.includes("api.whatsapp.com/")
+  ) {
+    return {};
+  }
+
+  return { target: "_blank", rel: "noreferrer" };
 }
 
 function getRegionKeywords(region) {
@@ -215,21 +269,17 @@ export default function MessengerModal({
     settings?.phone || headerPhones?.[0]?.link || headerPhones?.[0]?.phone,
   );
 
-  const openMessengerForRegion = (region) => {
+  const getMessengerHrefForRegion = (region) => {
     const directionPhone = getHeaderPhoneForRegion(headerPhones, region);
     const contact = toInternationalPhone(
       directionPhone?.link || directionPhone?.phone,
     );
 
-    if (!contact) {
-      setMissingContactSlug(region.slug);
-      return;
-    }
+    return messengerLink(type, contact);
+  };
 
-    const href = messengerLink(type, contact);
-    setMissingContactSlug("");
-    window.open(href, "_blank", "noopener,noreferrer");
-    onOpenChange?.(false);
+  const handleMissingContact = (region) => {
+    setMissingContactSlug(region.slug);
   };
 
   return (
@@ -265,18 +315,14 @@ export default function MessengerModal({
                   direction,
                 );
 
-                return (
-                  <button
-                    key={direction.slug}
-                    type="button"
-                    onClick={() => openMessengerForRegion(direction)}
-                    className={`text-left rounded-xl border px-4 py-3 transition ${
-                      isMissing
-                        ? "border-red-200 bg-red-50"
-                        : "border-neutral-200 hover:border-[#C2410C] hover:bg-orange-50/40"
-                    }`}
-                    data-testid={`messenger-region-${direction.slug}`}
-                  >
+                const href = getMessengerHrefForRegion(direction);
+                const commonClassName = `text-left rounded-xl border px-4 py-3 transition ${
+                  isMissing
+                    ? "border-red-200 bg-red-50"
+                    : "border-neutral-200 hover:border-[#C2410C] hover:bg-orange-50/40"
+                }`;
+                const content = (
+                  <>
                     <p className="font-medium text-sm">{direction.name}</p>
                     <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">
                       {directionPhone?.phone || direction.short}
@@ -286,7 +332,37 @@ export default function MessengerModal({
                         Контакт для этого направления пока не указан в шапке.
                       </p>
                     )}
-                  </button>
+                  </>
+                );
+
+                if (!href) {
+                  return (
+                    <button
+                      key={direction.slug}
+                      type="button"
+                      onClick={() => handleMissingContact(direction)}
+                      className={commonClassName}
+                      data-testid={`messenger-region-${direction.slug}`}
+                    >
+                      {content}
+                    </button>
+                  );
+                }
+
+                return (
+                  <a
+                    key={direction.slug}
+                    href={href}
+                    onClick={() => {
+                      setMissingContactSlug("");
+                      window.setTimeout(() => onOpenChange?.(false), 300);
+                    }}
+                    className={commonClassName}
+                    data-testid={`messenger-region-${direction.slug}`}
+                    {...getMessengerLinkProps(href)}
+                  >
+                    {content}
+                  </a>
                 );
               })}
             </div>

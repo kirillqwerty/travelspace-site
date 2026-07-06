@@ -1,8 +1,69 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Home, RotateCcw } from "lucide-react";
 import PageSeo from "@/components/PageSeo";
+import {
+  canSendBrowserLeadConversion,
+  clearPendingLeadConversion,
+  getPendingLeadConversion,
+  trackLeadSubmit,
+} from "@/lib/analytics";
 
 export default function Thanks() {
+  useEffect(() => {
+    const sendPendingLead = () => {
+      const pendingLead = getPendingLeadConversion();
+      if (!pendingLead) return true;
+
+      if (!canSendBrowserLeadConversion()) {
+        return false;
+      }
+
+      const allConfiguredChannelsSent = trackLeadSubmit(pendingLead);
+
+      if (allConfiguredChannelsSent) {
+        clearPendingLeadConversion();
+      }
+
+      return allConfiguredChannelsSent;
+    };
+
+    if (sendPendingLead()) return undefined;
+
+    let attempts = 0;
+    const maxAttempts = 30;
+    const retryInterval = window.setInterval(() => {
+      attempts += 1;
+
+      if (sendPendingLead() || attempts >= maxAttempts) {
+        window.clearInterval(retryInterval);
+      }
+    }, 500);
+
+    const onAnalyticsReady = () => {
+      if (sendPendingLead()) {
+        window.clearInterval(retryInterval);
+      }
+    };
+
+    window.addEventListener("marketing-scripts-ready", onAnalyticsReady);
+    window.addEventListener("gtm-ready", onAnalyticsReady);
+    window.addEventListener("ga-ready", onAnalyticsReady);
+    window.addEventListener("yandex-metrika-ready", onAnalyticsReady);
+    window.addEventListener("meta-pixel-ready", onAnalyticsReady);
+    window.addEventListener("tiktok-pixel-ready", onAnalyticsReady);
+
+    return () => {
+      window.clearInterval(retryInterval);
+      window.removeEventListener("marketing-scripts-ready", onAnalyticsReady);
+      window.removeEventListener("gtm-ready", onAnalyticsReady);
+      window.removeEventListener("ga-ready", onAnalyticsReady);
+      window.removeEventListener("yandex-metrika-ready", onAnalyticsReady);
+      window.removeEventListener("meta-pixel-ready", onAnalyticsReady);
+      window.removeEventListener("tiktok-pixel-ready", onAnalyticsReady);
+    };
+  }, []);
+
   return (
     <div
       className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
@@ -13,6 +74,7 @@ export default function Thanks() {
         path="/thanks"
         title="Спасибо за заявку | TRAVELSPACE"
         description="Спасибо за заявку. Менеджер TRAVELSPACE свяжется с вами в ближайшее время."
+        noIndexrobots
       />
 
       <div className="mx-auto max-w-3xl overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
@@ -26,14 +88,16 @@ export default function Thanks() {
             Спасибо!
           </h1>
           <p className="relative mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
-            Мы получили вашу заявку. Менеджер TRAVELSPACE свяжется с вами в ближайшее время.
+            Мы получили вашу заявку. Менеджер TRAVELSPACE свяжется с вами в
+            ближайшее время.
           </p>
         </div>
 
         <div className="px-6 py-8 sm:px-10 sm:py-10">
           <div className="rounded-3xl border border-orange-100 bg-orange-50 px-5 py-5 text-center sm:px-7">
             <p className="text-base font-semibold leading-relaxed text-neutral-900 sm:text-lg">
-              Если в течение часа мы Вам не перезвоним, пожалуйста оставьте еще раз заявку, скорее всего Вы ошиблись в номере
+              Если в течение часа мы Вам не перезвоним, пожалуйста оставьте еще
+              раз заявку, скорее всего Вы ошиблись в номере
             </p>
           </div>
 
