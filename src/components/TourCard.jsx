@@ -39,6 +39,126 @@ function formatCurrency(currency) {
   return currency || "BYN";
 }
 
+function hasPriceValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function getDateTime(date, field = "start") {
+  const value = date?.[field] || date?.start || date?.end || "";
+  const time = Date.parse(value);
+
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+function isDateActual(date) {
+  const startTime = getDateTime(date, "start");
+  const fallbackEndTime = getDateTime(date, "end");
+  const compareTime =
+    startTime !== Number.MAX_SAFE_INTEGER ? startTime : fallbackEndTime;
+
+  if (compareTime === Number.MAX_SAFE_INTEGER) return true;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return compareTime >= today.getTime();
+}
+
+function isPromotionDate(date) {
+  return (
+    date?.promotion_active === true &&
+    (hasPriceValue(date?.promotion_price) ||
+      hasPriceValue(date?.promotion_additional_price))
+  );
+}
+
+function getTourDates(tour) {
+  const legacyDates = Array.isArray(tour?.dates) ? tour.dates : [];
+  const chainDates = Array.isArray(tour?.chains)
+    ? tour.chains.flatMap((chain) =>
+        Array.isArray(chain?.dates) ? chain.dates : [],
+      )
+    : [];
+
+  return [...legacyDates, ...chainDates];
+}
+
+function getPromotionDates(tour) {
+  return getTourDates(tour)
+    .filter((date) => date?.status !== "hidden" && isDateActual(date))
+    .filter(isPromotionDate)
+    .sort((a, b) => getDateTime(a) - getDateTime(b));
+}
+
+function getAdditionalPrice(source, fallbackTour) {
+  if (hasAdditionalPrice(source)) return source.additional_price;
+  if (hasAdditionalPrice(fallbackTour)) return fallbackTour.additional_price;
+  return "";
+}
+
+function getAdditionalCurrency(source, fallbackTour) {
+  if (hasAdditionalPrice(source)) {
+    return (
+      source.additional_currency || source.currency || fallbackTour?.currency
+    );
+  }
+
+  if (hasAdditionalPrice(fallbackTour)) {
+    return fallbackTour.additional_currency || fallbackTour.currency;
+  }
+
+  return source?.currency || fallbackTour?.currency;
+}
+
+function getPromotionPriceParts(item, fallbackTour) {
+  if (!isPromotionDate(item)) return null;
+
+  const oldMain = item.price ?? item.price_from ?? fallbackTour?.price_from;
+  const oldCurrency = item.currency || fallbackTour?.currency;
+  const oldAdditional = getAdditionalPrice(item, fallbackTour);
+  const oldAdditionalCurrency = getAdditionalCurrency(item, fallbackTour);
+
+  return {
+    oldMain,
+    oldCurrency,
+    oldAdditional,
+    oldAdditionalCurrency,
+    newMain: hasPriceValue(item.promotion_price)
+      ? item.promotion_price
+      : oldMain,
+    newCurrency: item.promotion_currency || oldCurrency,
+    newAdditional: hasPriceValue(item.promotion_additional_price)
+      ? item.promotion_additional_price
+      : oldAdditional,
+    newAdditionalCurrency:
+      item.promotion_additional_currency || oldAdditionalCurrency,
+  };
+}
+
+function PriceParts({
+  main,
+  currency,
+  additional,
+  additionalCurrency,
+  currencyClassName,
+}) {
+  return (
+    <>
+      {main}{" "}
+      <span className={currencyClassName}>{formatCurrency(currency)}</span>
+      {hasPriceValue(additional) && (
+        <>
+          <span className="mx-1 text-current opacity-50">+</span>
+          {additional}{" "}
+          <span className={currencyClassName}>
+            {formatCurrency(additionalCurrency)}
+          </span>
+        </>
+      )}
+    </>
+  );
+}
+
 const DEPARTURE_CITY_GENITIVE = {
   Минск: "Минска",
   Гомель: "Гомеля",
@@ -77,13 +197,80 @@ function formatDepartureFrom(tour) {
   return `из ${cities.join(", ")}`;
 }
 
+function formatDate(date) {
+  if (!date) return "";
+
+  const [year, month, day] = date.split("-");
+
+  return `${day}.${month}.${year}`;
+}
+
+function fmtDateRangeCompact(d) {
+  if (!d?.start) return "";
+  if (!d?.end) return formatDate(d.start);
+
+  return `${formatDate(d.start)}–${formatDate(d.end)}`;
+}
+
 function PriceView({
   item,
-  priceClassName = "font-heading text-3xl font-bold text-neutral-900 whitespace-nowrap",
+  promotionDate,
+  priceClassName = "font-heading text-3xl font-bold text-neutral-900",
   currencyClassName = "text-sm font-medium text-[#C2410C]",
 }) {
+  const hasAvailableDates = getTourDates(item).some(
+    (date) => date?.status !== "hidden" && isDateActual(date),
+  );
+
+  if (!hasAvailableDates) {
+    return (
+      <div
+        className="mt-1 max-w-[220px] rounded-2xl bg-orange-50 px-3 py-2 text-sm normal-case leading-snug tracking-normal text-[#9A3412]"
+        data-testid="tour-card-no-dates"
+      >
+        <span className="font-semibold">Дорогие туристы,</span>
+        <br />
+        дат пока что нет
+      </div>
+    );
+  }
+
+  const promoParts = promotionDate
+    ? getPromotionPriceParts(promotionDate, item)
+    : null;
+
+  if (promoParts) {
+    return (
+      <div className="min-w-0">
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">
+          Акционная цена
+        </p>
+        <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
+          <p className="text-sm font-medium text-neutral-400 line-through decoration-rose-400 decoration-2">
+            <PriceParts
+              main={promoParts.oldMain}
+              currency={promoParts.oldCurrency}
+              additional={promoParts.oldAdditional}
+              additionalCurrency={promoParts.oldAdditionalCurrency}
+              currencyClassName="text-xs"
+            />
+          </p>
+          <p className={priceClassName}>
+            <PriceParts
+              main={promoParts.newMain}
+              currency={promoParts.newCurrency}
+              additional={promoParts.newAdditional}
+              additionalCurrency={promoParts.newAdditionalCurrency}
+              currencyClassName={currencyClassName}
+            />
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <p className={priceClassName}>
+    <p className={`${priceClassName} whitespace-nowrap`}>
       {item.price_from}{" "}
       <span className={currencyClassName}>{formatCurrency(item.currency)}</span>
       {hasAdditionalPrice(item) && (
@@ -129,6 +316,9 @@ function getCardImage(tour, variant = "desktop") {
 export default function TourCard({ tour, size = "default" }) {
   const isLarge = size === "large";
   const description = cleanDescription(tour);
+  const promotionDates = getPromotionDates(tour);
+  const hasPromotions = promotionDates.length > 0;
+
   return (
     <Link
       to={`/tours/${tour.slug}`}
@@ -165,7 +355,7 @@ export default function TourCard({ tour, size = "default" }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent sm:from-black/70 sm:via-black/15" />
 
         {/* Badges over image — clearly readable */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pr-3">
           {(tour.badges || []).slice(0, 3).map((b) => (
             <Badge
               key={b}
@@ -178,6 +368,11 @@ export default function TourCard({ tour, size = "default" }) {
               {b}
             </Badge>
           ))}
+          {hasPromotions && (
+            <Badge className="pointer-events-none rounded-full border-rose-500 bg-rose-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm hover:bg-rose-500">
+              Есть акции
+            </Badge>
+          )}
         </div>
 
         {/* Title and meta overlay (compact, similar heights between cards) */}

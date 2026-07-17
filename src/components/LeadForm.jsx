@@ -42,6 +42,20 @@ function isDepartureDateActual(date) {
   return sourceTime >= today.getTime();
 }
 
+function hasDatePriceValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function isPromotionDepartureDate(date) {
+  return (
+    date &&
+    typeof date !== "string" &&
+    date.promotion_active === true &&
+    (hasDatePriceValue(date.promotion_price) ||
+      hasDatePriceValue(date.promotion_additional_price))
+  );
+}
+
 function collectTourDates(tour) {
   if (!tour) return [];
 
@@ -236,11 +250,11 @@ export default function LeadForm({
     const [year, month, day] = String(date).split("-");
     return `${day}.${month}.${year}`;
   };
-  const availableDates = useMemo(() => {
+  const availableDateOptions = useMemo(() => {
     const sourceDates = dates?.length ? dates : collectTourDates(selectedTour);
-    const seen = new Set();
+    const seen = new Map();
 
-    return sourceDates
+    sourceDates
       .filter((d) => {
         if (!d) return false;
         if (typeof d === "string") return true;
@@ -252,20 +266,36 @@ export default function LeadForm({
           parseDateTime(a.start || a.end) - parseDateTime(b.start || b.end)
         );
       })
-      .map((d) =>
-        typeof d === "string"
-          ? d
-          : [formatDate(d.start), formatDate(d.end)]
-              .filter(Boolean)
-              .join(" → "),
-      )
-      .filter(Boolean)
-      .filter((label) => {
-        if (seen.has(label)) return false;
-        seen.add(label);
-        return true;
+      .forEach((d) => {
+        const label =
+          typeof d === "string"
+            ? d
+            : [formatDate(d.start), formatDate(d.end)]
+                .filter(Boolean)
+                .join(" → ");
+
+        if (!label) return;
+
+        const isPromotion = isPromotionDepartureDate(d);
+        const existing = seen.get(label);
+
+        if (existing) {
+          existing.isPromotion = existing.isPromotion || isPromotion;
+          return;
+        }
+
+        seen.set(label, {
+          label,
+          isPromotion,
+        });
       });
+
+    return Array.from(seen.values());
   }, [dates, selectedTour]);
+
+  const selectedDateOption = availableDateOptions.find(
+    (option) => option.label === form.date,
+  );
 
   return (
     <form
@@ -380,26 +410,49 @@ export default function LeadForm({
         </div>
       )}
 
-      {availableDates.length > 0 && (variant === "tour" || form.tour_slug) && (
-        <div>
-          <Label>Актуальная дата</Label>
-          <Select
-            value={form.date || ""}
-            onValueChange={(v) => update("date", v)}
-          >
-            <SelectTrigger className="mt-1" data-testid="lead-date-select">
-              <SelectValue placeholder="Без выбора даты" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[240px] overflow-y-auto">
-              {availableDates.map((d) => (
-                <SelectItem key={d} value={d} className="py-2">
-                  {d}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {availableDateOptions.length > 0 &&
+        (variant === "tour" || form.tour_slug) && (
+          <div>
+            <Label>Актуальная дата</Label>
+            <Select
+              value={form.date || ""}
+              onValueChange={(v) => update("date", v)}
+            >
+              <SelectTrigger className="mt-1" data-testid="lead-date-select">
+                {form.date ? (
+                  <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="truncate">{form.date}</span>
+                    {selectedDateOption?.isPromotion && (
+                      <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600">
+                        акция
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <SelectValue placeholder="Без выбора даты" />
+                )}
+              </SelectTrigger>
+              <SelectContent className="max-h-[240px] overflow-y-auto">
+                {availableDateOptions.map((option) => (
+                  <SelectItem
+                    key={option.label}
+                    value={option.label}
+                    className="py-2"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 pr-2">
+                      <span className="truncate">{option.label}</span>
+                      {option.isPromotion && (
+                        <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600">
+                          акция
+                        </span>
+                      )}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       {selectedHotel && (
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
           <p className="text-sm">

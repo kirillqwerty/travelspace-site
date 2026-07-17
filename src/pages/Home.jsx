@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronRight,
@@ -13,6 +13,12 @@ import {
   Quote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import TourCard from "@/components/TourCard";
@@ -92,6 +98,7 @@ export default function Home() {
   const [reviews, setReviews] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
+  const [detailsPromotion, setDetailsPromotion] = useState(null);
   const videoRef = useRef(null);
   const benefitsSection = getBenefitsSection(settings);
 
@@ -119,18 +126,13 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  // One tour per region for the main "destinations" grid
-  const destinationTours = (() => {
-    const map = new Map();
-    tours.forEach((t) => {
-      if (!t.region_slug) return;
-      const current = map.get(t.region_slug);
-      if (!current || (t.order ?? 99) < (current.order ?? 99)) {
-        map.set(t.region_slug, t);
-      }
-    });
-    return Array.from(map.values());
-  })();
+  const destinationTours = useMemo(() => {
+    return [...tours].sort(
+      (a, b) =>
+        Number(a.order ?? 99) - Number(b.order ?? 99) ||
+        String(a.title || "").localeCompare(String(b.title || ""), "ru"),
+    );
+  }, [tours]);
 
   const hits = tours
     .filter((t) => (t.badges || []).includes("Хит"))
@@ -217,7 +219,7 @@ export default function Home() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {destinationTours.slice(0, 4).map((tour) => (
+            {destinationTours.map((tour) => (
               <TourCard key={tour.id || tour.slug} tour={tour} />
             ))}
           </div>
@@ -348,8 +350,7 @@ export default function Home() {
         flex
         flex-col
 
-        h-full
-        min-h-[540px]
+        h-[560px]
       "
                 >
                   {p.image && (
@@ -368,10 +369,17 @@ export default function Home() {
                       {p.title}
                     </h3>
 
-                    <RichText
-                      text={p.description}
-                      className="mt-3 flex-1 text-base leading-7 text-neutral-600"
-                    />
+                    <div className="mt-3 max-h-[150px] overflow-hidden text-base leading-7 text-neutral-600">
+                      <RichText text={p.description} />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setDetailsPromotion(p)}
+                      className="mt-4 w-fit text-base font-medium text-[#C2410C] hover:text-[#9A3412]"
+                    >
+                      Подробнее об акции
+                    </button>
 
                     {getPromotionTourSlug(p) && (
                       <Link
@@ -397,6 +405,55 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      <Dialog
+        open={!!detailsPromotion}
+        onOpenChange={(v) => !v && setDetailsPromotion(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-3xl">
+              {detailsPromotion?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailsPromotion?.image && (
+            <img
+              src={mediaUrl(detailsPromotion.image)}
+              alt={detailsPromotion.title}
+              className="mt-2 h-72 w-full rounded-2xl object-cover"
+              loading="lazy"
+            />
+          )}
+
+          <RichText
+            text={detailsPromotion?.description}
+            className="text-sm leading-6 text-neutral-700"
+          />
+
+          <div className="flex flex-wrap gap-3">
+            {detailsPromotion && getPromotionTourSlug(detailsPromotion) && (
+              <Link
+                to={`/tours/${getPromotionTourSlug(detailsPromotion)}`}
+                onClick={() => setDetailsPromotion(null)}
+                className="rounded-full border border-neutral-300 hover:border-neutral-500 px-4 py-2 text-sm font-medium grid place-items-center"
+              >
+                Посмотреть тур →
+              </Link>
+            )}
+
+            <Button
+              onClick={() => {
+                setDetailsPromotion(null);
+                setLeadOpen(true);
+              }}
+              className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white"
+            >
+              Получить консультацию
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <LeadDialog
         open={leadOpen}

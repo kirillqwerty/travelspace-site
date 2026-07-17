@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import {
   Select,
@@ -18,6 +19,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Plus,
   Edit,
@@ -27,6 +34,8 @@ import {
   Loader2,
   Copy,
   Check,
+  Calendar as CalendarIcon,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { mediaUrl } from "@/lib/media";
@@ -70,6 +79,15 @@ const SCHEMAS = {
         label: "Длительность",
         type: "text",
         placeholder: "например 7 дней / 6 ночей",
+      },
+      {
+        key: "auto_delete_dates_days_before",
+        label: "Удалять даты за сколько дней до начала",
+        type: "number",
+        placeholder: "0",
+        min: 0,
+        max: 3650,
+        hint: "Расчёт ведётся по времени Беларуси (GMT+3). Например: если указать 5, дата 30.07 удалится 25.07 в 00:00. Значение 0 удаляет дату в день начала.",
       },
       {
         key: "departure_cities",
@@ -218,7 +236,7 @@ const SCHEMAS = {
   },
   promotions: {
     label: (p) => p.title,
-    description: (p) => p.valid_until && `до ${p.valid_until}`,
+    description: (p) => p.valid_until && `до ${formatDate(p.valid_until)}`,
     image: (p) => p.image,
     fields: [
       { key: "title", label: "Название акции", type: "text" },
@@ -227,8 +245,9 @@ const SCHEMAS = {
       {
         key: "valid_until",
         label: "Действует до",
-        type: "text",
-        placeholder: "01.03.2026",
+        type: "date",
+        placeholder: "дд.мм.гггг",
+        hint: "Дата сохраняется и выводится в формате дд.мм.гггг.",
       },
       {
         key: "related_tour_slugs",
@@ -271,6 +290,9 @@ const TOUR_EXTRA_KEYS = [
   "map_embed",
 ];
 
+const firstDefined = (...values) =>
+  values.find((value) => value !== undefined && value !== null);
+
 const normalizeDateRecord = (d = {}, record = {}) => ({
   id: d.id || uid(),
   start: d.start || "",
@@ -280,6 +302,58 @@ const normalizeDateRecord = (d = {}, record = {}) => ({
   price_type: d.price_type || d.priceType || "from",
   status: d.status || "active",
   comment: d.comment || "",
+  promotion_active:
+    d.promotion_active === true ||
+    d.promotionActive === true ||
+    d.is_promotion === true ||
+    d.isPromotion === true ||
+    d.is_promo === true ||
+    d.isPromo === true ||
+    d.promo === true,
+  promotion_price: firstDefined(
+    d.promotion_price,
+    d.promotionPrice,
+    d.promo_price,
+    d.promoPrice,
+    d.sale_price,
+    d.salePrice,
+    d.discount_price,
+    d.discountPrice,
+    "",
+  ),
+  promotion_currency:
+    d.promotion_currency ||
+    d.promotionCurrency ||
+    d.promo_currency ||
+    d.promoCurrency ||
+    d.sale_currency ||
+    d.saleCurrency ||
+    d.currency ||
+    record.currency ||
+    "BYN",
+  promotion_additional_price: firstDefined(
+    d.promotion_additional_price,
+    d.promotionAdditionalPrice,
+    d.promo_additional_price,
+    d.promoAdditionalPrice,
+    d.sale_additional_price,
+    d.saleAdditionalPrice,
+    d.discount_additional_price,
+    d.discountAdditionalPrice,
+    "",
+  ),
+  promotion_additional_currency:
+    d.promotion_additional_currency ||
+    d.promotionAdditionalCurrency ||
+    d.promo_additional_currency ||
+    d.promoAdditionalCurrency ||
+    d.sale_additional_currency ||
+    d.saleAdditionalCurrency ||
+    d.additional_currency ||
+    record.additional_currency ||
+    d.currency ||
+    record.currency ||
+    "BYN",
 });
 
 const ROOM_MEAL_PLANS = [
@@ -311,6 +385,27 @@ const DEFAULT_TOUR_BADGES = [
 const normalizeMealPriceRecord = (meal = {}, fallback = {}) => ({
   price: meal.price ?? fallback.price ?? "",
   currency: meal.currency || fallback.currency || "BYN",
+  promotion_price: firstDefined(
+    meal.promotion_price,
+    meal.promotionPrice,
+    meal.promo_price,
+    meal.promoPrice,
+    meal.sale_price,
+    meal.salePrice,
+    meal.discount_price,
+    meal.discountPrice,
+    "",
+  ),
+  promotion_currency:
+    meal.promotion_currency ||
+    meal.promotionCurrency ||
+    meal.promo_currency ||
+    meal.promoCurrency ||
+    meal.sale_currency ||
+    meal.saleCurrency ||
+    meal.currency ||
+    fallback.currency ||
+    "BYN",
 });
 
 const hasMealPriceValue = (meal = {}) =>
@@ -364,6 +459,28 @@ const normalizeRoomDatePriceRecord = (price = {}, room = {}) => {
     currency: fallback.currency,
     additional_price: fallback.additional_price,
     additional_currency: fallback.additional_currency,
+    promotion_additional_price: firstDefined(
+      price.promotion_additional_price,
+      price.promotionAdditionalPrice,
+      price.promo_additional_price,
+      price.promoAdditionalPrice,
+      price.sale_additional_price,
+      price.saleAdditionalPrice,
+      price.discount_additional_price,
+      price.discountAdditionalPrice,
+      "",
+    ),
+    promotion_additional_currency:
+      price.promotion_additional_currency ||
+      price.promotionAdditionalCurrency ||
+      price.promo_additional_currency ||
+      price.promoAdditionalCurrency ||
+      price.sale_additional_currency ||
+      price.saleAdditionalCurrency ||
+      price.additional_currency ||
+      price.currency ||
+      room.currency ||
+      "BYN",
   };
 };
 
@@ -416,7 +533,12 @@ const normalizeChains = (record = {}) => {
   if (Array.isArray(record.chains) && record.chains.length) {
     return record.chains.map((chain, index) => ({
       id: chain.id || uid(),
-      title: chain.title || chain.name || `Цепочка ${index + 1}`,
+      title:
+        chain.title !== undefined
+          ? chain.title
+          : chain.name !== undefined
+            ? chain.name
+            : `Цепочка ${index + 1}`,
       description: chain.description || "",
       order: chain.order ?? index + 1,
       active: chain.active !== false,
@@ -464,6 +586,7 @@ const normalizeRecord = (record = {}, collectionName) => {
     region_name: record.region_name || "",
     region_slug: record.region_slug || slugify(record.region_name || ""),
     duration: record.duration || "",
+    auto_delete_dates_days_before: record.auto_delete_dates_days_before ?? 0,
     departure_city: record.departure_city || "Минск",
     departure_cities: Array.isArray(record.departure_cities)
       ? record.departure_cities.filter(Boolean)
@@ -750,6 +873,16 @@ export default function AdminCollection({ name }) {
 
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {name === "tours" && (
+                      <Link
+                        to={`/admin/tours/${it.id}/pdf-program`}
+                        className="inline-flex items-center gap-1 text-xs text-violet-700 hover:underline"
+                        data-testid={`admin-pdf-program-${it.id}`}
+                      >
+                        <FileText className="size-3.5" /> PDF-программа
+                      </Link>
+                    )}
+
+                    {name === "tours" && (
                       <button
                         type="button"
                         onClick={() => onDuplicateTour(it)}
@@ -905,6 +1038,14 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
     }
 
     if (collectionName === "promotions") {
+      const normalizedValidUntil = normalizeDateToDisplay(form.valid_until);
+
+      if (form.valid_until && !isValidDisplayDate(normalizedValidUntil)) {
+        toast.error("Укажите дату в формате дд.мм.гггг");
+        return;
+      }
+
+      payload.valid_until = normalizedValidUntil;
       payload.related_tour_slugs = Array.isArray(form.related_tour_slugs)
         ? form.related_tour_slugs
             .map((slug) => String(slug || "").trim())
@@ -1020,8 +1161,10 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                 ) : f.type === "number" ? (
                   <Input
                     type="number"
+                    min={f.min}
+                    max={f.max}
                     value={form[f.key] ?? ""}
-                    placeholder="Введите число"
+                    placeholder={f.placeholder || "Введите число"}
                     onChange={(e) =>
                       update(
                         f.key,
@@ -1126,8 +1269,69 @@ const uid = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : String(Date.now() + Math.random());
+const DATE_DISPLAY_RE = /^(\d{2})\.(\d{2})\.(\d{4})$/;
+const DATE_LEGACY_RE = /^(\d{4})[-.\/](\d{2})[-.\/](\d{2})$/;
+
+const toDateObject = (day, month, year) => {
+  const d = new Date(Number(year), Number(month) - 1, Number(day));
+
+  if (
+    d.getFullYear() !== Number(year) ||
+    d.getMonth() !== Number(month) - 1 ||
+    d.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return d;
+};
+
+const formatDateForStorage = (date) => {
+  if (!date) return "";
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}.${month}.${year}`;
+};
+
+const normalizeDateToDisplay = (value = "") => {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) return "";
+
+  const datePart = rawValue.split(/[ T]/)[0];
+
+  const display = datePart.match(DATE_DISPLAY_RE);
+  if (display) {
+    const [, day, month, year] = display;
+    return toDateObject(day, month, year) ? datePart : rawValue;
+  }
+
+  const legacy = datePart.match(DATE_LEGACY_RE);
+  if (legacy) {
+    const [, year, month, day] = legacy;
+    return toDateObject(day, month, year)
+      ? `${day}.${month}.${year}`
+      : rawValue;
+  }
+
+  return rawValue;
+};
+
+const isValidDisplayDate = (value = "") => {
+  const match = String(value || "")
+    .trim()
+    .match(DATE_DISPLAY_RE);
+  if (!match) return false;
+
+  const [, day, month, year] = match;
+  return !!toDateObject(day, month, year);
+};
+
 const formatDateInput = (value = "") => {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
+  const normalized = normalizeDateToDisplay(value);
+  const digits = normalized.replace(/\D/g, "").slice(0, 8);
 
   if (digits.length <= 2) return digits;
   if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
@@ -1135,14 +1339,61 @@ const formatDateInput = (value = "") => {
   return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
 };
 
+const parseDateForCalendar = (value = "") => {
+  const normalized = normalizeDateToDisplay(value);
+  const match = normalized.match(DATE_DISPLAY_RE);
+
+  if (!match) return undefined;
+
+  const [, day, month, year] = match;
+  return toDateObject(day, month, year) || undefined;
+};
+
 function DateInput({ value, onChange, placeholder = "дд.мм.гггг" }) {
+  const displayValue = normalizeDateToDisplay(value);
+  const selectedDate = parseDateForCalendar(displayValue);
+
   return (
-    <Input
-      value={value || ""}
-      placeholder={placeholder}
-      inputMode="numeric"
-      onChange={(e) => onChange(formatDateInput(e.target.value))}
-    />
+    <div className="mt-1 space-y-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={`w-full justify-start text-left font-normal ${
+              displayValue ? "text-neutral-900" : "text-neutral-500"
+            }`}
+          >
+            <CalendarIcon className="mr-2 size-4" />
+            {isValidDisplayDate(displayValue) ? displayValue : placeholder}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <CalendarPicker
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => {
+              if (date) onChange(formatDateForStorage(date));
+            }}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+
+      <div className="flex gap-2">
+        <Input
+          value={displayValue}
+          placeholder={placeholder}
+          inputMode="numeric"
+          onChange={(e) => onChange(formatDateInput(e.target.value))}
+        />
+        {displayValue && (
+          <Button type="button" variant="outline" onClick={() => onChange("")}>
+            Очистить
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1449,6 +1700,10 @@ function TourExtraFields({ form, setForm }) {
         tourSlug={tourSlug}
         tourCurrency={form.currency || "BYN"}
         tourPrice={form.price_from || ""}
+        tourAdditionalPrice={form.additional_price || ""}
+        tourAdditionalCurrency={
+          form.additional_currency || form.currency || "BYN"
+        }
       />
 
       <MemoFaqField value={form.faq || []} onChange={updateFaq} />
@@ -2045,6 +2300,9 @@ function DatesField({
   onChange,
   defaultCurrency = "BYN",
   defaultPrice = "",
+  defaultAdditionalPrice = "",
+  defaultAdditionalCurrency = "BYN",
+  roomPricingMode = false,
 }) {
   const items = value.length
     ? value
@@ -2058,6 +2316,12 @@ function DatesField({
           price_type: "from",
           status: "active",
           comment: "",
+          promotion_active: false,
+          promotion_price: "",
+          promotion_currency: defaultCurrency,
+          promotion_additional_price: "",
+          promotion_additional_currency:
+            defaultAdditionalCurrency || defaultCurrency,
         },
       ];
 
@@ -2079,6 +2343,12 @@ function DatesField({
         price_type: "from",
         status: "active",
         comment: "",
+        promotion_active: false,
+        promotion_price: "",
+        promotion_currency: defaultCurrency,
+        promotion_additional_price: "",
+        promotion_additional_currency:
+          defaultAdditionalCurrency || defaultCurrency,
       },
     ]);
 
@@ -2092,12 +2362,23 @@ function DatesField({
         {items.map((item, index) => (
           <div
             key={item.id || index}
-            className="rounded-xl border p-3 space-y-2"
+            className={`rounded-xl border p-3 space-y-3 transition ${
+              item.promotion_active
+                ? "border-rose-200 bg-rose-50/40"
+                : "border-neutral-200 bg-white"
+            }`}
           >
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-xs font-medium text-neutral-500">
-                Дата {index + 1}
-              </p>
+              <div>
+                <p className="text-xs font-medium text-neutral-500">
+                  Дата {index + 1}
+                </p>
+                {item.promotion_active && (
+                  <p className="mt-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rose-700">
+                    Акционная дата
+                  </p>
+                )}
+              </div>
 
               <Button
                 type="button"
@@ -2143,7 +2424,10 @@ function DatesField({
                   value={item.price ?? ""}
                   placeholder="Цена"
                   onChange={(e) =>
-                    updateItem(index, { price: Number(e.target.value) })
+                    updateItem(index, {
+                      price:
+                        e.target.value === "" ? "" : Number(e.target.value),
+                    })
                   }
                   className="mt-1"
                 />
@@ -2200,6 +2484,144 @@ function DatesField({
                 </Select>
               </div>
             </div>
+
+            <div className="rounded-xl border border-rose-100 bg-white p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <Label className="text-sm font-semibold text-neutral-900">
+                    Акционная дата
+                  </Label>
+                  <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                    {roomPricingMode
+                      ? "Включите акцию для этой даты. Сниженные цены по номерам и типам питания задаются ниже, в прайслисте каждого номера."
+                      : "Включите, чтобы на сайте старая цена была зачёркнута, а рядом показалась новая."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 rounded-full bg-neutral-50 px-3 py-2">
+                  <span className="text-xs font-medium text-neutral-600">
+                    {item.promotion_active ? "Включена" : "Выключена"}
+                  </span>
+                  <Switch
+                    checked={item.promotion_active === true}
+                    onCheckedChange={(promotion_active) =>
+                      updateItem(index, {
+                        promotion_active,
+                        promotion_currency:
+                          item.promotion_currency ||
+                          item.currency ||
+                          defaultCurrency,
+                        promotion_additional_currency:
+                          item.promotion_additional_currency ||
+                          defaultAdditionalCurrency ||
+                          defaultCurrency,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              {item.promotion_active && !roomPricingMode && (
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-lg bg-rose-50/70 p-3">
+                    <Label className="text-xs">Новая основная цена</Label>
+                    <div className="mt-1 grid grid-cols-[minmax(0,1fr)_92px] gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={item.promotion_price ?? ""}
+                        placeholder={
+                          item.price ? `Было ${item.price}` : "Новая цена"
+                        }
+                        onChange={(e) =>
+                          updateItem(index, {
+                            promotion_price:
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value),
+                          })
+                        }
+                      />
+
+                      <Select
+                        value={
+                          item.promotion_currency ||
+                          item.currency ||
+                          defaultCurrency
+                        }
+                        onValueChange={(promotion_currency) =>
+                          updateItem(index, { promotion_currency })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BYN">BYN</SelectItem>
+                          <SelectItem value="RUB">RUB</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-rose-50/70 p-3">
+                    <Label className="text-xs">Новая придаточная цена</Label>
+                    <div className="mt-1 grid grid-cols-[minmax(0,1fr)_92px] gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={item.promotion_additional_price ?? ""}
+                        placeholder={
+                          defaultAdditionalPrice
+                            ? `Было ${defaultAdditionalPrice}`
+                            : "Если есть доплата"
+                        }
+                        onChange={(e) =>
+                          updateItem(index, {
+                            promotion_additional_price:
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value),
+                          })
+                        }
+                      />
+
+                      <Select
+                        value={
+                          item.promotion_additional_currency ||
+                          defaultAdditionalCurrency ||
+                          item.currency ||
+                          defaultCurrency
+                        }
+                        onValueChange={(promotion_additional_currency) =>
+                          updateItem(index, { promotion_additional_currency })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BYN">BYN</SelectItem>
+                          <SelectItem value="RUB">RUB</SelectItem>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {item.promotion_active && roomPricingMode && (
+                <div className="mt-3 rounded-lg border border-rose-100 bg-rose-50/70 px-3 py-2 text-xs leading-relaxed text-rose-800">
+                  Акция включена. Новые цены появятся только у этой даты и
+                  настраиваются в таблицах «Прайслист номера по датам и
+                  питанию».
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -2216,7 +2638,15 @@ function DatesField({
   );
 }
 
-function ChainsField({ value, onChange, tourSlug, tourCurrency, tourPrice }) {
+function ChainsField({
+  value,
+  onChange,
+  tourSlug,
+  tourCurrency,
+  tourPrice,
+  tourAdditionalPrice = "",
+  tourAdditionalCurrency = "BYN",
+}) {
   const items = value.length
     ? value
     : [
@@ -2307,6 +2737,11 @@ function ChainsField({ value, onChange, tourSlug, tourCurrency, tourPrice }) {
               onChange={(dates) => updateItem(index, { dates })}
               defaultCurrency={tourCurrency}
               defaultPrice={tourPrice}
+              defaultAdditionalPrice={tourAdditionalPrice}
+              defaultAdditionalCurrency={tourAdditionalCurrency || tourCurrency}
+              roomPricingMode={(chain.hotels || []).some((hotel) =>
+                (hotel.rooms || []).some((room) => room.active !== false),
+              )}
             />
 
             <MemoChainHotelsField
@@ -2666,12 +3101,37 @@ function RoomDatePricesField({
       return {
         price: meal.price ?? priceRecord?.price ?? "",
         currency: meal.currency || priceRecord?.currency || defaultCurrency,
+        promotion_price: firstDefined(
+          meal.promotion_price,
+          meal.promotionPrice,
+          priceRecord?.promotion_price,
+          priceRecord?.promotionPrice,
+          "",
+        ),
+        promotion_currency:
+          meal.promotion_currency ||
+          meal.promotionCurrency ||
+          priceRecord?.promotion_currency ||
+          priceRecord?.promotionCurrency ||
+          meal.currency ||
+          priceRecord?.currency ||
+          defaultCurrency,
       };
     }
 
     return {
       price: meal.price ?? "",
       currency: meal.currency || defaultCurrency,
+      promotion_price: firstDefined(
+        meal.promotion_price,
+        meal.promotionPrice,
+        "",
+      ),
+      promotion_currency:
+        meal.promotion_currency ||
+        meal.promotionCurrency ||
+        meal.currency ||
+        defaultCurrency,
     };
   };
 
@@ -2681,6 +3141,17 @@ function RoomDatePricesField({
     return {
       additional_price: priceRecord?.additional_price ?? "",
       additional_currency:
+        priceRecord?.additional_currency ||
+        priceRecord?.currency ||
+        defaultCurrency,
+      promotion_additional_price: firstDefined(
+        priceRecord?.promotion_additional_price,
+        priceRecord?.promotionAdditionalPrice,
+        "",
+      ),
+      promotion_additional_currency:
+        priceRecord?.promotion_additional_currency ||
+        priceRecord?.promotionAdditionalCurrency ||
         priceRecord?.additional_currency ||
         priceRecord?.currency ||
         defaultCurrency,
@@ -2704,6 +3175,12 @@ function RoomDatePricesField({
       additional_price: current?.additional_price ?? "",
       additional_currency:
         current?.additional_currency || current?.currency || defaultCurrency,
+      promotion_additional_price: current?.promotion_additional_price ?? "",
+      promotion_additional_currency:
+        current?.promotion_additional_currency ||
+        current?.additional_currency ||
+        current?.currency ||
+        defaultCurrency,
       ...patch,
     };
 
@@ -2717,7 +3194,14 @@ function RoomDatePricesField({
     const hasAnyPrice =
       ROOM_MEAL_PLANS.some((plan) =>
         hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
-      ) || hasMealPriceValue({ price: nextRecord.additional_price });
+      ) ||
+      ROOM_MEAL_PLANS.some((plan) =>
+        hasMealPriceValue({
+          price: nextRecord.meal_prices?.[plan.key]?.promotion_price,
+        }),
+      ) ||
+      hasMealPriceValue({ price: nextRecord.additional_price }) ||
+      hasMealPriceValue({ price: nextRecord.promotion_additional_price });
 
     onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
   };
@@ -2751,6 +3235,12 @@ function RoomDatePricesField({
       additional_price: current?.additional_price ?? "",
       additional_currency:
         current?.additional_currency || current?.currency || defaultCurrency,
+      promotion_additional_price: current?.promotion_additional_price ?? "",
+      promotion_additional_currency:
+        current?.promotion_additional_currency ||
+        current?.additional_currency ||
+        current?.currency ||
+        defaultCurrency,
     };
 
     const otherRecords = (value || []).filter(
@@ -2763,7 +3253,14 @@ function RoomDatePricesField({
     const hasAnyPrice =
       ROOM_MEAL_PLANS.some((plan) =>
         hasMealPriceValue(nextRecord.meal_prices?.[plan.key]),
-      ) || hasMealPriceValue({ price: nextRecord.additional_price });
+      ) ||
+      ROOM_MEAL_PLANS.some((plan) =>
+        hasMealPriceValue({
+          price: nextRecord.meal_prices?.[plan.key]?.promotion_price,
+        }),
+      ) ||
+      hasMealPriceValue({ price: nextRecord.additional_price }) ||
+      hasMealPriceValue({ price: nextRecord.promotion_additional_price });
 
     onChange(hasAnyPrice ? [...otherRecords, nextRecord] : otherRecords);
   };
@@ -2813,7 +3310,14 @@ function RoomDatePricesField({
                 return (
                   <tr key={key} className="align-top">
                     <td className="border-b border-neutral-100 px-3 py-3 font-medium text-neutral-700">
-                      {formatDateLabel(date)}
+                      <div className="flex min-w-[130px] flex-col items-start gap-1.5">
+                        <span>{formatDateLabel(date)}</span>
+                        {date.promotion_active === true && (
+                          <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+                            Акция
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="border-b border-l border-neutral-100 px-3 py-3">
@@ -2821,44 +3325,102 @@ function RoomDatePricesField({
                         const additional = getDateAdditionalRecord(date);
 
                         return (
-                          <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              value={additional.additional_price ?? ""}
-                              onChange={(e) =>
-                                updateDateAdditionalPrice(date, {
-                                  additional_price:
-                                    e.target.value === ""
-                                      ? ""
-                                      : Number(e.target.value),
-                                })
-                              }
-                              placeholder="+ доп."
-                            />
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                value={additional.additional_price ?? ""}
+                                onChange={(e) =>
+                                  updateDateAdditionalPrice(date, {
+                                    additional_price:
+                                      e.target.value === ""
+                                        ? ""
+                                        : Number(e.target.value),
+                                  })
+                                }
+                                placeholder="+ доп."
+                              />
 
-                            <Select
-                              value={
-                                additional.additional_currency ||
-                                defaultCurrency
-                              }
-                              onValueChange={(additional_currency) =>
-                                updateDateAdditionalPrice(date, {
-                                  additional_currency,
-                                })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {currencies.map((currency) => (
-                                  <SelectItem key={currency} value={currency}>
-                                    {currency}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <Select
+                                value={
+                                  additional.additional_currency ||
+                                  defaultCurrency
+                                }
+                                onValueChange={(additional_currency) =>
+                                  updateDateAdditionalPrice(date, {
+                                    additional_currency,
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {currencies.map((currency) => (
+                                    <SelectItem key={currency} value={currency}>
+                                      {currency}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {date.promotion_active === true && (
+                              <div className="rounded-lg border border-rose-100 bg-rose-50/70 p-2">
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+                                  Доплата по акции
+                                </p>
+                                <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={
+                                      additional.promotion_additional_price ??
+                                      ""
+                                    }
+                                    onChange={(e) =>
+                                      updateDateAdditionalPrice(date, {
+                                        promotion_additional_price:
+                                          e.target.value === ""
+                                            ? ""
+                                            : Number(e.target.value),
+                                      })
+                                    }
+                                    placeholder="Новая доплата"
+                                  />
+
+                                  <Select
+                                    value={
+                                      additional.promotion_additional_currency ||
+                                      additional.additional_currency ||
+                                      defaultCurrency
+                                    }
+                                    onValueChange={(
+                                      promotion_additional_currency,
+                                    ) =>
+                                      updateDateAdditionalPrice(date, {
+                                        promotion_additional_currency,
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {currencies.map((currency) => (
+                                        <SelectItem
+                                          key={currency}
+                                          value={currency}
+                                        >
+                                          {currency}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })()}
@@ -2872,39 +3434,92 @@ function RoomDatePricesField({
                           key={plan.key}
                           className="border-b border-l border-neutral-100 px-3 py-3"
                         >
-                          <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              value={meal.price ?? ""}
-                              onChange={(e) =>
-                                updateMealPrice(date, plan.key, {
-                                  price:
-                                    e.target.value === ""
-                                      ? ""
-                                      : Number(e.target.value),
-                                })
-                              }
-                              placeholder="Цена"
-                            />
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                value={meal.price ?? ""}
+                                onChange={(e) =>
+                                  updateMealPrice(date, plan.key, {
+                                    price:
+                                      e.target.value === ""
+                                        ? ""
+                                        : Number(e.target.value),
+                                  })
+                                }
+                                placeholder="Цена"
+                              />
 
-                            <Select
-                              value={meal.currency || defaultCurrency}
-                              onValueChange={(currency) =>
-                                updateMealPrice(date, plan.key, { currency })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {currencies.map((currency) => (
-                                  <SelectItem key={currency} value={currency}>
-                                    {currency}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <Select
+                                value={meal.currency || defaultCurrency}
+                                onValueChange={(currency) =>
+                                  updateMealPrice(date, plan.key, { currency })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {currencies.map((currency) => (
+                                    <SelectItem key={currency} value={currency}>
+                                      {currency}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {date.promotion_active === true && (
+                              <div className="rounded-lg border border-rose-100 bg-rose-50/70 p-2">
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+                                  Цена по акции
+                                </p>
+                                <div className="grid grid-cols-[minmax(90px,1fr)_82px] gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={meal.promotion_price ?? ""}
+                                    onChange={(e) =>
+                                      updateMealPrice(date, plan.key, {
+                                        promotion_price:
+                                          e.target.value === ""
+                                            ? ""
+                                            : Number(e.target.value),
+                                      })
+                                    }
+                                    placeholder="Новая цена"
+                                  />
+
+                                  <Select
+                                    value={
+                                      meal.promotion_currency ||
+                                      meal.currency ||
+                                      defaultCurrency
+                                    }
+                                    onValueChange={(promotion_currency) =>
+                                      updateMealPrice(date, plan.key, {
+                                        promotion_currency,
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {currencies.map((currency) => (
+                                        <SelectItem
+                                          key={currency}
+                                          value={currency}
+                                        >
+                                          {currency}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                       );
@@ -3110,6 +3725,8 @@ function areTourExtraFieldsEqual(prevProps, nextProps) {
     prevSlug === nextSlug &&
     prev.currency === next.currency &&
     prev.price_from === next.price_from &&
+    prev.additional_price === next.additional_price &&
+    prev.additional_currency === next.additional_currency &&
     TOUR_EXTRA_KEYS.every((key) => prev[key] === next[key])
   );
 }

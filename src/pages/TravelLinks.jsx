@@ -34,6 +34,19 @@ function getPriceLabel(tour) {
   return `${priceType} ${tour.price_from} ${currency}${additional}`;
 }
 
+function hasTourDates(tour) {
+  const legacyDates = Array.isArray(tour?.dates) ? tour.dates : [];
+  const chainDates = Array.isArray(tour?.chains)
+    ? tour.chains
+        .filter((chain) => chain?.active !== false)
+        .flatMap((chain) => (Array.isArray(chain?.dates) ? chain.dates : []))
+    : [];
+
+  return [...legacyDates, ...chainDates].some(
+    (date) => date?.status !== "hidden",
+  );
+}
+
 function getDepartureLabel(tour) {
   const cities = Array.isArray(tour?.departure_cities)
     ? tour.departure_cities
@@ -103,6 +116,7 @@ export default function TravelLinks() {
             actualTours.map((tour) => {
               const image = getTourImage(tour);
               const description = getDescription(tour);
+              const hasDates = hasTourDates(tour);
 
               return (
                 <Link
@@ -153,9 +167,15 @@ export default function TravelLinks() {
                       </span>
                     </div>
 
-                    <p className="mt-3 text-sm font-black text-neutral-950">
-                      {getPriceLabel(tour)}
-                    </p>
+                    {hasDates ? (
+                      <p className="mt-3 text-sm font-black text-neutral-950">
+                        {getPriceLabel(tour)}
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-xs font-semibold leading-snug text-[#C2410C]">
+                        Дорогие туристы, дат пока что нет
+                      </p>
+                    )}
                   </div>
                 </Link>
               );

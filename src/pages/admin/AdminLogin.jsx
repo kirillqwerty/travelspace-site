@@ -8,7 +8,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 
 export default function AdminLogin() {
   const { user, login, loading } = useAuth();
-  const [email, setEmail] = useState("admin@belarustours.by");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");

@@ -3,28 +3,24 @@ import { api } from "@/lib/api";
 import { Link } from "react-router-dom";
 import { Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
 import { RichText } from "@/lib/richText";
+import { formatDate } from "@/lib/formatDate";
 
 export default function Promotions() {
-  const formatDate = (date) => {
-    if (!date) return "";
-
-    const d = new Date(date);
-
-    return d.toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
   const { tours } = useSiteData();
   const [items, setItems] = useState([]);
   const [pickedTour, setPickedTour] = useState(null);
+  const [detailsPromotion, setDetailsPromotion] = useState(null);
   useEffect(() => {
     api.get("/promotions").then((r) => setItems(r.data));
   }, []);
@@ -56,11 +52,11 @@ export default function Promotions() {
         Спецпредложения сезона
       </h1>
 
-      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {items.map((p) => (
           <div
             key={p.id}
-            className="rounded-2xl overflow-hidden border border-neutral-200 bg-white flex flex-col h-full"
+            className="rounded-2xl overflow-hidden border border-neutral-200 bg-white flex flex-col"
           >
             {p.image && (
               <div className="h-64 bg-neutral-100">
@@ -72,15 +68,33 @@ export default function Promotions() {
                 />
               </div>
             )}
-            <div className="p-6 flex-1 flex flex-col">
+            <div className="p-6 flex flex-col">
               <div className="inline-flex items-center gap-2 text-xs text-[#C2410C] uppercase tracking-wider font-medium">
                 <Tag className="size-3.5" /> Акция
               </div>
+
               <h2 className="font-heading text-2xl mt-2">{p.title}</h2>
-              <RichText
-                text={p.description}
-                className="mt-3 text-sm leading-6 text-neutral-600"
-              />
+
+              <div
+                className="mt-3 text-sm leading-6 text-neutral-600 overflow-hidden"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  maxHeight: "4.5rem",
+                }}
+              >
+                <RichText text={p.description} />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDetailsPromotion(p)}
+                className="mt-3 w-fit text-sm font-medium text-[#C2410C] hover:text-[#9A3412]"
+              >
+                Подробнее об акции
+              </button>
+
               {p.valid_until && (
                 <p className="mt-4 text-xs text-neutral-500 inline-flex items-center gap-1">
                   <Calendar className="size-3.5" /> Действует до{" "}
@@ -102,13 +116,14 @@ export default function Promotions() {
                 </div>
               )}
 
-              <div className="mt-auto pt-5 flex flex-wrap gap-3">
+              <div className="mt-5 flex flex-wrap gap-3">
                 <Button
                   onClick={() => setPickedTour(p)}
                   className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white"
                 >
                   Получить условия
                 </Button>
+
                 {getRelatedTours(p)[0] && (
                   <Link
                     to={`/tours/${getRelatedTours(p)[0].slug}`}
@@ -122,6 +137,65 @@ export default function Promotions() {
           </div>
         ))}
       </div>
+
+      <Dialog
+        open={!!detailsPromotion}
+        onOpenChange={(v) => !v && setDetailsPromotion(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-3xl">
+              {detailsPromotion?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailsPromotion?.image && (
+            <img
+              src={mediaUrl(detailsPromotion.image)}
+              alt={detailsPromotion.title}
+              className="mt-2 h-72 w-full rounded-2xl object-cover"
+              loading="lazy"
+            />
+          )}
+
+          {detailsPromotion?.valid_until && (
+            <p className="text-xs text-neutral-500 inline-flex items-center gap-1">
+              <Calendar className="size-3.5" /> Действует до{" "}
+              {formatDate(detailsPromotion.valid_until)}
+            </p>
+          )}
+
+          <RichText
+            text={detailsPromotion?.description}
+            className="text-sm leading-6 text-neutral-700"
+          />
+
+          {detailsPromotion && getRelatedTours(detailsPromotion).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {getRelatedTours(detailsPromotion).map((tour) => (
+                <Link
+                  key={tour.slug}
+                  to={`/tours/${tour.slug}`}
+                  onClick={() => setDetailsPromotion(null)}
+                  className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-medium text-[#C2410C] hover:bg-orange-100"
+                >
+                  {tour.title}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <Button
+            onClick={() => {
+              setPickedTour(detailsPromotion);
+              setDetailsPromotion(null);
+            }}
+            className="w-fit rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white"
+          >
+            Получить условия
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       <LeadDialog
         open={!!pickedTour}

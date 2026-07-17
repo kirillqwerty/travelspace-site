@@ -41,6 +41,7 @@ import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminLeads from "@/pages/admin/AdminLeads";
 import AdminCollection from "@/pages/admin/AdminCollection";
+import AdminTourPdfProgram from "@/pages/admin/AdminTourPdfProgram";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 
@@ -301,6 +302,10 @@ export default function App() {
                 <Route
                   path="tours"
                   element={<AdminCollection name="tours" />}
+                />
+                <Route
+                  path="tours/:tourId/pdf-program"
+                  element={<AdminTourPdfProgram />}
                 />
 
                 <Route

@@ -26,6 +26,7 @@ import {
   Phone,
   Hotel,
   WalletCards,
+  Percent,
   Download,
 } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
@@ -119,6 +120,10 @@ function hasPriceValue(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
 }
 
+function firstPriceValue(...values) {
+  return values.find(hasPriceValue) ?? "";
+}
+
 function hasMealPriceValue(meal = {}) {
   return hasPriceValue(meal.price) || hasPriceValue(meal.additional_price);
 }
@@ -131,14 +136,139 @@ function hasAdditionalPrice(item) {
   );
 }
 
-function getAdditionalPriceSource(item, fallbackTour) {
-  if (hasAdditionalPrice(item)) return item;
-  if (hasAdditionalPrice(fallbackTour)) return fallbackTour;
-  return null;
-}
-
 function formatCurrency(currency) {
   return currency || "BYN";
+}
+
+function getMainPrice(source, fallbackTour) {
+  return source?.price ?? source?.price_from ?? fallbackTour?.price_from ?? "";
+}
+
+function getMainCurrency(source, fallbackTour) {
+  return source?.currency || fallbackTour?.currency || "BYN";
+}
+
+function getAdditionalPrice(source, fallbackTour) {
+  if (hasAdditionalPrice(source)) return source.additional_price;
+  if (hasAdditionalPrice(fallbackTour)) return fallbackTour.additional_price;
+  return "";
+}
+
+function getAdditionalCurrency(source, fallbackTour) {
+  if (hasAdditionalPrice(source)) {
+    return (
+      source.additional_currency || source.currency || fallbackTour?.currency
+    );
+  }
+
+  if (hasAdditionalPrice(fallbackTour)) {
+    return fallbackTour.additional_currency || fallbackTour.currency;
+  }
+
+  return source?.currency || fallbackTour?.currency || "BYN";
+}
+
+function isPromotionDate(date) {
+  return date?.promotion_active === true;
+}
+
+function getPromotionPriceParts(item, fallbackTour) {
+  if (
+    !isPromotionDate(item) ||
+    (!hasPriceValue(item?.promotion_price) &&
+      !hasPriceValue(item?.promotion_additional_price))
+  ) {
+    return null;
+  }
+
+  const oldMain = getMainPrice(item, fallbackTour);
+  const oldCurrency = getMainCurrency(item, fallbackTour);
+  const oldAdditional = getAdditionalPrice(item, fallbackTour);
+  const oldAdditionalCurrency = getAdditionalCurrency(item, fallbackTour);
+
+  return {
+    oldMain,
+    oldCurrency,
+    oldAdditional,
+    oldAdditionalCurrency,
+    newMain: hasPriceValue(item.promotion_price)
+      ? item.promotion_price
+      : oldMain,
+    newCurrency: item.promotion_currency || oldCurrency,
+    newAdditional: hasPriceValue(item.promotion_additional_price)
+      ? item.promotion_additional_price
+      : oldAdditional,
+    newAdditionalCurrency:
+      item.promotion_additional_currency || oldAdditionalCurrency,
+  };
+}
+
+function PriceParts({
+  main,
+  currency,
+  additional,
+  additionalCurrency,
+  currencyClassName = "",
+}) {
+  return (
+    <>
+      {main}{" "}
+      <span className={currencyClassName}>{formatCurrency(currency)}</span>
+      {hasPriceValue(additional) && (
+        <>
+          <span className="mx-1 text-current opacity-50">+</span>
+          {additional}{" "}
+          <span className={currencyClassName}>
+            {formatCurrency(additionalCurrency)}
+          </span>
+        </>
+      )}
+    </>
+  );
+}
+
+function PromotionPriceInline({
+  item,
+  fallbackTour,
+  className = "",
+  oldClassName = "",
+  newClassName = "",
+  currencyClassName = "",
+  oldCurrencyClassName = "",
+  showBadge = false,
+}) {
+  const promoParts = getPromotionPriceParts(item, fallbackTour);
+  if (!promoParts) return null;
+
+  return (
+    <span className={`inline-flex min-w-0 flex-col gap-0.5 ${className}`}>
+      {showBadge && (
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+          <Percent className="size-3" /> Акция
+        </span>
+      )}
+      <span
+        className={`text-neutral-400 line-through decoration-rose-400 decoration-2 ${oldClassName}`}
+      >
+        <PriceParts
+          main={promoParts.oldMain}
+          currency={promoParts.oldCurrency}
+          additional={promoParts.oldAdditional}
+          additionalCurrency={promoParts.oldAdditionalCurrency}
+          currencyClassName={oldCurrencyClassName}
+        />
+      </span>
+      <span className={`font-semibold text-rose-600 ${newClassName}`}>
+        <PriceParts
+          main={promoParts.newMain}
+          currency={promoParts.newCurrency}
+          additional={promoParts.newAdditional}
+          additionalCurrency={promoParts.newAdditionalCurrency}
+          currencyClassName={currencyClassName}
+        />
+      </span>
+    </span>
+  );
 }
 
 // CHANGE: хелперы для цены конкретного номера отеля по выбранной дате
@@ -170,6 +300,27 @@ function getRoomDatePrice(room, date, mealPlanKey = "breakfast") {
     (!hasStructuredMealPrices ? mealPrices.breakfast : null);
 
   if (rawMeal && hasMealPriceValue(rawMeal)) {
+    const promotionPrice = firstPriceValue(
+      rawMeal.promotion_price,
+      rawMeal.promotionPrice,
+      rawMeal.promo_price,
+      rawMeal.promoPrice,
+      rawMeal.sale_price,
+      rawMeal.salePrice,
+      rawMeal.discount_price,
+      rawMeal.discountPrice,
+    );
+    const promotionAdditionalPrice = firstPriceValue(
+      priceRecord.promotion_additional_price,
+      priceRecord.promotionAdditionalPrice,
+      priceRecord.promo_additional_price,
+      priceRecord.promoAdditionalPrice,
+      priceRecord.sale_additional_price,
+      priceRecord.saleAdditionalPrice,
+      priceRecord.discount_additional_price,
+      priceRecord.discountAdditionalPrice,
+    );
+
     return {
       price: rawMeal.price ?? "",
       currency: rawMeal.currency || priceRecord.currency || room.currency,
@@ -178,6 +329,33 @@ function getRoomDatePrice(room, date, mealPlanKey = "breakfast") {
       additional_currency:
         priceRecord.additional_currency ||
         priceRecord.additionalCurrency ||
+        priceRecord.currency ||
+        rawMeal.currency ||
+        room.currency,
+      promotion_active:
+        isPromotionDate(date) &&
+        (hasPriceValue(promotionPrice) ||
+          hasPriceValue(promotionAdditionalPrice)),
+      promotion_price: promotionPrice,
+      promotion_currency:
+        rawMeal.promotion_currency ||
+        rawMeal.promotionCurrency ||
+        rawMeal.promo_currency ||
+        rawMeal.promoCurrency ||
+        rawMeal.sale_currency ||
+        rawMeal.saleCurrency ||
+        rawMeal.currency ||
+        priceRecord.currency ||
+        room.currency,
+      promotion_additional_price: promotionAdditionalPrice,
+      promotion_additional_currency:
+        priceRecord.promotion_additional_currency ||
+        priceRecord.promotionAdditionalCurrency ||
+        priceRecord.promo_additional_currency ||
+        priceRecord.promoAdditionalCurrency ||
+        priceRecord.sale_additional_currency ||
+        priceRecord.saleAdditionalCurrency ||
+        priceRecord.additional_currency ||
         priceRecord.currency ||
         rawMeal.currency ||
         room.currency,
@@ -196,10 +374,48 @@ function getRoomDatePrice(room, date, mealPlanKey = "breakfast") {
   const hasAdditionalPrice = hasPriceValue(priceRecord?.additional_price);
 
   if (hasMainPrice || hasAdditionalPrice) {
+    const promotionPrice = firstPriceValue(
+      priceRecord?.promotion_price,
+      priceRecord?.promotionPrice,
+      priceRecord?.promo_price,
+      priceRecord?.promoPrice,
+      priceRecord?.sale_price,
+      priceRecord?.salePrice,
+      priceRecord?.discount_price,
+      priceRecord?.discountPrice,
+    );
+    const promotionAdditionalPrice = firstPriceValue(
+      priceRecord?.promotion_additional_price,
+      priceRecord?.promotionAdditionalPrice,
+      priceRecord?.promo_additional_price,
+      priceRecord?.promoAdditionalPrice,
+      priceRecord?.sale_additional_price,
+      priceRecord?.saleAdditionalPrice,
+      priceRecord?.discount_additional_price,
+      priceRecord?.discountAdditionalPrice,
+    );
+
     return {
       ...priceRecord,
       currency: priceRecord.currency || room.currency,
       additional_currency:
+        priceRecord.additional_currency ||
+        priceRecord.currency ||
+        room.currency,
+      promotion_active:
+        isPromotionDate(date) &&
+        (hasPriceValue(promotionPrice) ||
+          hasPriceValue(promotionAdditionalPrice)),
+      promotion_price: promotionPrice,
+      promotion_currency:
+        priceRecord.promotion_currency ||
+        priceRecord.promotionCurrency ||
+        priceRecord.currency ||
+        room.currency,
+      promotion_additional_price: promotionAdditionalPrice,
+      promotion_additional_currency:
+        priceRecord.promotion_additional_currency ||
+        priceRecord.promotionAdditionalCurrency ||
         priceRecord.additional_currency ||
         priceRecord.currency ||
         room.currency,
@@ -225,17 +441,43 @@ function getRoomDatePrice(room, date, mealPlanKey = "breakfast") {
   return null;
 }
 
+function getEffectiveRoomPriceRecord(priceRecord) {
+  if (!priceRecord) return null;
+
+  if (!getPromotionPriceParts(priceRecord)) return priceRecord;
+
+  return {
+    ...priceRecord,
+    price: hasPriceValue(priceRecord.promotion_price)
+      ? priceRecord.promotion_price
+      : priceRecord.price,
+    currency: priceRecord.promotion_currency || priceRecord.currency || "BYN",
+    additional_price: hasPriceValue(priceRecord.promotion_additional_price)
+      ? priceRecord.promotion_additional_price
+      : priceRecord.additional_price,
+    additional_currency:
+      priceRecord.promotion_additional_currency ||
+      priceRecord.additional_currency ||
+      priceRecord.currency ||
+      "BYN",
+  };
+}
+
 function formatRoomPrice(priceRecord) {
   if (!priceRecord) return "";
 
+  const effectivePrice = getEffectiveRoomPriceRecord(priceRecord);
+
   const parts = [];
-  if (hasPriceValue(priceRecord.price)) {
-    parts.push(`${priceRecord.price} ${formatCurrency(priceRecord.currency)}`);
-  }
-  if (hasPriceValue(priceRecord.additional_price)) {
+  if (hasPriceValue(effectivePrice.price)) {
     parts.push(
-      `${priceRecord.additional_price} ${formatCurrency(
-        priceRecord.additional_currency,
+      `${effectivePrice.price} ${formatCurrency(effectivePrice.currency)}`,
+    );
+  }
+  if (hasPriceValue(effectivePrice.additional_price)) {
+    parts.push(
+      `${effectivePrice.additional_price} ${formatCurrency(
+        effectivePrice.additional_currency,
       )}`,
     );
   }
@@ -244,9 +486,10 @@ function formatRoomPrice(priceRecord) {
 }
 
 function formatRoomBasePrice(priceRecord) {
-  if (!priceRecord || !hasPriceValue(priceRecord.price)) return "";
+  const effectivePrice = getEffectiveRoomPriceRecord(priceRecord);
+  if (!effectivePrice || !hasPriceValue(effectivePrice.price)) return "";
 
-  return `${priceRecord.price} ${formatCurrency(priceRecord.currency)}`;
+  return `${effectivePrice.price} ${formatCurrency(effectivePrice.currency)}`;
 }
 
 function getRoomPricesForDate(room, date) {
@@ -264,7 +507,11 @@ function getRoomMinPrice(room, dates = []) {
   const priced = allPrices
     .map((price) => ({
       ...price,
-      numeric: Number(price.price),
+      numeric: Number(
+        hasPriceValue(price.promotion_price) && price.promotion_active === true
+          ? price.promotion_price
+          : price.price,
+      ),
     }))
     .filter((price) => Number.isFinite(price.numeric));
 
@@ -272,48 +519,190 @@ function getRoomMinPrice(room, dates = []) {
   return priced.sort((a, b) => a.numeric - b.numeric)[0];
 }
 
+function getPromotionRoomMinPrice(chains = [], date) {
+  if (!date) return null;
+
+  const targetChain = chains.find((chain, chainIndex) => {
+    const chainId = chain.id || `chain-${chainIndex}`;
+
+    if (date._chainId && String(chainId) === String(date._chainId)) {
+      return true;
+    }
+
+    return (chain.dates || []).some(
+      (chainDate) => String(dateKey(chainDate)) === String(dateKey(date)),
+    );
+  });
+
+  if (!targetChain) return null;
+
+  const promotionPrices = (targetChain.hotels || [])
+    .flatMap((hotel) => hotel.rooms || [])
+    .filter((room) => room.active !== false)
+    .flatMap((room) =>
+      getRoomPricesForDate(room, date)
+        .map((item) => item.price)
+        .filter((price) => getPromotionPriceParts(price)),
+    )
+    .map((price) => ({
+      ...price,
+      numeric: Number(
+        hasPriceValue(price.promotion_price)
+          ? price.promotion_price
+          : price.price,
+      ),
+    }))
+    .filter((price) => Number.isFinite(price.numeric));
+
+  if (!promotionPrices.length) return null;
+
+  return promotionPrices.sort((a, b) => a.numeric - b.numeric)[0];
+}
+
+function MobilePromotionPricePreview({ date, chains, tour }) {
+  if (!date) return null;
+
+  const roomPrice = getPromotionRoomMinPrice(chains, date);
+  const datePrice = getPromotionPriceParts(date, tour);
+
+  return (
+    <div
+      className="mt-2 rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white px-3.5 py-3 shadow-sm sm:hidden"
+      aria-live="polite"
+      data-testid="mobile-promotion-price-preview"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-rose-700">
+            <WalletCards className="size-3.5" /> Цена по акции
+          </span>
+          {/* <p className="mt-0.5 truncate text-xs font-medium text-neutral-700">
+            {fmtDateRangeCompact(date)}
+          </p> */}
+        </div>
+
+        {roomPrice ? (
+          <span className="flex shrink-0 items-end gap-1 text-right text-rose-700">
+            <span className="pb-0.5 text-[10px] font-semibold uppercase">
+              от
+            </span>
+            <RoomPriceRecordInline
+              priceRecord={roomPrice}
+              className="items-end"
+              oldClassName="text-[10px]"
+              newClassName="font-heading text-lg font-bold"
+            />
+          </span>
+        ) : datePrice ? (
+          <DatePriceInline
+            item={date}
+            fallbackTour={tour}
+            className="shrink-0 items-end text-right text-rose-700"
+            currencyClassName="text-xs"
+          />
+        ) : (
+          <span className="shrink-0 text-xs font-semibold text-neutral-600">
+            Уточнить у менеджера
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoomPriceRecordInline({
+  priceRecord,
+  className = "",
+  oldClassName = "text-[10px] sm:text-xs",
+  newClassName = "font-semibold",
+  currencyClassName = "",
+  showBadge = false,
+}) {
+  if (!priceRecord) return null;
+
+  if (getPromotionPriceParts(priceRecord)) {
+    return (
+      <PromotionPriceInline
+        item={priceRecord}
+        className={className}
+        oldClassName={oldClassName}
+        newClassName={newClassName}
+        currencyClassName={currencyClassName}
+        oldCurrencyClassName="text-[9px] sm:text-[10px]"
+        showBadge={showBadge}
+      />
+    );
+  }
+
+  return <span className={className}>{formatRoomPrice(priceRecord)}</span>;
+}
+
 function RoomPriceInline({
   room,
   date,
   className = "",
   mealPlanKey = "breakfast",
+  showBadge = false,
 }) {
   const priceRecord = getRoomDatePrice(room, date, mealPlanKey);
-  if (!priceRecord) return null;
 
-  return <span className={className}>{formatRoomPrice(priceRecord)}</span>;
+  return (
+    <RoomPriceRecordInline
+      priceRecord={priceRecord}
+      className={className}
+      showBadge={showBadge}
+    />
+  );
 }
 
 function RoomMinPriceInline({ room, dates = [], className = "" }) {
   const priceRecord = getRoomMinPrice(room, dates);
   if (!priceRecord) return null;
 
-  return <span className={className}>от {formatRoomPrice(priceRecord)}</span>;
+  return (
+    <span className={className}>
+      <span className="mr-1">от</span>
+      <RoomPriceRecordInline
+        priceRecord={priceRecord}
+        className="inline-flex"
+        oldClassName="text-[9px]"
+        newClassName="font-semibold"
+      />
+    </span>
+  );
 }
 
 function PriceInline({
   item,
   fallbackTour,
+  promotionDate,
   className = "",
   currencyClassName = "",
 }) {
-  const additionalSource = getAdditionalPriceSource(item, fallbackTour);
+  if (promotionDate) {
+    return (
+      <PromotionPriceInline
+        item={promotionDate}
+        fallbackTour={fallbackTour || item}
+        className="mt-1"
+        oldClassName="font-heading text-2xl font-bold"
+        newClassName={className}
+        currencyClassName={currencyClassName}
+        oldCurrencyClassName="text-sm font-medium"
+        showBadge
+      />
+    );
+  }
 
   return (
     <span className={className}>
-      {item.price ?? item.price_from}{" "}
-      <span className={currencyClassName}>
-        {formatCurrency(item.currency || fallbackTour?.currency)}
-      </span>
-      {additionalSource && (
-        <>
-          <span className="mx-1 opacity-70">+</span>
-          {additionalSource.additional_price}{" "}
-          <span className={currencyClassName}>
-            {formatCurrency(additionalSource.additional_currency)}
-          </span>
-        </>
-      )}
+      <PriceParts
+        main={getMainPrice(item, fallbackTour)}
+        currency={getMainCurrency(item, fallbackTour)}
+        additional={getAdditionalPrice(item, fallbackTour)}
+        additionalCurrency={getAdditionalCurrency(item, fallbackTour)}
+        currencyClassName={currencyClassName}
+      />
     </span>
   );
 }
@@ -340,8 +729,96 @@ function fmtDateRangeCompact(d) {
   return `${formatDate(d.start)}–${formatDate(d.end)}`;
 }
 
+function PromotionDateHint({
+  promotionDate,
+  label = "Акция только на даты",
+  className = "",
+  dateClassName = "",
+}) {
+  if (!promotionDate) return null;
+
+  return (
+    <p className={`text-xs leading-5 text-neutral-600 ${className}`}>
+      <span>{label}: </span>
+      <span className={`font-semibold text-neutral-900 ${dateClassName}`}>
+        {fmtDateRangeCompact(promotionDate)}
+      </span>
+    </p>
+  );
+}
+
 function dateKey(d) {
   return d?.id || d?.start || fmtDateRange(d);
+}
+
+function dateDomKey(d) {
+  return String(dateKey(d) || "date")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function isElementVisible(target) {
+  if (!target || typeof window === "undefined") return false;
+
+  const rect = target.getBoundingClientRect();
+  const style = window.getComputedStyle(target);
+
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    style.display !== "none" &&
+    style.visibility !== "hidden"
+  );
+}
+
+function findPromotionDateTarget(date) {
+  if (!date || typeof document === "undefined") return null;
+
+  const key = dateDomKey(date);
+  const pageTargets = Array.from(
+    document.querySelectorAll(
+      `[data-promo-scroll-target="true"][data-promo-date-key="${key}"]`,
+    ),
+  );
+  const fallbackTargets = Array.from(
+    document.querySelectorAll(`[data-promo-date-key="${key}"]`),
+  );
+
+  return (
+    pageTargets.find(isElementVisible) ||
+    fallbackTargets.find(isElementVisible) ||
+    pageTargets[0] ||
+    fallbackTargets[0] ||
+    null
+  );
+}
+
+function scrollToPromotionDate(date, { highlight = true } = {}) {
+  const target = findPromotionDateTarget(date);
+
+  if (!target) return false;
+
+  const scrollAgain = (delay) => {
+    window.setTimeout(() => {
+      const currentTarget = findPromotionDateTarget(date) || target;
+      scrollToAnchorTarget(currentTarget, "smooth");
+    }, delay);
+  };
+
+  scrollToAnchorTarget(target, "smooth");
+  scrollAgain(120);
+  scrollAgain(320);
+  scrollAgain(650);
+
+  if (highlight) {
+    target.classList.add("ring-2", "ring-rose-400", "ring-offset-2");
+    window.setTimeout(() => {
+      target.classList.remove("ring-2", "ring-rose-400", "ring-offset-2");
+    }, 2200);
+  }
+
+  return true;
 }
 
 const MONTH_NAMES_RU = [
@@ -508,6 +985,30 @@ function getHotelAnchorId(hotel, chain, chainIndex, hotelIndex) {
   return aliases[0] || `hotel-${chainIndex + 1}-${hotelIndex + 1}`;
 }
 
+function DateDialogChainTitle({ title }) {
+  const value = String(title || "").trim();
+  if (!value) return null;
+
+  const hotelTitleMatch = value.match(/^(.*?для\s+отеля\s+)(.+)$/i);
+
+  if (hotelTitleMatch) {
+    return (
+      <p className="mb-3 flex flex-wrap items-baseline gap-1.5 text-sm font-medium text-neutral-700 sm:text-base">
+        <span>{hotelTitleMatch[1]}</span>
+        <span className="font-heading text-base font-bold text-neutral-950 sm:text-lg">
+          {hotelTitleMatch[2]}
+        </span>
+      </p>
+    );
+  }
+
+  return (
+    <p className="mb-3 font-heading text-base font-bold text-neutral-950 sm:text-lg">
+      {value}
+    </p>
+  );
+}
+
 function getAnchorCandidates(hash = "") {
   const rawHash = decodeURIComponent(
     String(hash || "").replace(/^#/, ""),
@@ -537,7 +1038,10 @@ function getAnchorTarget(hash = "") {
 function scrollToAnchorTarget(target, behavior = "smooth") {
   if (!target) return;
 
-  const offset = window.innerWidth < 768 ? 92 : 116;
+  // На мобильном экране одновременно закреплены основной header и навигация
+  // по разделам тура. Оставляем небольшой дополнительный зазор, чтобы после
+  // прокрутки акционная дата целиком была видна под обоими sticky-блоками.
+  const offset = window.innerWidth < 768 ? 132 : 116;
   const top = target.getBoundingClientRect().top + window.scrollY - offset;
 
   window.scrollTo({
@@ -546,13 +1050,20 @@ function scrollToAnchorTarget(target, behavior = "smooth") {
   });
 }
 
+function resolveChainTitle(chain, chainIndex, fallback = "") {
+  if (!chain) return fallback;
+  if (chain.title !== undefined) return String(chain.title || "");
+  if (chain.name !== undefined) return String(chain.name || "");
+  return fallback;
+}
+
 function getUpcomingDatesFromChains(chains = []) {
   return chains
     .flatMap((chain, chainIndex) =>
       (chain.dates || []).map((date, dateIndex) => ({
         ...date,
         _chainId: chain.id || `chain-${chainIndex}`,
-        _chainTitle: chain.title || `Цепочка ${chainIndex + 1}`,
+        _chainTitle: resolveChainTitle(chain, chainIndex),
         _dateListKey: `${chain.id || chainIndex}-${date.id || date.start || dateIndex}`,
       })),
     )
@@ -581,7 +1092,33 @@ function DatePriceInline({
   currencyClassName = "",
   defaultFrom = true,
 }) {
-  if (!hasPriceValue(item?.price ?? item?.price_from)) return null;
+  if (
+    !hasPriceValue(item?.price ?? item?.price_from ?? fallbackTour?.price_from)
+  ) {
+    return null;
+  }
+
+  const promoParts = getPromotionPriceParts(item, fallbackTour);
+
+  if (promoParts) {
+    return (
+      <span className={className}>
+        {shouldShowFromPrice(item, defaultFrom) && (
+          <span className="mr-1 text-current opacity-70">от</span>
+        )}
+        <PromotionPriceInline
+          item={item}
+          fallbackTour={fallbackTour}
+          className="align-middle"
+          oldClassName="text-xs sm:text-sm"
+          newClassName="font-heading text-base sm:text-xl"
+          currencyClassName={currencyClassName}
+          oldCurrencyClassName="text-[10px] sm:text-xs"
+          showBadge={false}
+        />
+      </span>
+    );
+  }
 
   return (
     <span className={className}>
@@ -635,7 +1172,7 @@ function getTourChains(tour) {
       .filter((chain) => chain?.active !== false)
       .map((chain, index) => ({
         ...chain,
-        title: chain.title || chain.name || `Цепочка ${index + 1}`,
+        title: resolveChainTitle(chain, index),
         dates: sortDatesByStart(
           (chain.dates || []).filter(
             (d) => d.status !== "hidden" && isDateActual(d),
@@ -693,6 +1230,7 @@ export default function TourPage() {
   const [error, setError] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
+  const [mobilePromotionPreview, setMobilePromotionPreview] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedHotel, setSelectedHotel] = useState("");
   const [selectedRoomTitle, setSelectedRoomTitle] = useState("");
@@ -711,6 +1249,19 @@ export default function TourPage() {
   const roomHintObservers = useRef({});
   const { tours } = useSiteData();
   const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
+  const upcomingDates = useMemo(
+    () => getUpcomingDatesFromChains(chains),
+    [chains],
+  );
+  const promotionDates = useMemo(
+    () => upcomingDates.filter(isPromotionDate),
+    [upcomingDates],
+  );
+  const firstPromotionDate = promotionDates[0];
+  const firstPromotionRoomPrice = useMemo(
+    () => getPromotionRoomMinPrice(chains, firstPromotionDate),
+    [chains, firstPromotionDate],
+  );
 
   const setRoomScrollerHasMore = useCallback((carouselKey, hasMore) => {
     setRoomScrollerHints((prev) => {
@@ -821,7 +1372,6 @@ export default function TourPage() {
   useEffect(() => {
     setTour(null);
     setError(false);
-
     api
       .get(`/tours/${slug}`)
       .then((r) => setTour(r.data))
@@ -860,6 +1410,27 @@ export default function TourPage() {
       trackTourView(tour);
     }
   }, [tour?.slug]);
+
+  const handleShowPromotionDate = useCallback(() => {
+    setPricesOpen(false);
+
+    const tryScroll = (attempt = 0) => {
+      if (
+        scrollToPromotionDate(firstPromotionDate, { highlight: attempt === 0 })
+      ) {
+        return;
+      }
+
+      if (attempt < 10) {
+        window.setTimeout(() => tryScroll(attempt + 1), attempt < 3 ? 80 : 160);
+        return;
+      }
+
+      setPricesOpen(true);
+    };
+
+    window.requestAnimationFrame(() => tryScroll());
+  }, [firstPromotionDate]);
 
   useEffect(() => {
     if (!tour || !location.hash) return;
@@ -957,8 +1528,7 @@ export default function TourPage() {
     );
   }
 
-  const dates = getUpcomingDatesFromChains(chains);
-  const dateStrings = dates.map(fmtDateRange).filter(Boolean);
+  const dates = upcomingDates;
   const tourPath = `/tours/${tour.slug || slug}`;
   const programPdfUrl = `${API_BASE}/tours/${encodeURIComponent(
     tour.slug || slug,
@@ -1060,41 +1630,55 @@ export default function TourPage() {
 
             <div className="mt-7 flex flex-wrap items-end gap-4">
               <div
-                className="rounded-3xl bg-black/35 px-5 py-4 backdrop-blur-md border border-white/15"
+                className="inline-flex max-w-full flex-col items-start rounded-3xl border border-white/15 bg-black/35 px-5 py-4 backdrop-blur-md"
                 data-testid="tour-hero-price"
               >
                 <p className="text-xs uppercase tracking-[0.18em] text-white/70">
                   Стоимость {tour.price_type || "от"}
                 </p>
 
-                <PriceInline
-                  item={tour}
-                  className="font-heading text-4xl sm:text-5xl font-bold text-orange-300"
-                  currencyClassName="text-lg text-white/75"
-                />
+                <div className="mt-1 block">
+                  <PriceInline
+                    item={tour}
+                    className="font-heading text-4xl font-bold text-orange-300 sm:text-5xl"
+                    currencyClassName="text-lg text-white/75"
+                  />
+                </div>
+
+                {firstPromotionDate && (
+                  <button
+                    type="button"
+                    onClick={handleShowPromotionDate}
+                    className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-rose-200/70 bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-rose-700 shadow-sm transition hover:bg-white sm:text-[11px]"
+                    aria-label="Посмотреть акционные даты тура"
+                  >
+                    <Percent className="size-3.5 shrink-0" />
+                    <span className="truncate">Есть акции на даты</span>
+                  </button>
+                )}
               </div>
 
               {dates.length > 0 && (
                 <Button
                   type="button"
                   onClick={() => setPricesOpen(true)}
-                  className="rounded-full bg-sky-500 hover:bg-sky-600 text-white px-6 py-6"
+                  className="rounded-full bg-sky-500 px-6 py-6 text-white hover:bg-sky-600"
                   data-testid="tour-hero-dates-btn"
                 >
-                  <WalletCards className="size-4 mr-2" /> Даты и цены
+                  <WalletCards className="mr-2 size-4" /> Даты и цены
                 </Button>
               )}
 
-              <Button
+              {/* <Button
                 asChild
                 variant="outline"
                 className="rounded-full border-white/30 bg-white/15 px-6 py-6 text-white backdrop-blur-md hover:bg-white hover:text-neutral-900"
                 data-testid="tour-hero-program-download"
               >
                 <a href={programPdfUrl} download>
-                  <Download className="size-4 mr-2" /> Скачать программу
+                  <Download className="mr-2 size-4" /> Скачать программу
                 </a>
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>
@@ -1120,6 +1704,72 @@ export default function TourPage() {
           ))}
         </div>
       </div>
+
+      {firstPromotionDate && (
+        <section className="border-b border-rose-100 bg-rose-50/60">
+          <div className="section-container py-3 sm:py-4">
+            <div
+              className="flex flex-col gap-3 rounded-2xl border border-rose-100 bg-white/85 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5"
+              data-testid="tour-promotion-inline-notice"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-rose-700 sm:text-[11px]">
+                    <Percent className="size-3.5" /> Акции на даты
+                  </span>
+                  <span className="text-sm font-medium text-neutral-900">
+                    Скидки действуют только на отдельные заезды
+                  </span>
+                </div>
+
+                <p className="mt-1 text-xs leading-5 text-neutral-600 sm:text-sm">
+                  Ближайшая акционная дата:{" "}
+                  <span className="font-semibold text-neutral-950">
+                    {fmtDateRangeCompact(firstPromotionDate)}
+                  </span>
+                </p>
+
+                {(firstPromotionRoomPrice ||
+                  getPromotionPriceParts(firstPromotionDate, tour)) && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 lg:hidden">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-rose-700">
+                      Цена по акции
+                    </span>
+
+                    {firstPromotionRoomPrice ? (
+                      <span className="flex shrink-0 items-center text-right text-rose-700">
+                        <span className="mr-1 text-xs font-medium">от</span>
+                        <RoomPriceRecordInline
+                          priceRecord={firstPromotionRoomPrice}
+                          className="items-end"
+                          oldClassName="text-[10px]"
+                          newClassName="font-heading text-lg font-bold"
+                        />
+                      </span>
+                    ) : (
+                      <DatePriceInline
+                        item={firstPromotionDate}
+                        fallbackTour={tour}
+                        className="shrink-0 text-right text-rose-700"
+                        currencyClassName="text-xs"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleShowPromotionDate}
+                className="w-full shrink-0 rounded-full bg-rose-600 px-5 text-white hover:bg-rose-700 sm:w-auto"
+                data-testid="tour-promotion-inline-notice-action"
+              >
+                Посмотреть
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* <section className="section-container py-12 lg:py-20 grid lg:grid-cols-12 gap-10"> */}
       <section
@@ -1486,18 +2136,22 @@ export default function TourPage() {
                     className="rounded-3xl border border-neutral-200 bg-white p-4 sm:p-5"
                   >
                     <div className="space-y-4">
-                      <div>
-                        <h3 className="font-heading text-2xl">
-                          {chain.title || `Цепочка ${chainIndex + 1}`}
-                        </h3>
+                      {(chain.title || chain.description) && (
+                        <div>
+                          {chain.title && (
+                            <h3 className="font-heading text-2xl">
+                              {chain.title}
+                            </h3>
+                          )}
 
-                        {chain.description && (
-                          <RichText
-                            text={chain.description}
-                            className="mt-1 text-sm leading-6 text-neutral-600"
-                          />
-                        )}
-                      </div>
+                          {chain.description && (
+                            <RichText
+                              text={chain.description}
+                              className="mt-1 text-sm leading-6 text-neutral-600"
+                            />
+                          )}
+                        </div>
+                      )}
 
                       {chain.dates?.length > 0 && (
                         <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-3 sm:p-4">
@@ -1515,20 +2169,115 @@ export default function TourPage() {
                                 </p>
 
                                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                                  {group.items.map((d) => (
-                                    <span
-                                      key={dateKey(d)}
-                                      className="min-w-0 rounded-full bg-white px-2.5 py-1.5 text-center text-[11px] font-medium text-[#C2410C] shadow-sm ring-1 ring-orange-100 sm:px-3 sm:text-xs"
-                                    >
-                                      <span className="sm:hidden">
-                                        {fmtDateRangeCompact(d)}
-                                      </span>
-                                      <span className="hidden sm:inline">
-                                        {fmtDateRange(d)}
-                                      </span>
-                                    </span>
-                                  ))}
+                                  {group.items.map((d) => {
+                                    const promotion = isPromotionDate(d);
+                                    const currentDateKey = String(dateKey(d));
+                                    const previewOpen =
+                                      promotion &&
+                                      mobilePromotionPreview?.chainIndex ===
+                                        chainIndex &&
+                                      mobilePromotionPreview?.dateKey ===
+                                        currentDateKey;
+
+                                    return (
+                                      <div
+                                        key={currentDateKey}
+                                        className="min-w-0"
+                                      >
+                                        <button
+                                          type="button"
+                                          disabled={!promotion}
+                                          aria-expanded={
+                                            promotion ? previewOpen : undefined
+                                          }
+                                          aria-label={
+                                            promotion
+                                              ? `${fmtDateRangeCompact(d)}. Показать акционную цену`
+                                              : undefined
+                                          }
+                                          data-promo-date-key={dateDomKey(d)}
+                                          data-promo-scroll-target={
+                                            promotion ? "true" : undefined
+                                          }
+                                          onClick={() => {
+                                            if (!promotion) return;
+
+                                            setMobilePromotionPreview((prev) =>
+                                              prev?.chainIndex === chainIndex &&
+                                              prev?.dateKey === currentDateKey
+                                                ? null
+                                                : {
+                                                    chainIndex,
+                                                    dateKey: currentDateKey,
+                                                    date: {
+                                                      ...d,
+                                                      _chainId:
+                                                        chain.id ||
+                                                        `chain-${chainIndex}`,
+                                                    },
+                                                  },
+                                            );
+                                          }}
+                                          className={`w-full min-w-0 rounded-2xl px-2.5 py-1.5 text-center text-[11px] font-medium shadow-sm ring-1 transition sm:hidden ${
+                                            promotion
+                                              ? `cursor-pointer text-rose-700 active:scale-[0.98] ${
+                                                  previewOpen
+                                                    ? "bg-rose-100 ring-2 ring-rose-400"
+                                                    : "bg-rose-50 ring-rose-200"
+                                                }`
+                                              : "cursor-default bg-white text-[#C2410C] ring-orange-100"
+                                          }`}
+                                        >
+                                          <span className="block whitespace-nowrap">
+                                            {fmtDateRangeCompact(d)}
+                                          </span>
+
+                                          {promotion && (
+                                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+                                              <WalletCards className="size-3" />
+                                              {previewOpen
+                                                ? "скрыть цену"
+                                                : "смотреть цену"}
+                                            </span>
+                                          )}
+                                        </button>
+
+                                        <span
+                                          data-promo-date-key={dateDomKey(d)}
+                                          data-promo-scroll-target={
+                                            promotion ? "true" : undefined
+                                          }
+                                          className={`hidden min-w-0 rounded-full px-3 py-1.5 text-center text-xs font-medium shadow-sm ring-1 transition sm:inline-flex sm:items-center ${
+                                            promotion
+                                              ? "bg-rose-50 text-rose-700 ring-rose-200"
+                                              : "bg-white text-[#C2410C] ring-orange-100"
+                                          }`}
+                                        >
+                                          {fmtDateRange(d)}
+                                          {promotion && (
+                                            <span className="ml-1 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
+                                              акция
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
+
+                                {mobilePromotionPreview?.chainIndex ===
+                                  chainIndex &&
+                                  group.items.some(
+                                    (item) =>
+                                      String(dateKey(item)) ===
+                                      mobilePromotionPreview.dateKey,
+                                  ) && (
+                                    <MobilePromotionPricePreview
+                                      date={mobilePromotionPreview.date}
+                                      chains={chains}
+                                      tour={tour}
+                                    />
+                                  )}
                               </div>
                             ))}
                           </div>
@@ -2050,7 +2799,15 @@ export default function TourPage() {
                         {group.items.map((d) => (
                           <li
                             key={d._dateListKey || d.id || fmtDateRange(d)}
-                            className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg bg-neutral-50 px-3 py-2 text-[13px]"
+                            data-promo-date-key={dateDomKey(d)}
+                            data-promo-scroll-target={
+                              isPromotionDate(d) ? "true" : undefined
+                            }
+                            className={`grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition ${
+                              isPromotionDate(d)
+                                ? "bg-rose-50 ring-1 ring-rose-100"
+                                : "bg-neutral-50"
+                            }`}
                           >
                             <span className="min-w-0 whitespace-nowrap">
                               {fmtDateRangeCompact(d)}
@@ -2098,17 +2855,6 @@ export default function TourPage() {
               </Button>
             )}
 
-            <Button
-              asChild
-              variant="outline"
-              className="w-full mt-3 rounded-full border-orange-200 bg-orange-50 text-[#C2410C] hover:bg-orange-100 py-6 text-base"
-              data-testid="tour-cta-program-download"
-            >
-              <a href={programPdfUrl} download>
-                <Download className="size-4 mr-2" /> Скачать программу
-              </a>
-            </Button>
-
             <a
               href="tel:+375296369911"
               className="block mt-3 text-center text-sm font-medium text-neutral-700 hover:text-[#C2410C]"
@@ -2125,7 +2871,7 @@ export default function TourPage() {
               tour={tour.title}
               tour_slug={tour.slug}
               region={tour.region_slug}
-              dates={dateStrings}
+              dates={dates}
               compact
             />
           </div>
@@ -2134,11 +2880,11 @@ export default function TourPage() {
 
       <Dialog open={pricesOpen} onOpenChange={setPricesOpen}>
         <DialogContent
-          className="w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] sm:max-w-2xl max-h-[calc(100vh-24px)] overflow-y-auto rounded-2xl"
+          className="flex h-[calc(100dvh-24px)] max-h-[calc(100dvh-24px)] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl p-0 sm:h-auto sm:max-h-[calc(100dvh-48px)] sm:max-w-2xl"
           onOpenAutoFocus={(event) => event.preventDefault()}
           data-testid="tour-dates-dialog"
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0 border-b bg-white px-5 pb-4 pt-5 pr-12 text-left sm:px-6 sm:pt-6">
             <DialogTitle className="font-heading text-2xl">
               Даты и цены
             </DialogTitle>
@@ -2146,53 +2892,63 @@ export default function TourPage() {
             <DialogDescription>{tour.title}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {chains.map((chain, chainIndex) => (
-              <div key={chain.id || chainIndex}>
-                <p className="mb-2 text-sm font-medium text-neutral-700">
-                  {chain.title || `Цепочка ${chainIndex + 1}`}
-                </p>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="space-y-4">
+              {chains.map((chain, chainIndex) => (
+                <div key={chain.id || chainIndex}>
+                  {chain.title && <DateDialogChainTitle title={chain.title} />}
 
-                <div className="space-y-4">
-                  {groupDatesByMonth(chain.dates || []).map((group) => (
-                    <div
-                      key={`dialog-${chain.id || chainIndex}-${group.title}`}
-                    >
-                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
-                        {group.title}
-                      </p>
+                  <div className="space-y-4">
+                    {groupDatesByMonth(chain.dates || []).map((group) => (
+                      <div
+                        key={`dialog-${chain.id || chainIndex}-${group.title}`}
+                      >
+                        <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
+                          {group.title}
+                        </p>
 
-                      <div className="space-y-2">
-                        {group.items.map((d) => (
-                          <button
-                            key={dateKey(d)}
-                            type="button"
-                            onClick={() => {
-                              setSelectedDate(fmtDateRange(d));
-                              setPricesOpen(false);
-                              setLeadOpen(true);
-                            }}
-                            className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition hover:border-[#C2410C] hover:bg-orange-50/40"
-                          >
-                            <div className="flex min-w-0 flex-col gap-1 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
-                              <span className="min-w-0 break-words text-sm font-medium sm:whitespace-nowrap sm:text-base">
-                                {fmtDateRangeCompact(d)}
-                              </span>
+                        <div className="space-y-2">
+                          {group.items.map((d) => (
+                            <button
+                              key={dateKey(d)}
+                              type="button"
+                              data-promo-date-key={dateDomKey(d)}
+                              onClick={() => {
+                                setSelectedDate(fmtDateRange(d));
+                                setPricesOpen(false);
+                                setLeadOpen(true);
+                              }}
+                              className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                                isPromotionDate(d)
+                                  ? "border-rose-200 bg-rose-50/60 hover:border-rose-400 hover:bg-rose-50"
+                                  : "border-neutral-200 bg-white hover:border-[#C2410C] hover:bg-orange-50/40"
+                              }`}
+                            >
+                              <div className="flex min-w-0 flex-col gap-1 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
+                                <span className="min-w-0 break-words text-sm font-medium sm:whitespace-nowrap sm:text-base">
+                                  {fmtDateRangeCompact(d)}
+                                  {isPromotionDate(d) && (
+                                    <span className="ml-2 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+                                      акция
+                                    </span>
+                                  )}
+                                </span>
 
-                              <DatePriceInline
-                                item={d}
-                                fallbackTour={tour}
-                                className="text-left font-heading text-base text-[#C2410C] sm:whitespace-nowrap sm:text-right sm:text-xl"
-                              />
-                            </div>
-                          </button>
-                        ))}
+                                <DatePriceInline
+                                  item={d}
+                                  fallbackTour={tour}
+                                  className="text-left font-heading text-base text-[#C2410C] sm:whitespace-nowrap sm:text-right sm:text-xl"
+                                />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -2232,8 +2988,15 @@ export default function TourPage() {
                         : "Номер")}
                   </DialogTitle>
 
-                  <DialogDescription className="line-clamp-1">
-                    {selectedRoom.hotel.name} · {selectedRoom.chain.title}
+                  <DialogDescription className="line-clamp-2 text-sm text-neutral-500">
+                    <span className="font-semibold text-neutral-900 sm:text-base">
+                      {selectedRoom.hotel?.name}
+                    </span>
+                    {resolveChainTitle(selectedRoom.chain, 0) && (
+                      <span className="ml-2 text-neutral-500">
+                        · {resolveChainTitle(selectedRoom.chain, 0)}
+                      </span>
+                    )}
                   </DialogDescription>
                 </DialogHeader>
               </div>
@@ -2433,7 +3196,16 @@ export default function TourPage() {
                                     key={plan.key}
                                     className="border-r px-3 py-2 text-neutral-700 last:border-r-0"
                                   >
-                                    {price ? formatRoomPrice(price) : "—"}
+                                    {price ? (
+                                      <RoomPriceRecordInline
+                                        priceRecord={price}
+                                        className="items-start"
+                                        oldClassName="text-[10px]"
+                                        newClassName="font-semibold text-rose-600"
+                                      />
+                                    ) : (
+                                      "—"
+                                    )}
                                   </td>
                                 );
                               })}
@@ -2485,7 +3257,16 @@ export default function TourPage() {
                                           {plan.label}
                                         </span>
                                         <span className="shrink-0 font-semibold text-[#C2410C]">
-                                          {price ? formatRoomPrice(price) : "—"}
+                                          {price ? (
+                                            <RoomPriceRecordInline
+                                              priceRecord={price}
+                                              className="items-end text-right"
+                                              oldClassName="text-[9px]"
+                                              newClassName="font-semibold text-rose-600"
+                                            />
+                                          ) : (
+                                            "—"
+                                          )}
                                         </span>
                                       </div>
                                     );
@@ -2523,7 +3304,12 @@ export default function TourPage() {
                           </p>
 
                           <p className="font-heading whitespace-nowrap text-xl font-bold text-[#C2410C] sm:text-2xl">
-                            {formatRoomPrice(selectedRoomPrice)}
+                            <RoomPriceRecordInline
+                              priceRecord={selectedRoomPrice}
+                              className="items-end"
+                              oldClassName="text-xs font-medium"
+                              newClassName="font-heading text-xl font-bold text-rose-600 sm:text-2xl"
+                            />
                           </p>
                         </div>
                       )}
@@ -2552,12 +3338,16 @@ export default function TourPage() {
                                   );
                                   const active =
                                     bookingStep?.dateLabel === fmtDateRange(d);
+                                  const promotionRoomPrice = isPromotionDate(d)
+                                    ? getRoomMinPrice(selectedRoom.room, [d])
+                                    : null;
 
                                   return (
                                     <button
                                       key={dateKey(d)}
                                       type="button"
                                       disabled={unavailable}
+                                      data-promo-date-key={dateDomKey(d)}
                                       onClick={() => {
                                         const prices = getRoomPricesForDate(
                                           selectedRoom.room,
@@ -2587,7 +3377,9 @@ export default function TourPage() {
                                           ? "cursor-not-allowed border-red-100 bg-red-50/70 text-red-500 opacity-70"
                                           : active
                                             ? "scale-[1.01] border-[#C2410C] bg-white shadow-lg shadow-orange-200/60"
-                                            : "border-neutral-200 bg-white hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md"
+                                            : isPromotionDate(d)
+                                              ? "border-rose-200 bg-rose-50/60 hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md"
+                                              : "border-neutral-200 bg-white hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md"
                                       }`}
                                     >
                                       <span
@@ -2601,6 +3393,11 @@ export default function TourPage() {
                                         <div>
                                           <p className="font-medium text-neutral-900">
                                             {fmtDateRange(d)}
+                                            {isPromotionDate(d) && (
+                                              <span className="ml-2 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+                                                акция
+                                              </span>
+                                            )}
                                           </p>
                                           <p
                                             className={`mt-1 text-xs ${
@@ -2613,6 +3410,25 @@ export default function TourPage() {
                                               ? "Номер выкуплен"
                                               : "Номер доступен"}
                                           </p>
+
+                                          {promotionRoomPrice &&
+                                            getPromotionPriceParts(
+                                              promotionRoomPrice,
+                                            ) && (
+                                              <div className="mt-2 inline-flex items-center gap-1 rounded-lg bg-white/80 px-2 py-1 text-rose-700 ring-1 ring-rose-100">
+                                                <span className="text-[10px] font-bold uppercase tracking-wide">
+                                                  от
+                                                </span>
+                                                <RoomPriceRecordInline
+                                                  priceRecord={
+                                                    promotionRoomPrice
+                                                  }
+                                                  className="items-start"
+                                                  oldClassName="text-[9px]"
+                                                  newClassName="text-sm font-bold"
+                                                />
+                                              </div>
+                                            )}
                                         </div>
 
                                         <span
@@ -2742,7 +3558,7 @@ export default function TourPage() {
         tour={tour.title}
         tour_slug={tour.slug}
         region={tour.region_slug}
-        dates={dateStrings}
+        dates={dates}
         selectedDate={selectedDate}
         selectedHotel={selectedHotel}
         selectedRoom={selectedRoomTitle}
