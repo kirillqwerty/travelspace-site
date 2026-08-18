@@ -121,9 +121,7 @@ function getFooterSocialLinks(settings) {
 }
 
 function isHeaderMessengerType(type) {
-  return ["telegram", "viber", "whatsapp"].includes(
-    normalizeSocialKey(type),
-  );
+  return ["telegram", "viber", "whatsapp"].includes(normalizeSocialKey(type));
 }
 
 function isMessengerUrl(url) {
@@ -317,7 +315,7 @@ export default function Footer() {
           © {currentYear} {settings?.site_url || "travel-space.by"}
         </div>
       </div>
-      <div className="border-t border-white/10 bg-white py-4">
+      <div className="border-t border-white/10 bg-black py-4">
         <div className="section-container flex justify-center">
           <img
             src={paymentImage}

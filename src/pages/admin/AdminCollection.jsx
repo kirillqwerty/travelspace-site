@@ -41,6 +41,10 @@ import { toast } from "sonner";
 import { mediaUrl } from "@/lib/media";
 import { formatDate } from "@/lib/formatDate";
 import { RICH_TEXT_ICONS } from "@/lib/richText";
+import {
+  getTourTransportType,
+  TOUR_TRANSPORT_TYPES,
+} from "@/lib/tourTransport";
 
 const TITLES = {
   tours: "Туры",
@@ -55,10 +59,29 @@ const TITLES = {
 const SCHEMAS = {
   tours: {
     label: (t) => t.title || t.slug,
-    description: (t) => `${t.region_name || ""} · ${t.duration || ""}`,
+    description: (t) =>
+      `${
+        getTourTransportType(t) === TOUR_TRANSPORT_TYPES.AIR
+          ? "Авиа тур"
+          : "Автобусный тур"
+      } · ${t.region_name || ""} · ${t.duration || ""}`,
     image: (t) => t.hero_image,
     fields: [
       { key: "title", label: "Название тура", type: "text" },
+      {
+        key: "transport_type",
+        label: "Вид тура",
+        type: "select",
+        defaultValue: TOUR_TRANSPORT_TYPES.BUS,
+        options: [
+          {
+            value: TOUR_TRANSPORT_TYPES.BUS,
+            label: "Автобусный тур",
+          },
+          { value: TOUR_TRANSPORT_TYPES.AIR, label: "Авиа тур" },
+        ],
+        hint: "Определяет раздел сайта, пункт меню и значок транспорта в карточке.",
+      },
       {
         key: "slug",
         label: "URL (slug)",
@@ -66,7 +89,16 @@ const SCHEMAS = {
         placeholder:
           "Можно указать вручную. Если оставить пустым, создастся из названия.",
       },
-      { key: "tagline", label: "Подзаголовок", type: "text" },
+      {
+        key: "tagline",
+        label: "Подзаголовок в карточке тура",
+        type: "textarea",
+        plain: true,
+        rows: 2,
+        maxLength: 180,
+        placeholder: "Короткая фраза под названием тура",
+        hint: "Отображается под основным заголовком в карточке тура (до двух строк).",
+      },
       // {
       //   key: "region_slug",
       //   label: "Регион (slug)",
@@ -283,6 +315,7 @@ const TOUR_EXTRA_KEYS = [
   "excluded",
   "important_info",
   "program",
+  "use_hotel_chains",
   "chains",
   "dates",
   "hotels",
@@ -529,6 +562,33 @@ const normalizeHotelRecord = (h = {}) => ({
   rooms: Array.isArray(h.rooms) ? h.rooms.map(normalizeRoomRecord) : [],
 });
 
+const getActiveChainDates = (chains = []) => {
+  const seen = new Set();
+
+  return (Array.isArray(chains) ? chains : [])
+    .filter((chain) => chain?.active !== false)
+    .flatMap((chain) => (Array.isArray(chain?.dates) ? chain.dates : []))
+    .filter((date) => {
+      const key =
+        date?.id ||
+        `${date?.start || ""}|${date?.end || ""}|${date?.price ?? ""}`;
+
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+const resolveUseHotelChains = (record = {}) => {
+  if (typeof record.use_hotel_chains === "boolean") {
+    return record.use_hotel_chains;
+  }
+
+  return (Array.isArray(record.chains) ? record.chains : []).some(
+    (chain) => Array.isArray(chain?.hotels) && chain.hotels.length > 0,
+  );
+};
+
 const normalizeChains = (record = {}) => {
   if (Array.isArray(record.chains) && record.chains.length) {
     return record.chains.map((chain, index) => ({
@@ -576,11 +636,19 @@ const normalizeRecord = (record = {}, collectionName) => {
   if (collectionName !== "tours") return record;
 
   const isNew = !record.id;
+  const useHotelChains = resolveUseHotelChains(record);
+  const chainDates = getActiveChainDates(record.chains);
+  const simpleDates = chainDates.length
+    ? chainDates
+    : Array.isArray(record.dates)
+      ? record.dates
+      : [];
 
   return {
     ...(isNew ? {} : { id: record.id }),
 
     title: record.title || "",
+    transport_type: getTourTransportType(record),
     slug: record.slug || slugify(record.title || ""),
     tagline: record.tagline || "",
     region_name: record.region_name || "",
@@ -661,12 +729,16 @@ const normalizeRecord = (record = {}, collectionName) => {
 
     // New tour structure: chain -> hotels -> rooms.
     // Old dates/hotels are converted into one default chain for compatibility.
+    use_hotel_chains: useHotelChains,
     chains: normalizeChains(record),
 
     // Keep old fields only for compatibility with old public components/data.
-    dates: Array.isArray(record.dates)
-      ? record.dates.map((d) => normalizeDateRecord(d, record))
-      : [],
+    dates: (useHotelChains
+      ? Array.isArray(record.dates)
+        ? record.dates
+        : []
+      : simpleDates
+    ).map((d) => normalizeDateRecord(d, record)),
     hotels: Array.isArray(record.hotels)
       ? record.hotels.map(normalizeHotelRecord)
       : [],
@@ -1005,6 +1077,8 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
 
     if (collectionName === "tours") {
       payload.slug = form.slug?.trim() || slugify(form.title);
+      payload.transport_type = getTourTransportType(form);
+      payload.tagline = String(form.tagline || "").trim();
       payload.region_slug =
         form.region_slug?.trim() || slugify(form.region_name);
       payload.departure_cities = Array.isArray(form.departure_cities)
@@ -1014,6 +1088,21 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
           : [];
       payload.departure_city =
         payload.departure_cities[0] || form.departure_city || "";
+
+      payload.use_hotel_chains = form.use_hotel_chains === true;
+
+      if (payload.use_hotel_chains) {
+        // In chain mode all actual dates live inside their chain.
+        payload.dates = [];
+        payload.hotels = [];
+      } else {
+        // In simple mode the public page reads the common date list directly.
+        // Remove the hidden chain data so dates are not duplicated in booking
+        // forms and in the automatic stale-date cleanup.
+        payload.dates = Array.isArray(form.dates) ? form.dates : [];
+        payload.chains = [];
+        payload.hotels = [];
+      }
 
       payload.program = Array.isArray(form.program)
         ? form.program.map((day, index) => {
@@ -1117,11 +1206,20 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {f.options.filter(Boolean).map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
+                      {f.options.filter(Boolean).map((option) => {
+                        const value =
+                          typeof option === "string" ? option : option.value;
+                        const label =
+                          typeof option === "string"
+                            ? option
+                            : option.label || option.value;
+
+                        return (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 ) : f.type === "city-select" ? (
@@ -1142,11 +1240,12 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                     placeholder={f.placeholder}
                   />
                 ) : f.type === "textarea" ? (
-                  f.key.startsWith("seo_") ? (
+                  f.key.startsWith("seo_") || f.plain ? (
                     <Textarea
                       value={form[f.key] ?? ""}
                       onChange={(e) => update(f.key, e.target.value)}
                       rows={f.rows || 3}
+                      maxLength={f.maxLength}
                       placeholder={f.placeholder}
                       className="mt-1"
                     />
@@ -1155,6 +1254,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                       value={form[f.key] ?? ""}
                       onChange={(v) => update(f.key, v)}
                       rows={f.rows || 3}
+                      maxLength={f.maxLength}
                       placeholder={f.placeholder}
                     />
                   )
@@ -1195,6 +1295,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                   <Input
                     value={form[f.key] ?? ""}
                     onChange={(e) => update(f.key, e.target.value)}
+                    maxLength={f.maxLength}
                     placeholder={f.placeholder}
                     className="mt-1"
                   />
@@ -1643,7 +1744,66 @@ function TourExtraFields({ form, setForm }) {
   );
   const updateProgram = useCallback((v) => update("program", v), [update]);
   const updateChains = useCallback((v) => update("chains", v), [update]);
+  const updateDates = useCallback((v) => update("dates", v), [update]);
   const updateFaq = useCallback((v) => update("faq", v), [update]);
+
+  const handleUseHotelChainsChange = useCallback(
+    (enabled) => {
+      const currentChains = Array.isArray(form.chains) ? form.chains : [];
+      const hasHotelData = currentChains.some(
+        (chain) => Array.isArray(chain?.hotels) && chain.hotels.length > 0,
+      );
+
+      if (
+        !enabled &&
+        hasHotelData &&
+        !confirm(
+          "Переключить тур в режим «Только даты»? После сохранения цепочки, отели, номера и их привязки будут удалены.",
+        )
+      ) {
+        return;
+      }
+
+      setForm((prev) => {
+        const chains = Array.isArray(prev.chains) ? prev.chains : [];
+
+        if (enabled) {
+          const nextChains = chains.length
+            ? chains
+            : [
+                {
+                  id: uid(),
+                  title: "Расписание и проживание",
+                  description: "",
+                  order: 1,
+                  active: true,
+                  dates: Array.isArray(prev.dates) ? prev.dates : [],
+                  hotels: [],
+                },
+              ];
+
+          return {
+            ...prev,
+            use_hotel_chains: true,
+            chains: nextChains,
+          };
+        }
+
+        const chainDates = getActiveChainDates(chains);
+
+        return {
+          ...prev,
+          use_hotel_chains: false,
+          dates: chainDates.length
+            ? chainDates
+            : Array.isArray(prev.dates)
+              ? prev.dates
+              : [],
+        };
+      });
+    },
+    [form.chains, setForm],
+  );
 
   return (
     <div className="space-y-6 rounded-xl border border-neutral-200 p-4">
@@ -1675,7 +1835,7 @@ function TourExtraFields({ form, setForm }) {
         label="Что входит"
         value={form.included || []}
         onChange={updateIncluded}
-        placeholder="Проезд автобусом"
+        placeholder="Проезд и трансферы"
       />
 
       <MemoStringListField
@@ -1694,17 +1854,61 @@ function TourExtraFields({ form, setForm }) {
 
       <MemoProgramField value={form.program || []} onChange={updateProgram} />
 
-      <MemoChainsField
-        value={form.chains || []}
-        onChange={updateChains}
-        tourSlug={tourSlug}
-        tourCurrency={form.currency || "BYN"}
-        tourPrice={form.price_from || ""}
-        tourAdditionalPrice={form.additional_price || ""}
-        tourAdditionalCurrency={
-          form.additional_currency || form.currency || "BYN"
-        }
-      />
+      <div className="rounded-2xl border border-sky-200 bg-sky-50/50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Label className="text-base font-semibold text-neutral-900">
+              Отели, номера и цепочки
+            </Label>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-600">
+              {form.use_hotel_chains
+                ? "Включён расширенный режим: даты задаются внутри цепочек и привязываются к отелям и номерам."
+                : "Режим «Только даты»: добавляйте даты тура напрямую, без создания отеля и номера."}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm ring-1 ring-sky-100">
+            <span className="text-xs font-medium text-neutral-600">
+              {form.use_hotel_chains ? "Включены" : "Выключены"}
+            </span>
+            <Switch
+              checked={form.use_hotel_chains === true}
+              onCheckedChange={handleUseHotelChainsChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      {form.use_hotel_chains ? (
+        <MemoChainsField
+          value={form.chains || []}
+          onChange={updateChains}
+          tourSlug={tourSlug}
+          tourCurrency={form.currency || "BYN"}
+          tourPrice={form.price_from || ""}
+          tourAdditionalPrice={form.additional_price || ""}
+          tourAdditionalCurrency={
+            form.additional_currency || form.currency || "BYN"
+          }
+        />
+      ) : (
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+          <p className="mb-3 text-sm text-neutral-600">
+            Эти даты будут показаны на странице тура и в форме заявки без блока
+            отелей и номеров.
+          </p>
+          <MemoDatesField
+            value={form.dates || []}
+            onChange={updateDates}
+            defaultCurrency={form.currency || "BYN"}
+            defaultPrice={form.price_from || ""}
+            defaultAdditionalPrice={form.additional_price || ""}
+            defaultAdditionalCurrency={
+              form.additional_currency || form.currency || "BYN"
+            }
+          />
+        </div>
+      )}
 
       <MemoFaqField value={form.faq || []} onChange={updateFaq} />
 
@@ -2685,10 +2889,10 @@ function ChainsField({
 
   return (
     <div>
-      <Label>Цепочки / расписания автобусов</Label>
+      <Label>Заезды / расписание тура</Label>
       <p className="mt-1 text-xs text-neutral-500">
-        У каждой цепочки свои даты, свои отели и свои номера. Номер можно
-        отметить выкупленным на конкретную дату цепочки.
+        У каждого варианта свои даты, отели и номера. Номер можно отметить
+        выкупленным на конкретную дату заезда.
       </p>
 
       <div className="mt-3 space-y-4">
@@ -2702,7 +2906,7 @@ function ChainsField({
                 <Input
                   value={chain.title || ""}
                   onChange={(e) => updateItem(index, { title: e.target.value })}
-                  placeholder="Например: Цепочка 1 / Автобус 1"
+                  placeholder="Например: Заезд 1 / Группа 1"
                 />
                 <Input
                   type="number"

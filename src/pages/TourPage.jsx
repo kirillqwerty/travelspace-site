@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { api, API_BASE } from "@/lib/api";
 import {
@@ -36,6 +43,10 @@ import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
 import { trackTourView } from "@/lib/analytics";
 import { RichText } from "@/lib/richText";
+import {
+  getTourTransportType,
+  TOUR_TRANSPORT_TYPES,
+} from "@/lib/tourTransport";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -70,6 +81,35 @@ const SECTIONS = [
 
 const glassText =
   "w-fit bg-black/35 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-2";
+
+const SAFE_MAP_HOST_SUFFIXES = [
+  "google.com",
+  "google.by",
+  "google.ru",
+  "yandex.com",
+  "yandex.by",
+  "yandex.ru",
+  "openstreetmap.org",
+];
+
+function safeMapEmbedUrl(value) {
+  const input = String(value || "").trim();
+  if (!input) return "";
+
+  const iframeSrc = input.match(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1];
+  const source = (iframeSrc || input).replaceAll("&amp;", "&");
+
+  try {
+    const url = new URL(source);
+    const hostname = url.hostname.toLowerCase();
+    const trustedHost = SAFE_MAP_HOST_SUFFIXES.some(
+      (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
+    );
+    return url.protocol === "https:" && trustedHost ? url.href : "";
+  } catch {
+    return "";
+  }
+}
 
 const DEPARTURE_CITY_GENITIVE = {
   Минск: "Минска",
@@ -1249,6 +1289,10 @@ export default function TourPage() {
   const roomHintObservers = useRef({});
   const { tours } = useSiteData();
   const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
+  const mapEmbedUrl = useMemo(
+    () => safeMapEmbedUrl(tour?.map_embed),
+    [tour?.map_embed],
+  );
   const upcomingDates = useMemo(
     () => getUpcomingDatesFromChains(chains),
     [chains],
@@ -1533,8 +1577,13 @@ export default function TourPage() {
   const programPdfUrl = `${API_BASE}/tours/${encodeURIComponent(
     tour.slug || slug,
   )}/program.pdf`;
+  const transportSeoLabel =
+    getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR
+      ? "авиа-тур"
+      : "автобусный тур";
   const tourSeoTitle =
-    tour.seo_title || `${tour.title} — автобусный тур из Минска | TRAVELSPACE`;
+    tour.seo_title ||
+    `${tour.title} — ${transportSeoLabel} из Минска | TRAVELSPACE`;
   const tourSeoDescription =
     tour.seo_description ||
     tour.short_description ||
@@ -1669,16 +1718,20 @@ export default function TourPage() {
                 </Button>
               )}
 
-              {/* <Button
+              <Button
                 asChild
                 variant="outline"
                 className="rounded-full border-white/30 bg-white/15 px-6 py-6 text-white backdrop-blur-md hover:bg-white hover:text-neutral-900"
                 data-testid="tour-hero-program-download"
               >
-                <a href={programPdfUrl} download>
-                  <Download className="mr-2 size-4" /> Скачать программу
+                <a
+                  href={programPdfUrl}
+                  download
+                  aria-label={`Скачать PDF-программу тура «${tour.title}»`}
+                >
+                  <Download className="mr-2 size-4" /> Скачать PDF-программу
                 </a>
-              </Button> */}
+              </Button>
             </div>
           </div>
         </div>
@@ -2180,104 +2233,104 @@ export default function TourPage() {
                                         currentDateKey;
 
                                     return (
-                                      <div
-                                        key={currentDateKey}
-                                        className="min-w-0"
-                                      >
-                                        <button
-                                          type="button"
-                                          disabled={!promotion}
-                                          aria-expanded={
-                                            promotion ? previewOpen : undefined
-                                          }
-                                          aria-label={
-                                            promotion
-                                              ? `${fmtDateRangeCompact(d)}. Показать акционную цену`
-                                              : undefined
-                                          }
-                                          data-promo-date-key={dateDomKey(d)}
-                                          data-promo-scroll-target={
-                                            promotion ? "true" : undefined
-                                          }
-                                          onClick={() => {
-                                            if (!promotion) return;
+                                      <Fragment key={currentDateKey}>
+                                        <div className="min-w-0">
+                                          <button
+                                            type="button"
+                                            disabled={!promotion}
+                                            aria-expanded={
+                                              promotion
+                                                ? previewOpen
+                                                : undefined
+                                            }
+                                            aria-label={
+                                              promotion
+                                                ? `${fmtDateRangeCompact(d)}. Показать акционную цену`
+                                                : undefined
+                                            }
+                                            data-promo-date-key={dateDomKey(d)}
+                                            data-promo-scroll-target={
+                                              promotion ? "true" : undefined
+                                            }
+                                            onClick={() => {
+                                              if (!promotion) return;
 
-                                            setMobilePromotionPreview((prev) =>
-                                              prev?.chainIndex === chainIndex &&
-                                              prev?.dateKey === currentDateKey
-                                                ? null
-                                                : {
-                                                    chainIndex,
-                                                    dateKey: currentDateKey,
-                                                    date: {
-                                                      ...d,
-                                                      _chainId:
-                                                        chain.id ||
-                                                        `chain-${chainIndex}`,
-                                                    },
-                                                  },
-                                            );
-                                          }}
-                                          className={`w-full min-w-0 rounded-2xl px-2.5 py-1.5 text-center text-[11px] font-medium shadow-sm ring-1 transition sm:hidden ${
-                                            promotion
-                                              ? `cursor-pointer text-rose-700 active:scale-[0.98] ${
-                                                  previewOpen
-                                                    ? "bg-rose-100 ring-2 ring-rose-400"
-                                                    : "bg-rose-50 ring-rose-200"
-                                                }`
-                                              : "cursor-default bg-white text-[#C2410C] ring-orange-100"
-                                          }`}
-                                        >
-                                          <span className="block whitespace-nowrap">
-                                            {fmtDateRangeCompact(d)}
+                                              setMobilePromotionPreview(
+                                                (prev) =>
+                                                  prev?.chainIndex ===
+                                                    chainIndex &&
+                                                  prev?.dateKey ===
+                                                    currentDateKey
+                                                    ? null
+                                                    : {
+                                                        chainIndex,
+                                                        dateKey: currentDateKey,
+                                                        date: {
+                                                          ...d,
+                                                          _chainId:
+                                                            chain.id ||
+                                                            `chain-${chainIndex}`,
+                                                        },
+                                                      },
+                                              );
+                                            }}
+                                            className={`w-full min-w-0 rounded-2xl px-2.5 py-1.5 text-center text-[11px] font-medium shadow-sm ring-1 transition sm:hidden ${
+                                              promotion
+                                                ? `cursor-pointer text-rose-700 active:scale-[0.98] ${
+                                                    previewOpen
+                                                      ? "bg-rose-100 ring-2 ring-rose-400"
+                                                      : "bg-rose-50 ring-rose-200"
+                                                  }`
+                                                : "cursor-default bg-white text-[#C2410C] ring-orange-100"
+                                            }`}
+                                          >
+                                            <span className="block whitespace-nowrap">
+                                              {fmtDateRangeCompact(d)}
+                                            </span>
+
+                                            {promotion && (
+                                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+                                                <WalletCards className="size-3" />
+                                                {previewOpen
+                                                  ? "скрыть цену"
+                                                  : "смотреть цену"}
+                                              </span>
+                                            )}
+                                          </button>
+
+                                          <span
+                                            data-promo-date-key={dateDomKey(d)}
+                                            data-promo-scroll-target={
+                                              promotion ? "true" : undefined
+                                            }
+                                            className={`hidden min-w-0 rounded-full px-3 py-1.5 text-center text-xs font-medium shadow-sm ring-1 transition sm:inline-flex sm:items-center ${
+                                              promotion
+                                                ? "bg-rose-50 text-rose-700 ring-rose-200"
+                                                : "bg-white text-[#C2410C] ring-orange-100"
+                                            }`}
+                                          >
+                                            {fmtDateRange(d)}
+                                            {promotion && (
+                                              <span className="ml-1 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
+                                                акция
+                                              </span>
+                                            )}
                                           </span>
+                                        </div>
 
-                                          {promotion && (
-                                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
-                                              <WalletCards className="size-3" />
-                                              {previewOpen
-                                                ? "скрыть цену"
-                                                : "смотреть цену"}
-                                            </span>
-                                          )}
-                                        </button>
-
-                                        <span
-                                          data-promo-date-key={dateDomKey(d)}
-                                          data-promo-scroll-target={
-                                            promotion ? "true" : undefined
-                                          }
-                                          className={`hidden min-w-0 rounded-full px-3 py-1.5 text-center text-xs font-medium shadow-sm ring-1 transition sm:inline-flex sm:items-center ${
-                                            promotion
-                                              ? "bg-rose-50 text-rose-700 ring-rose-200"
-                                              : "bg-white text-[#C2410C] ring-orange-100"
-                                          }`}
-                                        >
-                                          {fmtDateRange(d)}
-                                          {promotion && (
-                                            <span className="ml-1 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
-                                              акция
-                                            </span>
-                                          )}
-                                        </span>
-                                      </div>
+                                        {previewOpen && (
+                                          <div className="col-span-2 sm:hidden">
+                                            <MobilePromotionPricePreview
+                                              date={mobilePromotionPreview.date}
+                                              chains={chains}
+                                              tour={tour}
+                                            />
+                                          </div>
+                                        )}
+                                      </Fragment>
                                     );
                                   })}
                                 </div>
-
-                                {mobilePromotionPreview?.chainIndex ===
-                                  chainIndex &&
-                                  group.items.some(
-                                    (item) =>
-                                      String(dateKey(item)) ===
-                                      mobilePromotionPreview.dateKey,
-                                  ) && (
-                                    <MobilePromotionPricePreview
-                                      date={mobilePromotionPreview.date}
-                                      chains={chains}
-                                      tour={tour}
-                                    />
-                                  )}
                               </div>
                             ))}
                           </div>
@@ -2750,11 +2803,16 @@ export default function TourPage() {
             </div>
           )}
 
-          {tour.map_embed && (
+          {mapEmbedUrl && (
             <div className="aspect-video rounded-2xl overflow-hidden border border-neutral-200">
-              <div
-                dangerouslySetInnerHTML={{ __html: tour.map_embed }}
+              <iframe
+                src={mapEmbedUrl}
+                title={`Карта тура ${tour.title || "Travelspace"}`}
                 className="w-full h-full"
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                sandbox="allow-scripts allow-same-origin allow-popups"
+                allowFullScreen
               />
             </div>
           )}

@@ -4,6 +4,11 @@ import { api } from "@/lib/api";
 import TourCard from "@/components/TourCard";
 import PageSeo from "@/components/PageSeo";
 import { isTourShownInCatalog } from "@/lib/tourVisibility";
+import { Bus, Plane } from "lucide-react";
+import {
+  getTourTransportType,
+  TOUR_TRANSPORT_TYPES,
+} from "@/lib/tourTransport";
 
 const BADGES = [
   "Хит",
@@ -21,6 +26,10 @@ export default function Catalog() {
   const [params, setParams] = useSearchParams();
   const region = params.get("region") || "";
   const badge = params.get("badge") || "";
+  const activeTransport =
+    params.get("transport") === TOUR_TRANSPORT_TYPES.AIR
+      ? TOUR_TRANSPORT_TYPES.AIR
+      : TOUR_TRANSPORT_TYPES.BUS;
 
   useEffect(() => {
     setLoading(true);
@@ -47,11 +56,12 @@ export default function Catalog() {
   const filtered = useMemo(() => {
     return tours.filter((t) => {
       if (!isTourShownInCatalog(t)) return false;
+      if (getTourTransportType(t) !== activeTransport) return false;
       if (region && t.region_slug !== region) return false;
       if (badge && !(t.badges || []).includes(badge)) return false;
       return true;
     });
-  }, [tours, region, badge]);
+  }, [tours, activeTransport, region, badge]);
 
   const setFilter = (key, value) => {
     const next = new URLSearchParams(params);
@@ -68,17 +78,54 @@ export default function Catalog() {
       <PageSeo
         pageKey="tours"
         path="/tours"
-        title="Каталог автобусных туров из Минска | TRAVELSPACE"
-        description="Выбирайте автобусные туры из Минска по направлениям, датам и форматам отдыха. TRAVELSPACE поможет подобрать подходящий тур."
+        title="Каталог автобусных и авиа-туров из Минска | TRAVELSPACE"
+        description="Выбирайте автобусные и авиа-туры из Минска по направлениям, датам и форматам отдыха. TRAVELSPACE поможет подобрать подходящий тур."
       />
       <p className="overline text-[#C2410C]">Каталог туров</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-        Все автобусные туры из Минска
+        {activeTransport === TOUR_TRANSPORT_TYPES.AIR
+          ? "Все авиа туры из Минска"
+          : "Все автобусные туры из Минска"}
       </h1>
       <p className="text-neutral-600 mt-4 max-w-2xl">
         Выбирайте тур или интересующий формат — мы расскажем подробнее и
         подберём ближайшую дату.
       </p>
+
+      <div
+        className="mt-8 inline-flex flex-wrap gap-1 rounded-2xl bg-neutral-100 p-1.5"
+        role="tablist"
+        aria-label="Вид тура"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTransport === TOUR_TRANSPORT_TYPES.BUS}
+          onClick={() => setFilter("transport", "")}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTransport === TOUR_TRANSPORT_TYPES.BUS
+              ? "bg-neutral-900 text-white shadow-sm"
+              : "text-neutral-600 hover:bg-white hover:text-neutral-900"
+          }`}
+          data-testid="catalog-transport-bus"
+        >
+          <Bus className="size-4" /> Автобусные туры
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTransport === TOUR_TRANSPORT_TYPES.AIR}
+          onClick={() => setFilter("transport", TOUR_TRANSPORT_TYPES.AIR)}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTransport === TOUR_TRANSPORT_TYPES.AIR
+              ? "bg-neutral-900 text-white shadow-sm"
+              : "text-neutral-600 hover:bg-white hover:text-neutral-900"
+          }`}
+          data-testid="catalog-transport-air"
+        >
+          <Plane className="size-4" /> Авиа туры
+        </button>
+      </div>
 
       {/* Region tabs
       <div
@@ -151,7 +198,9 @@ export default function Catalog() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center text-neutral-500">
-            По вашему запросу ничего не нашли. Попробуйте сменить фильтры.
+            {activeTransport === TOUR_TRANSPORT_TYPES.AIR
+              ? "Авиа туры скоро появятся. Оставьте заявку, и менеджер расскажет о ближайших программах."
+              : "По вашему запросу ничего не нашли. Попробуйте сменить фильтры."}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

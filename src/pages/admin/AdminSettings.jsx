@@ -25,11 +25,12 @@ const STATIC_SEO_PAGES = [
 const BENEFIT_ICON_OPTIONS = [
   { value: "badge", label: "Знак качества" },
   { value: "bus", label: "Автобус" },
+  { value: "plane", label: "Самолёт" },
   { value: "users", label: "Люди" },
   { value: "map", label: "Карта" },
   { value: "shield", label: "Щит" },
   { value: "wallet", label: "Кошелёк" },
-  { value: "seat", label: "Место в автобусе" },
+  { value: "seat", label: "Комфортное место" },
 ];
 
 const DEFAULT_HOME_BENEFITS = {
@@ -43,8 +44,8 @@ const DEFAULT_HOME_BENEFITS = {
     },
     {
       icon: "bus",
-      title: "Отправление из Минска",
-      desc: "Комфортабельные автобусы, опытные водители, продуманные стоянки.",
+      title: "Удобное отправление",
+      desc: "Подбираем комфортный вариант дороги автобусом или самолётом.",
     },
     {
       icon: "users",
@@ -68,8 +69,8 @@ const DEFAULT_HOME_BENEFITS = {
     },
     {
       icon: "seat",
-      title: "Выбор места в автобусе",
-      desc: "Возможен за доп. плату — наличие уточнит менеджер.",
+      title: "Комфорт в дороге",
+      desc: "Менеджер заранее расскажет о транспорте и доступных местах.",
     },
   ],
 };
@@ -524,14 +525,14 @@ function HomeBenefitsField({ value = DEFAULT_HOME_BENEFITS, onChange }) {
 
 function HeaderPhonesField({ value = [], onChange }) {
   const items = value.length
-    ? value
-    : [
+      ? value
+      : [
         {
-          label: "Грузия и Дагестан",
+          label: "Автобусные туры",
           phone: "636-99-11",
           link: "+375296369911",
         },
-        { label: "Питер и Карелия", phone: "636-22-99", link: "+375296362299" },
+        { label: "Авиа туры", phone: "636-22-99", link: "+375296362299" },
       ];
 
   const updateItem = (index, patch) => {

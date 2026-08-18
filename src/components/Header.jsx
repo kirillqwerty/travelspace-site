@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Plus, Minus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,27 @@ import logoWhite from "../assets/logo-travelspace-white.png";
 import socialTelegram from "../assets/social-telegram.png";
 import socialViber from "../assets/social-viber.png";
 import socialWhatsapp from "../assets/social-whatsapp.png";
+import {
+  getTourSectionPath,
+  getTourTransportType,
+  getTransportFromHash,
+  TOUR_TRANSPORT_TYPES,
+} from "@/lib/tourTransport";
+
+const TOUR_NAV = [
+  {
+    to: getTourSectionPath(TOUR_TRANSPORT_TYPES.BUS),
+    label: "Автобусные туры",
+    transportType: TOUR_TRANSPORT_TYPES.BUS,
+  },
+  {
+    to: getTourSectionPath(TOUR_TRANSPORT_TYPES.AIR),
+    label: "Авиа туры",
+    transportType: TOUR_TRANSPORT_TYPES.AIR,
+  },
+];
 
 const PRIMARY_NAV = [
-  { to: "/tours", label: "Автобусные туры", dropdown: true },
   { to: "/promotions", label: "Акции" },
   { to: "/blog", label: "Блог", blogDropdown: true },
   { to: "/reviews", label: "Отзывы" },
@@ -109,11 +127,12 @@ const phoneTel = (phone) => {
 
 export default function Header() {
   const { settings, tours, articles } = useSiteData();
+  const location = useLocation();
 
   const [open, setOpen] = useState(false);
-  const [toursOpen, setToursOpen] = useState(false);
+  const [toursOpen, setToursOpen] = useState(null);
   const [articlesOpen, setArticlesOpen] = useState(false);
-  const [mobileToursOpen, setMobileToursOpen] = useState(false);
+  const [mobileToursOpen, setMobileToursOpen] = useState(null);
   const [mobileArticlesOpen, setMobileArticlesOpen] = useState(false);
   const [messenger, setMessenger] = useState({
     open: false,
@@ -129,13 +148,27 @@ export default function Header() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  const tourLinks = useMemo(() => {
-    return tours
-      .filter((t) => t.slug)
-      .map((t) => ({
-        slug: t.slug,
-        label: t.title,
-      }));
+  const tourLinksByTransport = useMemo(() => {
+    const links = {
+      [TOUR_TRANSPORT_TYPES.BUS]: [],
+      [TOUR_TRANSPORT_TYPES.AIR]: [],
+    };
+
+    [...tours]
+      .filter((tour) => tour.slug)
+      .sort(
+        (a, b) =>
+          Number(a.order ?? 99) - Number(b.order ?? 99) ||
+          String(a.title || "").localeCompare(String(b.title || ""), "ru"),
+      )
+      .forEach((tour) => {
+        links[getTourTransportType(tour)].push({
+          slug: tour.slug,
+          label: tour.title,
+        });
+      });
+
+    return links;
   }, [tours]);
 
   const articleLinks = useMemo(() => {
@@ -150,15 +183,15 @@ export default function Header() {
   const socialButtons = getHeaderSocialButtons();
 
   const headerPhones = settings?.header_phones?.length
-    ? settings.header_phones
-    : [
+      ? settings.header_phones
+      : [
         {
-          label: "Грузия и Дагестан",
+          label: "Автобусные туры",
           phone: "636-99-11",
           link: "+375296369911",
         },
         {
-          label: "Питер и Карелия",
+          label: "Авиа туры",
           phone: "636-22-99",
           link: "+375296362299",
         },
@@ -170,11 +203,14 @@ export default function Header() {
 
   const closeMenu = () => {
     setOpen(false);
-    setMobileToursOpen(false);
+    setMobileToursOpen(null);
     setMobileArticlesOpen(false);
   };
 
-  const mobileNav = PRIMARY_NAV;
+  const mobileNav = [
+    ...TOUR_NAV.map((item) => ({ ...item, dropdown: true })),
+    ...PRIMARY_NAV,
+  ];
 
   return (
     <>
@@ -244,54 +280,68 @@ export default function Header() {
 
           {/* DESKTOP NAV */}
           <nav className="hidden shrink-0 items-center gap-0.5 text-[11px] font-medium leading-none lg:flex xl:gap-1 xl:text-[12px] 2xl:text-[13px]">
-            <div
-              className="relative"
-              onMouseEnter={() => setToursOpen(true)}
-              onMouseLeave={() => setToursOpen(false)}
-            >
-              <NavLink
-                to="/tours"
-                className={({ isActive }) =>
-                  `flex items-center gap-1 whitespace-nowrap rounded-full px-0.5 py-1.5 xl:px-1 2xl:px-1.5
-                  transition-all duration-200
-                  hover:bg-white/15 hover:text-[#F97316]
-                  hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]
-                  ${isActive || toursOpen ? "text-[#F97316]" : headerMutedText}`
-                }
-                data-testid="nav-tours"
-              >
-                Автобусные туры
-                <ChevronDown
-                  className={`size-4 transition-transform ${
-                    toursOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </NavLink>
+            {TOUR_NAV.map((navItem) => {
+              const isOpen = toursOpen === navItem.transportType;
+              const isActive =
+                location.pathname === "/" &&
+                getTransportFromHash(location.hash) === navItem.transportType;
+              const tourLinks =
+                tourLinksByTransport[navItem.transportType] || [];
 
-              {toursOpen && (
-                <div className="absolute left-0 top-full pt-4">
-                  <div className="w-64 rounded-2xl border border-white/50 bg-white/95 backdrop-blur-xl shadow-2xl p-2">
-                    {tourLinks.map((item) => (
-                      <NavLink
-                        key={item.slug}
-                        to={`/tours/${item.slug}`}
-                        className={({ isActive }) =>
-                          `block rounded-xl px-4 py-2.5 text-sm transition-colors ${
-                            isActive
-                              ? "bg-orange-50 text-[#C2410C]"
-                              : "text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
-                          }`
-                        }
-                      >
-                        {item.label}
-                      </NavLink>
-                    ))}
-                  </div>
+              return (
+                <div
+                  key={navItem.transportType}
+                  className="relative"
+                  onMouseEnter={() => setToursOpen(navItem.transportType)}
+                  onMouseLeave={() => setToursOpen(null)}
+                >
+                  <Link
+                    to={navItem.to}
+                    className={`flex items-center gap-1 whitespace-nowrap rounded-full px-0.5 py-1.5 transition-all duration-200 hover:bg-white/15 hover:text-[#F97316] hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] xl:px-1 2xl:px-1.5 ${
+                      isActive || isOpen ? "text-[#F97316]" : headerMutedText
+                    }`}
+                    data-testid={`nav-tours-${navItem.transportType}`}
+                  >
+                    {navItem.label}
+                    <ChevronDown
+                      className={`size-4 transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </Link>
+
+                  {isOpen && (
+                    <div className="absolute left-0 top-full pt-4">
+                      <div className="w-64 rounded-2xl border border-white/50 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
+                        {tourLinks.length ? (
+                          tourLinks.map((item) => (
+                            <NavLink
+                              key={item.slug}
+                              to={`/tours/${item.slug}`}
+                              className={({ isActive: isTourActive }) =>
+                                `block rounded-xl px-4 py-2.5 text-sm transition-colors ${
+                                  isTourActive
+                                    ? "bg-orange-50 text-[#C2410C]"
+                                    : "text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
+                                }`
+                              }
+                            >
+                              {item.label}
+                            </NavLink>
+                          ))
+                        ) : (
+                          <p className="px-4 py-3 text-sm text-neutral-500">
+                            Туры скоро появятся
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })}
 
-            {PRIMARY_NAV.filter((n) => !n.dropdown).map((n) =>
+            {PRIMARY_NAV.map((n) =>
               n.blogDropdown ? (
                 <div
                   key={n.to}
@@ -480,21 +530,36 @@ export default function Header() {
                 {mobileNav.map((n) =>
                   n.dropdown ? (
                     <div key={n.to}>
-                      <button
-                        type="button"
-                        onClick={() => setMobileToursOpen((v) => !v)}
-                        className="w-full flex items-center justify-between rounded-xl px-2 py-2.5 text-[16px] font-medium text-neutral-900 hover:bg-neutral-100"
-                        data-testid="mobile-nav-tours-toggle"
-                      >
-                        <span>{n.label}</span>
-                        {mobileToursOpen ? (
-                          <Minus className="size-4 text-neutral-500" />
-                        ) : (
-                          <Plus className="size-4 text-neutral-500" />
-                        )}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <Link
+                          to={n.to}
+                          onClick={closeMenu}
+                          className="flex-1 rounded-xl px-2 py-2.5 text-[16px] font-medium text-neutral-900 hover:bg-neutral-100"
+                        >
+                          {n.label}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMobileToursOpen((value) =>
+                              value === n.transportType
+                                ? null
+                                : n.transportType,
+                            )
+                          }
+                          className="grid size-10 place-items-center rounded-xl text-neutral-500 hover:bg-neutral-100"
+                          aria-label={`Показать туры: ${n.label}`}
+                          data-testid={`mobile-nav-tours-toggle-${n.transportType}`}
+                        >
+                          {mobileToursOpen === n.transportType ? (
+                            <Minus className="size-4" />
+                          ) : (
+                            <Plus className="size-4" />
+                          )}
+                        </button>
+                      </div>
                       <AnimatePresence initial={false}>
-                        {mobileToursOpen && (
+                        {mobileToursOpen === n.transportType && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -503,16 +568,24 @@ export default function Header() {
                             className="overflow-hidden"
                           >
                             <div className="flex flex-col gap-0.5 pl-3 py-1">
-                              {tourLinks.map((item) => (
-                                <NavLink
-                                  key={item.slug}
-                                  to={`/tours/${item.slug}`}
-                                  onClick={closeMenu}
-                                  className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
-                                >
-                                  {item.label}
-                                </NavLink>
-                              ))}
+                              {tourLinksByTransport[n.transportType]?.length ? (
+                                tourLinksByTransport[n.transportType].map(
+                                  (item) => (
+                                    <NavLink
+                                      key={item.slug}
+                                      to={`/tours/${item.slug}`}
+                                      onClick={closeMenu}
+                                      className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
+                                    >
+                                      {item.label}
+                                    </NavLink>
+                                  ),
+                                )
+                              ) : (
+                                <p className="px-2 py-2 text-sm text-neutral-500">
+                                  Туры скоро появятся
+                                </p>
+                              )}
                             </div>
                           </motion.div>
                         )}

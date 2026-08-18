@@ -1,7 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, formatApiErrorDetail } from "@/lib/api";
-
-const TOKEN_KEY = "tury_admin_token";
+import {
+  api,
+  clearAdminCsrfToken,
+  formatApiErrorDetail,
+  setAdminCsrfToken,
+} from "@/lib/api";
 
 const AuthContext = createContext(null);
 
@@ -10,17 +13,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
     try {
       const { data } = await api.get("/auth/me");
-      setUser(data);
+      setAdminCsrfToken(data.csrf_token);
+      const { csrf_token: _csrfToken, ...publicUser } = data;
+      setUser(publicUser);
     } catch {
-      localStorage.removeItem(TOKEN_KEY);
+      clearAdminCsrfToken();
       setUser(null);
     } finally {
       setLoading(false);
@@ -34,7 +33,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post("/auth/login", { email, password });
-      localStorage.setItem(TOKEN_KEY, data.token);
+      setAdminCsrfToken(data.csrf_token);
       setUser(data.user);
       return { ok: true };
     } catch (e) {
@@ -42,9 +41,13 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      clearAdminCsrfToken();
+      setUser(null);
+    }
   };
 
   return (

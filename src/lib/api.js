@@ -9,12 +9,23 @@ export const API_BASE = BACKEND_URL ? `${BACKEND_URL}/api` : "/api";
 export const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
+let adminCsrfToken = "";
+
+export function setAdminCsrfToken(value) {
+  adminCsrfToken = typeof value === "string" ? value : "";
+}
+
+export function clearAdminCsrfToken() {
+  adminCsrfToken = "";
+}
+
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("tury_admin_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const method = String(config.method || "get").toUpperCase();
+  if (adminCsrfToken && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    config.headers["X-CSRF-Token"] = adminCsrfToken;
   }
   return config;
 });

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   BadgeCheck,
   Bus,
+  Plane,
   Users,
   Map as MapIcon,
   Wallet,
@@ -26,10 +27,19 @@ import LeadDialog from "@/components/LeadDialog";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
 import { RichText } from "@/lib/richText";
+import {
+  getTourSectionAnchor,
+  getTourSectionPath,
+  getTourTransportType,
+  getTransportFromHash,
+  TOUR_TRANSPORT_OPTIONS,
+  TOUR_TRANSPORT_TYPES,
+} from "@/lib/tourTransport";
 
 const BENEFIT_ICONS = {
   badge: BadgeCheck,
   bus: Bus,
+  plane: Plane,
   users: Users,
   map: MapIcon,
   shield: ShieldCheck,
@@ -48,8 +58,8 @@ const DEFAULT_BENEFITS_SECTION = {
     },
     {
       icon: "bus",
-      title: "Отправление из Минска",
-      desc: "Комфортабельные автобусы, опытные водители, продуманные стоянки.",
+      title: "Удобное отправление",
+      desc: "Подбираем комфортный вариант дороги автобусом или самолётом.",
     },
     {
       icon: "users",
@@ -73,8 +83,8 @@ const DEFAULT_BENEFITS_SECTION = {
     },
     {
       icon: "seat",
-      title: "Выбор места в автобусе",
-      desc: "Возможен за доп. плату — наличие уточнит менеджер.",
+      title: "Комфорт в дороге",
+      desc: "Менеджер заранее расскажет о транспорте и доступных местах.",
     },
   ],
 };
@@ -95,17 +105,40 @@ function getBenefitsSection(settings) {
 
 export default function Home() {
   const { tours, settings } = useSiteData();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [detailsPromotion, setDetailsPromotion] = useState(null);
   const videoRef = useRef(null);
   const benefitsSection = getBenefitsSection(settings);
+  const activeTransport = getTransportFromHash(location.hash);
 
   useEffect(() => {
     api.get("/reviews").then((r) => setReviews(r.data));
     api.get("/promotions").then((r) => setPromotions(r.data || []));
   }, []);
+
+  useEffect(() => {
+    const normalizedHash = location.hash.toLowerCase();
+    if (
+      normalizedHash !== "#avia-tury" &&
+      normalizedHash !== "#avtobusnie-tury"
+    ) {
+      return undefined;
+    }
+
+    const anchor = getTourSectionAnchor(activeTransport);
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(anchor)?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTransport, location.hash]);
 
   const getPromotionTourSlug = (promotion) => {
     if (Array.isArray(promotion?.related_tour_slugs)) {
@@ -127,12 +160,18 @@ export default function Home() {
   }, []);
 
   const destinationTours = useMemo(() => {
-    return [...tours].sort(
-      (a, b) =>
-        Number(a.order ?? 99) - Number(b.order ?? 99) ||
-        String(a.title || "").localeCompare(String(b.title || ""), "ru"),
-    );
-  }, [tours]);
+    return tours
+      .filter((tour) => getTourTransportType(tour) === activeTransport)
+      .sort(
+        (a, b) =>
+          Number(a.order ?? 99) - Number(b.order ?? 99) ||
+          String(a.title || "").localeCompare(String(b.title || ""), "ru"),
+      );
+  }, [activeTransport, tours]);
+
+  const selectTransport = (transportType) => {
+    navigate(getTourSectionPath(transportType));
+  };
 
   const hits = tours
     .filter((t) => (t.badges || []).includes("Хит"))
@@ -143,8 +182,8 @@ export default function Home() {
       <PageSeo
         pageKey="home"
         path="/"
-        title="TRAVELSPACE — автобусные туры из Минска"
-        description="Автобусные туры из Минска в Грузию, Дагестан, Санкт-Петербург и Карелию. Продуманные программы, заботливые гиды и понятная цена."
+        title="TRAVELSPACE — автобусные и авиа-туры из Минска"
+        description="Автобусные и авиа-туры из Минска. Продуманные программы, заботливые гиды и понятная цена без сюрпризов."
       />
       {/* ======================= HERO ======================= */}
       <section
@@ -170,12 +209,12 @@ export default function Home() {
 
         <div className="relative w-full section-container pt-28 lg:pt-32 text-white">
           <h1 className="font-heading mt-3 sm:mt-4 text-4xl sm:text-6xl lg:text-7xl font-bold max-w-4xl leading-[1.05]">
-            Автобусные туры,
+            Туры,
             <br />в которые хочется возвращаться
           </h1>
           <p className="mt-5 max-w-xl text-base sm:text-lg text-white/85 leading-relaxed">
-            Дагестан, Грузия, Санкт-Петербург и Карелия. Простые программы,
-            заботливые гиды и понятная цена без сюрпризов в дороге.
+            Путешествия автобусом и самолётом. Простые программы, заботливые
+            гиды и понятная цена без сюрпризов в дороге.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -183,7 +222,10 @@ export default function Home() {
               asChild
               className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white px-6 py-6 text-base font-medium"
             >
-              <Link to="/tours" data-testid="hero-cta-tours">
+              <Link
+                to={getTourSectionPath(TOUR_TRANSPORT_TYPES.BUS)}
+                data-testid="hero-cta-tours"
+              >
                 Выбрать тур <ArrowRight className="size-4 ml-1" />
               </Link>
             </Button>
@@ -200,7 +242,18 @@ export default function Home() {
       </section>
 
       {/* ======================= DESTINATION TOURS ======================= */}
-      <section className="section-pad" data-testid="destinations-section">
+      <section
+        className="relative section-pad"
+        data-testid="destinations-section"
+      >
+        {TOUR_TRANSPORT_OPTIONS.map((option) => (
+          <span
+            key={option.anchor}
+            id={option.anchor}
+            className="absolute top-0 scroll-mt-24"
+            aria-hidden="true"
+          />
+        ))}
         <div className="section-container">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 lg:mb-14">
             <div>
@@ -209,20 +262,51 @@ export default function Home() {
                 Туры, проверенные нами лично
               </h2>
             </div>
-            <Link
-              to="/tours"
-              className="inline-flex items-center gap-2 text-sm font-medium hover:text-[#C2410C]"
-              data-testid="all-tours-link"
+            <div
+              className="inline-flex w-fit flex-wrap gap-1 rounded-2xl bg-neutral-100 p-1.5"
+              role="tablist"
+              aria-label="Вид тура"
             >
-              Все туры <ArrowRight className="size-4" />
-            </Link>
+              {TOUR_TRANSPORT_OPTIONS.map((option) => {
+                const active = activeTransport === option.value;
+                const Icon =
+                  option.value === TOUR_TRANSPORT_TYPES.AIR ? Plane : Bus;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => selectTransport(option.value)}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors sm:px-5 ${
+                      active
+                        ? "bg-neutral-900 text-white shadow-sm"
+                        : "text-neutral-600 hover:bg-white hover:text-neutral-900"
+                    }`}
+                    data-testid={`tour-type-${option.value}`}
+                  >
+                    <Icon className="size-4" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {destinationTours.map((tour) => (
-              <TourCard key={tour.id || tour.slug} tour={tour} />
-            ))}
-          </div>
+          {destinationTours.length ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {destinationTours.map((tour) => (
+                <TourCard key={tour.id || tour.slug} tour={tour} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-neutral-300 bg-neutral-50 px-6 py-14 text-center text-neutral-500">
+              {activeTransport === TOUR_TRANSPORT_TYPES.AIR
+                ? "Авиа туры скоро появятся. Оставьте заявку — менеджер расскажет о ближайших программах."
+                : "Автобусные туры скоро появятся."}
+            </div>
+          )}
         </div>
       </section>
 

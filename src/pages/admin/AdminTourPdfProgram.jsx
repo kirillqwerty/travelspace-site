@@ -21,13 +21,27 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 const EMPTY_PROGRAM = {
+  header_company: "",
+  header_title: "",
   intro: "",
   days: [],
   included: [],
   excluded: [],
   important_info: [],
   show_info_blocks: true,
+  footer_company: "",
+  footer_site: "",
+  footer_phone: "",
 };
+
+function descriptionLimitForDays(daysCount) {
+  if (daysCount <= 3) return 300;
+  if (daysCount <= 5) return 260;
+  if (daysCount <= 7) return 220;
+  if (daysCount <= 10) return 180;
+  if (daysCount <= 14) return 120;
+  return 80;
+}
 
 function uid() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -41,6 +55,8 @@ function normalizeProgram(value = {}) {
   return {
     ...EMPTY_PROGRAM,
     ...value,
+    header_company: value.header_company || "",
+    header_title: value.header_title || "",
     intro: value.intro || "",
     days: Array.isArray(value.days)
       ? value.days.map((day, index) => ({
@@ -56,6 +72,9 @@ function normalizeProgram(value = {}) {
       ? value.important_info
       : [],
     show_info_blocks: value.show_info_blocks !== false,
+    footer_company: value.footer_company || "",
+    footer_site: value.footer_site || "",
+    footer_phone: value.footer_phone || "",
   };
 }
 
@@ -69,9 +88,7 @@ const CompactStringList = memo(function CompactStringList({
 
   const updateItem = (index, nextValue) => {
     onChange(
-      items.map((item, itemIndex) =>
-        itemIndex === index ? nextValue : item,
-      ),
+      items.map((item, itemIndex) => (itemIndex === index ? nextValue : item)),
     );
   };
 
@@ -135,6 +152,7 @@ const CompactStringList = memo(function CompactStringList({
 const ProgramDay = memo(function ProgramDay({
   day,
   index,
+  descriptionLimit,
   expanded,
   isDragging,
   isDragOver,
@@ -251,11 +269,17 @@ const ProgramDay = memo(function ProgramDay({
               }
               placeholder="Только ключевые события дня — без длинных деталей."
               rows={3}
-              maxLength={240}
+              maxLength={descriptionLimit}
               className="mt-1"
             />
-            <p className="mt-1 text-right text-[11px] text-neutral-400">
-              {(day.description || "").length}/240
+            <p
+              className={`mt-1 text-right text-[11px] ${
+                (day.description || "").length > descriptionLimit
+                  ? "font-semibold text-red-600"
+                  : "text-neutral-400"
+              }`}
+            >
+              {(day.description || "").length}/{descriptionLimit}
             </p>
           </div>
         </div>
@@ -304,8 +328,7 @@ export default function AdminTourPdfProgram() {
       } catch (error) {
         if (cancelled) return;
         toast.error(
-          error?.response?.data?.detail ||
-            "Не удалось загрузить PDF-программу",
+          error?.response?.data?.detail || "Не удалось загрузить PDF-программу",
         );
         navigate("/admin/tours", { replace: true });
       } finally {
@@ -324,6 +347,8 @@ export default function AdminTourPdfProgram() {
     if (!tour?.slug) return "";
     return `${API_BASE}/tours/${encodeURIComponent(tour.slug)}/program.pdf`;
   }, [tour?.slug]);
+
+  const descriptionLimit = descriptionLimitForDays(program.days.length);
 
   const updateDay = (index, patch) => {
     setProgram((current) => ({
@@ -395,11 +420,24 @@ export default function AdminTourPdfProgram() {
   };
 
   const save = async () => {
+    const overLimitDay = program.days.find(
+      (day) => (day.description || "").length > descriptionLimit,
+    );
+
+    if (overLimitDay) {
+      toast.error(
+        `Сократите описание дня ${overLimitDay.day || ""} до ${descriptionLimit} символов`,
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
       const payload = {
         ...program,
+        header_company: program.header_company.trim(),
+        header_title: program.header_title.trim(),
         intro: program.intro.trim(),
         days: program.days
           .map((day, index) => ({
@@ -414,6 +452,9 @@ export default function AdminTourPdfProgram() {
         important_info: program.important_info
           .map((item) => item.trim())
           .filter(Boolean),
+        footer_company: program.footer_company.trim(),
+        footer_site: program.footer_site.trim(),
+        footer_phone: program.footer_phone.trim(),
       };
 
       const response = await api.put(
@@ -505,13 +546,118 @@ export default function AdminTourPdfProgram() {
       )}
 
       <div className="mt-6 space-y-6">
+        <div className="grid gap-4 xl:grid-cols-2">
+          <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5">
+            <Label className="font-semibold">Шапка PDF</Label>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+              Тексты поверх главного изображения в верхней части документа.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <Label htmlFor="pdf-header-company" className="text-xs">
+                  Название компании
+                </Label>
+                <Input
+                  id="pdf-header-company"
+                  value={program.header_company}
+                  onChange={(event) =>
+                    setProgram((current) => ({
+                      ...current,
+                      header_company: event.target.value,
+                    }))
+                  }
+                  maxLength={80}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pdf-header-title" className="text-xs">
+                  Заголовок программы
+                </Label>
+                <Input
+                  id="pdf-header-title"
+                  value={program.header_title}
+                  onChange={(event) =>
+                    setProgram((current) => ({
+                      ...current,
+                      header_title: event.target.value,
+                    }))
+                  }
+                  maxLength={160}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5">
+            <Label className="font-semibold">Футер PDF</Label>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+              Компания, сайт и телефон в нижней строке документа.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="pdf-footer-company" className="text-xs">
+                  Компания
+                </Label>
+                <Input
+                  id="pdf-footer-company"
+                  value={program.footer_company}
+                  onChange={(event) =>
+                    setProgram((current) => ({
+                      ...current,
+                      footer_company: event.target.value,
+                    }))
+                  }
+                  maxLength={80}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="pdf-footer-site" className="text-xs">
+                  Сайт
+                </Label>
+                <Input
+                  id="pdf-footer-site"
+                  value={program.footer_site}
+                  onChange={(event) =>
+                    setProgram((current) => ({
+                      ...current,
+                      footer_site: event.target.value,
+                    }))
+                  }
+                  maxLength={120}
+                  className="mt-1"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="pdf-footer-phone" className="text-xs">
+                  Телефон
+                </Label>
+                <Input
+                  id="pdf-footer-phone"
+                  value={program.footer_phone}
+                  onChange={(event) =>
+                    setProgram((current) => ({
+                      ...current,
+                      footer_phone: event.target.value,
+                    }))
+                  }
+                  maxLength={80}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+
         <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5">
           <Label htmlFor="pdf-program-intro" className="font-semibold">
             Короткое вступление
           </Label>
           <p className="mt-1 text-xs text-neutral-500">
-            Одна-две короткие строки под заголовком. Чем короче текст, тем больше
-            места останется для дней.
+            Одна-две короткие строки под заголовком. Чем короче текст, тем
+            больше места останется для дней.
           </p>
           <Textarea
             id="pdf-program-intro"
@@ -534,10 +680,14 @@ export default function AdminTourPdfProgram() {
         <section>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <Label className="text-base font-semibold">Программа по дням</Label>
+              <Label className="text-base font-semibold">
+                Программа по дням
+              </Label>
               <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                Открывается только выбранный день. Для изменения порядка
-                зажмите маркер справа и перетащите день в нужное место.
+                Открывается только выбранный день. Для изменения порядка зажмите
+                маркер справа и перетащите день в нужное место. При текущем
+                количестве дней описание занимает до трёх строк и ограничено
+                {" "}{descriptionLimit} символами на день.
               </p>
             </div>
             <Button type="button" variant="outline" onClick={addDay}>
@@ -557,11 +707,10 @@ export default function AdminTourPdfProgram() {
                 key={day.id || index}
                 day={day}
                 index={index}
+                descriptionLimit={descriptionLimit}
                 expanded={expandedDayId === day.id}
                 isDragging={draggedDayId === day.id}
-                isDragOver={
-                  dragOverDayId === day.id && draggedDayId !== day.id
-                }
+                isDragOver={dragOverDayId === day.id && draggedDayId !== day.id}
                 onToggle={() =>
                   setExpandedDayId((current) =>
                     current === day.id ? null : day.id,
@@ -597,7 +746,9 @@ export default function AdminTourPdfProgram() {
         <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <Label className="font-semibold">Нижние информационные блоки</Label>
+              <Label className="font-semibold">
+                Нижние информационные блоки
+              </Label>
               <p className="mt-1 text-xs leading-relaxed text-neutral-500">
                 «В стоимость входит», «Оплачивается отдельно» и «Важно знать».
                 Отключите их у длинной программы, чтобы освободить место.

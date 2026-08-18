@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
-import { MapPin, Calendar, ArrowRight } from "lucide-react";
+import { Bus, Plane, Calendar, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { mediaUrl } from "@/lib/media";
+import {
+  getTourTransportType,
+  TOUR_TRANSPORT_TYPES,
+} from "@/lib/tourTransport";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -318,6 +322,8 @@ export default function TourCard({ tour, size = "default" }) {
   const description = cleanDescription(tour);
   const promotionDates = getPromotionDates(tour);
   const hasPromotions = promotionDates.length > 0;
+  const TransportIcon =
+    getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR ? Plane : Bus;
 
   return (
     <Link
@@ -400,7 +406,7 @@ export default function TourCard({ tour, size = "default" }) {
             {tour.duration}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700">
-            <MapPin className="size-3.5" />
+            <TransportIcon className="size-3.5" aria-hidden="true" />
             {formatDepartureFrom(tour)}
           </span>
         </div>

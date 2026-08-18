@@ -9,9 +9,9 @@ const SITE_URL = (
 
 const DEFAULT_SITE_NAME = "TRAVELSPACE";
 const DEFAULT_TITLE =
-  "TRAVELSPACE — автобусные туры из Минска";
+  "TRAVELSPACE — автобусные и авиа-туры из Минска";
 const DEFAULT_DESCRIPTION =
-  "Автобусные туры из Минска в Грузию, Дагестан, Санкт-Петербург и Карелию. Продуманные программы, заботливые гиды и понятная цена.";
+  "Автобусные и авиа-туры из Минска. Продуманные программы, заботливые гиды и понятная цена без сюрпризов.";
 const DEFAULT_IMAGE = "/og-image.jpg";
 
 function stripText(value = "") {
