@@ -74,7 +74,7 @@ export default function Thanks() {
         path="/thanks"
         title="Спасибо за заявку | TRAVELSPACE"
         description="Спасибо за заявку. Менеджер TRAVELSPACE свяжется с вами в ближайшее время."
-        noIndexrobots
+        noIndex
       />
 
       <div className="mx-auto max-w-3xl overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]">

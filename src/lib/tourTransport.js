@@ -43,3 +43,9 @@ export function getTourSectionAnchor(transportType) {
 export function getTourSectionPath(transportType) {
   return `/#${getTourSectionAnchor(transportType)}`;
 }
+
+export function getTourLandingPath(transportType) {
+  return transportType === TOUR_TRANSPORT_TYPES.AIR
+    ? "/tours/avia-iz-minska"
+    : "/tours/avtobusnye-iz-minska";
+}

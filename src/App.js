@@ -1,57 +1,64 @@
 import "@/App.css";
 import "@/index.css";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import {
   BrowserRouter,
-  Routes,
-  Route,
   Navigate,
+  Route,
+  Routes,
   useLocation,
+  useParams,
 } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import IntroScreen from "@/components/IntroScreen";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth.jsx";
-
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import StickyMobileBar from "@/components/StickyMobileBar";
 import CookieBanner from "@/components/CookieBanner";
 import MarketingScripts from "@/components/MarketingScripts";
+import IntroScreen from "@/components/IntroScreen";
 import { initAttribution, trackPageView } from "@/lib/analytics";
+import { isTourLandingSlug } from "@/lib/seoLandings";
 
-import Home from "@/pages/Home";
-import Catalog from "@/pages/Catalog";
-import TourPage from "@/pages/TourPage";
-import About from "@/pages/About";
-import Contacts from "@/pages/Contacts";
-import Faq from "@/pages/Faq";
-import Promotions from "@/pages/Promotions";
-import Reviews from "@/pages/Reviews";
-import Thanks from "@/pages/Thanks";
-import TravelLinks from "./pages/TravelLinks";
-import Blog from "@/pages/Blog";
-import Article from "@/pages/Article";
-import Agencies from "@/pages/Agencies";
-import Payment from "@/pages/Payment";
-import Legal from "@/pages/Legal";
-import NotFound from "@/pages/NotFound";
+const Home = lazy(() => import("@/pages/Home"));
+const Catalog = lazy(() => import("@/pages/Catalog"));
+const TourPage = lazy(() => import("@/pages/TourPage"));
+const TourLanding = lazy(() => import("@/pages/TourLanding"));
+const About = lazy(() => import("@/pages/About"));
+const Contacts = lazy(() => import("@/pages/Contacts"));
+const Faq = lazy(() => import("@/pages/Faq"));
+const Promotions = lazy(() => import("@/pages/Promotions"));
+const Reviews = lazy(() => import("@/pages/Reviews"));
+const Thanks = lazy(() => import("@/pages/Thanks"));
+const TravelLinks = lazy(() => import("@/pages/TravelLinks"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const Article = lazy(() => import("@/pages/Article"));
+const Agencies = lazy(() => import("@/pages/Agencies"));
+const Payment = lazy(() => import("@/pages/Payment"));
+const Legal = lazy(() => import("@/pages/Legal"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const AdminLogin = lazy(() => import("@/pages/admin/AdminLogin"));
+const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"));
+const AdminLeads = lazy(() => import("@/pages/admin/AdminLeads"));
+const AdminCollection = lazy(() => import("@/pages/admin/AdminCollection"));
+const AdminTourPdfProgram = lazy(() => import("@/pages/admin/AdminTourPdfProgram"));
+const AdminSettings = lazy(() => import("@/pages/admin/AdminSettings"));
+const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 
-import AdminLogin from "@/pages/admin/AdminLogin";
-import AdminLayout from "@/pages/admin/AdminLayout";
-import AdminLeads from "@/pages/admin/AdminLeads";
-import AdminCollection from "@/pages/admin/AdminCollection";
-import AdminTourPdfProgram from "@/pages/admin/AdminTourPdfProgram";
-import AdminSettings from "@/pages/admin/AdminSettings";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
+function RouteFallback() {
+  return (
+    <div className="min-h-[45vh] grid place-items-center text-sm text-neutral-500">
+      Загрузка…
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
 
   useEffect(() => {
-    if (hash) return;
-
-    window.scrollTo({ top: 0, behavior: "instant" });
+    if (!hash) window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname, hash]);
 
   return null;
@@ -73,7 +80,7 @@ function RouteAnalytics() {
 
 function PublicLayout({ children }) {
   return (
-    <div className="flex flex-col min-h-screen pb-16 lg:pb-0">
+    <div className="flex min-h-screen flex-col pb-16 lg:pb-0">
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
@@ -83,56 +90,52 @@ function PublicLayout({ children }) {
   );
 }
 
+function PublicPage({ children }) {
+  return <PublicLayout>{children}</PublicLayout>;
+}
+
 function ProtectedAdmin({ children }) {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center text-sm text-neutral-500">
-        Загрузка…
-      </div>
-    );
-  }
-
+  if (loading) return <RouteFallback />;
   if (!user) return <Navigate to="/admin/login" replace />;
-
   return children;
 }
 
-const DIRECTION_TO_TOUR = {
-  dagestan: "dagestan-7-dney",
-  "georgia-kobuleti": "gruziya-kobuleti-10-dney",
-  "saint-petersburg": "saint-petersburg-5-dney",
-  kareliya: "kareliya-5-dney",
+const DIRECTION_REDIRECTS = {
+  dagestan: "/tours/dagestan",
+  "georgia-kobuleti": "/tours/gruziya",
+  "saint-petersburg": "/tours/sankt-peterburg",
+  kareliya: "/tours/kareliya",
 };
 
 function DirectionRedirect() {
-  const { pathname } = useLocation();
-  const slug = pathname.replace(/^\/directions\/?/, "").split("/")[0] || "";
-  const target = DIRECTION_TO_TOUR[slug];
+  const { slug = "" } = useParams();
+  return <Navigate to={DIRECTION_REDIRECTS[slug] || "/tours"} replace />;
+}
 
-  return <Navigate to={target ? `/tours/${target}` : "/tours"} replace />;
+function TourSlugRoute() {
+  const { slug = "" } = useParams();
+  return isTourLandingSlug(slug) ? <TourLanding slug={slug} /> : <TourPage />;
 }
 
 export default function App() {
   const INTRO_DURATION = 1700;
-
   const [showIntro, setShowIntro] = useState(true);
   const [startHeroVideo, setStartHeroVideo] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timerId = window.setTimeout(() => {
       setShowIntro(false);
       setStartHeroVideo(true);
     }, INTRO_DURATION);
 
-    return () => clearTimeout(timer);
+    return () => window.clearTimeout(timerId);
   }, []);
 
   return (
     <>
       <IntroScreen visible={showIntro} />
-
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: showIntro ? 0 : 1 }}
@@ -144,209 +147,44 @@ export default function App() {
             <RouteAnalytics />
             <MarketingScripts />
 
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <PublicLayout>
-                    <Home startVideo={startHeroVideo} />
-                  </PublicLayout>
-                }
-              />
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+            <Route path="/" element={<PublicPage><Home startVideo={startHeroVideo} /></PublicPage>} />
+            <Route path="/tours" element={<PublicPage><Catalog /></PublicPage>} />
+            <Route path="/tours/:slug" element={<PublicPage><TourSlugRoute /></PublicPage>} />
+            <Route path="/thanks" element={<PublicPage><Thanks /></PublicPage>} />
+            <Route path="/links" element={<PublicPage><TravelLinks /></PublicPage>} />
+            <Route path="/directions" element={<Navigate to="/tours" replace />} />
+            <Route path="/directions/:slug" element={<DirectionRedirect />} />
+            <Route path="/about" element={<PublicPage><About /></PublicPage>} />
+            <Route path="/contacts" element={<PublicPage><Contacts /></PublicPage>} />
+            <Route path="/faq" element={<PublicPage><Faq /></PublicPage>} />
+            <Route path="/promotions" element={<PublicPage><Promotions /></PublicPage>} />
+            <Route path="/reviews" element={<PublicPage><Reviews /></PublicPage>} />
+            <Route path="/blog" element={<PublicPage><Blog /></PublicPage>} />
+            <Route path="/blog/:slug" element={<PublicPage><Article /></PublicPage>} />
+            <Route path="/agencies" element={<PublicPage><Agencies /></PublicPage>} />
+            <Route path="/payment" element={<PublicPage><Payment /></PublicPage>} />
+            <Route path="/legal" element={<PublicPage><Legal /></PublicPage>} />
 
-              <Route
-                path="/tours"
-                element={
-                  <PublicLayout>
-                    <Catalog />
-                  </PublicLayout>
-                }
-              />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<ProtectedAdmin><AdminLayout /></ProtectedAdmin>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="leads" element={<AdminLeads />} />
+              <Route path="tours" element={<AdminCollection name="tours" />} />
+              <Route path="tours/:tourId/pdf-program" element={<AdminTourPdfProgram />} />
+              <Route path="directions" element={<Navigate to="/admin/tours" replace />} />
+              <Route path="specialists" element={<AdminCollection name="specialists" />} />
+              <Route path="reviews" element={<AdminCollection name="reviews" />} />
+              <Route path="articles" element={<AdminCollection name="articles" />} />
+              <Route path="promotions" element={<AdminCollection name="promotions" />} />
+              <Route path="faq" element={<AdminCollection name="faq" />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
-              <Route
-                path="/tours/:slug"
-                element={
-                  <PublicLayout>
-                    <TourPage />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/thanks"
-                element={
-                  <PublicLayout>
-                    <Thanks />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/links"
-                element={
-                  <PublicLayout>
-                    <TravelLinks />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/directions"
-                element={<Navigate to="/tours" replace />}
-              />
-
-              <Route path="/directions/:slug" element={<DirectionRedirect />} />
-
-              <Route
-                path="/about"
-                element={
-                  <PublicLayout>
-                    <About />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/contacts"
-                element={
-                  <PublicLayout>
-                    <Contacts />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/faq"
-                element={
-                  <PublicLayout>
-                    <Faq />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/promotions"
-                element={
-                  <PublicLayout>
-                    <Promotions />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/reviews"
-                element={
-                  <PublicLayout>
-                    <Reviews />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/blog"
-                element={
-                  <PublicLayout>
-                    <Blog />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/blog/:slug"
-                element={
-                  <PublicLayout>
-                    <Article />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/agencies"
-                element={
-                  <PublicLayout>
-                    <Agencies />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/payment"
-                element={
-                  <PublicLayout>
-                    <Payment />
-                  </PublicLayout>
-                }
-              />
-
-              <Route
-                path="/legal"
-                element={
-                  <PublicLayout>
-                    <Legal />
-                  </PublicLayout>
-                }
-              />
-
-              <Route path="/admin/login" element={<AdminLogin />} />
-
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedAdmin>
-                    <AdminLayout />
-                  </ProtectedAdmin>
-                }
-              >
-                <Route index element={<AdminDashboard />} />
-                <Route path="leads" element={<AdminLeads />} />
-                <Route
-                  path="tours"
-                  element={<AdminCollection name="tours" />}
-                />
-                <Route
-                  path="tours/:tourId/pdf-program"
-                  element={<AdminTourPdfProgram />}
-                />
-
-                <Route
-                  path="directions"
-                  element={<Navigate to="/admin/tours" replace />}
-                />
-
-                <Route
-                  path="specialists"
-                  element={<AdminCollection name="specialists" />}
-                />
-
-                <Route
-                  path="reviews"
-                  element={<AdminCollection name="reviews" />}
-                />
-
-                <Route
-                  path="articles"
-                  element={<AdminCollection name="articles" />}
-                />
-
-                <Route
-                  path="promotions"
-                  element={<AdminCollection name="promotions" />}
-                />
-
-                <Route path="faq" element={<AdminCollection name="faq" />} />
-                <Route path="settings" element={<AdminSettings />} />
-              </Route>
-
-              <Route
-                path="*"
-                element={
-                  <PublicLayout>
-                    <NotFound />
-                  </PublicLayout>
-                }
-              />
-            </Routes>
-
+            <Route path="*" element={<PublicPage><NotFound /></PublicPage>} />
+              </Routes>
+            </Suspense>
             <Toaster richColors position="top-right" />
           </AuthProvider>
         </BrowserRouter>

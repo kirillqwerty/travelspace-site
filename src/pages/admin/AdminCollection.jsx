@@ -762,7 +762,7 @@ export default function AdminCollection({ name }) {
   const [rendering, setRendering] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     console.log("AdminCollection load started:", `/admin/${name}`);
 
     setLoading(true);
@@ -789,12 +789,12 @@ export default function AdminCollection({ name }) {
       setLoading(false);
       setRendering(false);
     }
-  };
+  }, [name]);
 
   useEffect(() => {
     console.log("AdminCollection mounted / name changed:", name);
     load();
-  }, [name]);
+  }, [load, name]);
 
   // const onSave = async (record, extraJson) => {
   //   try {

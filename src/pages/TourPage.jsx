@@ -47,6 +47,7 @@ import {
   getTourTransportType,
   TOUR_TRANSPORT_TYPES,
 } from "@/lib/tourTransport";
+import { getDirectionLandingForTour } from "@/lib/seoLandings";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -1453,7 +1454,7 @@ export default function TourPage() {
     if (tour?.slug) {
       trackTourView(tour);
     }
-  }, [tour?.slug]);
+  }, [tour]);
 
   const handleShowPromotionDate = useCallback(() => {
     setPricesOpen(false);
@@ -1536,7 +1537,7 @@ export default function TourPage() {
       window.removeEventListener("hashchange", startScroll);
       window.removeEventListener("load", startScroll);
     };
-  }, [tour?.id, tour?.slug, chains.length, location.hash]);
+  }, [tour, chains.length, location.hash]);
 
   if (error) {
     return (
@@ -1593,21 +1594,19 @@ export default function TourPage() {
   const tourSeoImage =
     tour.seo_image || tour.og_image || tour.hero_image || tour.gallery?.[0];
   const tourStructuredData = {
-    "@context": "https://schema.org",
     "@type": "TouristTrip",
     name: tour.title,
     description: tourSeoDescription,
     url: `https://travelspace.by${tourPath}`,
     image: tourSeoImage ? mediaUrl(tourSeoImage) : undefined,
-    offers: hasPriceValue(tour.price_from)
-      ? {
-          "@type": "Offer",
-          price: String(tour.price_from),
-          priceCurrency: tour.currency || "BYN",
-          availability: "https://schema.org/InStock",
-        }
-      : undefined,
+    touristType: "Групповой тур",
+    provider: { "@id": "https://travelspace.by/#organization" },
   };
+  const categoryLanding =
+    getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR
+      ? { path: "/tours/avia-iz-minska", label: "Авиационные туры" }
+      : { path: "/tours/avtobusnye-iz-minska", label: "Автобусные туры" };
+  const directionLanding = getDirectionLandingForTour(tour);
 
   return (
     <div data-testid="tour-page">
@@ -1637,6 +1636,17 @@ export default function TourPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/5 sm:from-black/85 sm:via-black/35 sm:to-black/15" />
 
           <div className="relative min-h-[620px] lg:min-h-[680px] section-container flex flex-col justify-end pt-28 lg:pt-36 pb-10 text-white">
+            <nav aria-label="Хлебные крошки" className="mb-5 flex flex-wrap items-center gap-2 text-sm text-white/80">
+              <Link to="/" className="hover:text-white">Главная</Link>
+              <span aria-hidden="true">/</span>
+              <Link to={categoryLanding.path} className="hover:text-white">{categoryLanding.label}</Link>
+              {directionLanding && (
+                <>
+                  <span aria-hidden="true">/</span>
+                  <Link to={directionLanding.path} className="hover:text-white">{directionLanding.label}</Link>
+                </>
+              )}
+            </nav>
             <div className="flex flex-wrap gap-2 mb-4">
               {(tour.badges || []).map((b) => (
                 <Badge

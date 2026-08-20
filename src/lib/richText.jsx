@@ -130,7 +130,24 @@ export function splitRichTextBlocks(text = "") {
     .filter(Boolean);
 }
 
-export function RichText({ text, className = "", paragraphClassName = "" }) {
+function splitSemanticHeading(block = "") {
+  const markdown = String(block).match(/^##\s+([^\n]+)(?:\n+([\s\S]+))?$/);
+  if (markdown) return { heading: markdown[1], body: markdown[2] || "" };
+
+  const numbered = String(block).match(/^(\d+)\.\s+(.+?[.!?])(?:\s+([\s\S]+))?$/);
+  if (!numbered) return null;
+  return {
+    heading: `${numbered[1]}. ${numbered[2]}`,
+    body: numbered[3] || "",
+  };
+}
+
+export function RichText({
+  text,
+  className = "",
+  paragraphClassName = "",
+  semanticHeadings = false,
+}) {
   const blocks = splitRichTextBlocks(text);
 
   if (!blocks.length) return null;
@@ -138,6 +155,21 @@ export function RichText({ text, className = "", paragraphClassName = "" }) {
   return (
     <div className={className}>
       {blocks.map((block, blockIndex) => {
+        const semantic = semanticHeadings ? splitSemanticHeading(block) : null;
+        if (semantic) {
+          return (
+            <div key={`block-${blockIndex}`} className={blockIndex > 0 ? "mt-7" : ""}>
+              <h2 className="font-heading text-2xl font-semibold leading-tight text-neutral-950 sm:text-3xl">
+                {renderInline(semantic.heading, `heading-${blockIndex}`)}
+              </h2>
+              {semantic.body && (
+                <p className={`mt-3 ${paragraphClassName}`.trim()}>
+                  {renderInline(semantic.body, `heading-body-${blockIndex}`)}
+                </p>
+              )}
+            </div>
+          );
+        }
         const lines = block.split("\n");
 
         return (

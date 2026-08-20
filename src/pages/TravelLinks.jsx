@@ -80,6 +80,7 @@ export default function TravelLinks() {
         path="/links"
         title="Актуальные туры из Instagram | TRAVELSPACE"
         description="Быстрый список актуальных туров TRAVELSPACE для перехода из соцсетей."
+        noIndex
       />
 
       <div className="mx-auto w-full max-w-[520px] px-4">

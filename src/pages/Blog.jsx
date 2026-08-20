@@ -14,6 +14,16 @@ function articlePreviewImage(article) {
   );
 }
 
+function articleExcerpt(article) {
+  const value = article.excerpt || article.seo_description || article.content || "";
+  const clean = String(value)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[*_`#>]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return clean.length > 190 ? `${clean.slice(0, 189).trim()}…` : clean;
+}
+
 export default function Blog() {
   const [items, setItems] = useState([]);
   const formatDate = (date) => {
@@ -87,7 +97,7 @@ export default function Blog() {
                   {a.title}
                 </h3>
                 <p className="text-sm text-neutral-600 mt-2 line-clamp-3">
-                  {a.excerpt}
+                  {articleExcerpt(a)}
                 </p>
               </div>
             </Link>

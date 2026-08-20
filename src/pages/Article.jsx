@@ -6,6 +6,11 @@ import { useSiteData } from "@/lib/useSiteData";
 import PageSeo from "@/components/PageSeo";
 import { mediaUrl } from "@/lib/media";
 import { RichText, splitRichTextBlocks } from "@/lib/richText";
+import {
+  getDirectionLandingForTour,
+  TOUR_LANDINGS,
+  TOUR_LANDING_LINKS,
+} from "@/lib/seoLandings";
 
 function articleImages(article) {
   const gallery = Array.isArray(article?.gallery)
@@ -37,6 +42,7 @@ function ArticleBody({ article }) {
             <RichText
               text={block}
               paragraphClassName="text-[17px] leading-8 text-neutral-800"
+              semanticHeadings
             />
 
             {shouldShowImage && (
@@ -92,9 +98,28 @@ export default function Article() {
   }, [slug]);
 
   const relatedTours = useMemo(() => {
-    if (!a?.related_tour_slugs?.length) return [];
-    return tours.filter((tour) => a.related_tour_slugs.includes(tour.slug));
+    if (!a) return [];
+    if (a.related_tour_slugs?.length) {
+      return tours.filter((tour) => a.related_tour_slugs.includes(tour.slug));
+    }
+    const articleText = `${a.title || ""} ${a.excerpt || ""} ${a.content || ""}`.toLowerCase();
+    return tours
+      .filter((tour) => {
+        const direction = getDirectionLandingForTour(tour);
+        return TOUR_LANDINGS[direction?.slug]?.keywords?.some((keyword) =>
+          articleText.includes(keyword),
+        );
+      })
+      .slice(0, 3);
   }, [a, tours]);
+
+  const relatedDirections = useMemo(() => {
+    if (!a) return [];
+    const articleText = `${a.title || ""} ${a.excerpt || ""} ${a.content || ""}`.toLowerCase();
+    return TOUR_LANDING_LINKS.slice(2).filter(({ slug: landingSlug }) =>
+      TOUR_LANDINGS[landingSlug].keywords?.some((keyword) => articleText.includes(keyword)),
+    );
+  }, [a]);
 
   if (error) {
     return (
@@ -129,6 +154,17 @@ export default function Article() {
   const articleTitle = a.seo_title || `${a.title} | TRAVELSPACE`;
   const articleDescription = a.seo_description || a.excerpt || a.content;
   const articleImage = a.seo_image || a.cover || articleImages(a)[0];
+  const articleStructuredData = {
+    "@type": "Article",
+    headline: a.title,
+    description: articleDescription,
+    mainEntityOfPage: `https://travelspace.by/blog/${a.slug || slug}`,
+    image: articleImage ? mediaUrl(articleImage) : undefined,
+    author: { "@id": "https://travelspace.by/#organization" },
+    publisher: { "@id": "https://travelspace.by/#organization" },
+    datePublished: a.published_at || undefined,
+    dateModified: a.updated_at || undefined,
+  };
 
   return (
     <article
@@ -142,6 +178,7 @@ export default function Article() {
         image={articleImage}
         path={`/blog/${a.slug || slug}`}
         type="article"
+        structuredData={articleStructuredData}
       />
       <Link
         to="/blog"
@@ -149,7 +186,7 @@ export default function Article() {
       >
         ← В блог
       </Link>
-      <p className="text-xs text-neutral-500 mt-6">{a.published_at}</p>
+      {a.published_at && <p className="text-xs text-neutral-500 mt-6">{a.published_at}</p>}
       <h1 className="font-heading text-4xl sm:text-5xl mt-2 max-w-3xl">
         {a.title}
       </h1>
@@ -169,6 +206,16 @@ export default function Article() {
       )}
 
       <ArticleBody article={a} />
+
+      {relatedDirections.length > 0 && (
+        <nav aria-label="Связанные направления" className="mt-10 flex flex-wrap gap-2">
+          {relatedDirections.map((item) => (
+            <Link key={item.slug} to={item.path} className="rounded-full border border-neutral-200 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:border-orange-300 hover:text-[#C2410C]">
+              Туры: {item.label}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {relatedTours.length > 0 && (
         <div className="mt-12 rounded-2xl border border-orange-100 bg-orange-50/60 p-5">

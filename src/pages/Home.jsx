@@ -103,7 +103,7 @@ function getBenefitsSection(settings) {
   };
 }
 
-export default function Home() {
+export default function Home({ startVideo = false }) {
   const { tours, settings } = useSiteData();
   const location = useLocation();
   const navigate = useNavigate();
@@ -151,13 +151,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (videoRef.current) {
-        videoRef.current.play().catch(() => {});
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!startVideo || !videoRef.current) return undefined;
+    videoRef.current.play().catch(() => {});
+    return undefined;
+  }, [startVideo]);
 
   const destinationTours = useMemo(() => {
     return tours
@@ -195,7 +192,8 @@ export default function Home() {
           muted
           loop
           playsInline
-          preload="auto"
+          preload="none"
+          poster={`${process.env.PUBLIC_URL}/og-image.jpg`}
           className="absolute inset-0 w-full h-full object-cover"
         >
           <source

@@ -12,7 +12,7 @@ import socialTelegram from "../assets/social-telegram.png";
 import socialViber from "../assets/social-viber.png";
 import socialWhatsapp from "../assets/social-whatsapp.png";
 import {
-  getTourSectionPath,
+  getTourLandingPath,
   getTourTransportType,
   getTransportFromHash,
   TOUR_TRANSPORT_TYPES,
@@ -20,12 +20,12 @@ import {
 
 const TOUR_NAV = [
   {
-    to: getTourSectionPath(TOUR_TRANSPORT_TYPES.BUS),
+    to: getTourLandingPath(TOUR_TRANSPORT_TYPES.BUS),
     label: "Автобусные туры",
     transportType: TOUR_TRANSPORT_TYPES.BUS,
   },
   {
-    to: getTourSectionPath(TOUR_TRANSPORT_TYPES.AIR),
+    to: getTourLandingPath(TOUR_TRANSPORT_TYPES.AIR),
     label: "Авиа туры",
     transportType: TOUR_TRANSPORT_TYPES.AIR,
   },
@@ -283,8 +283,9 @@ export default function Header() {
             {TOUR_NAV.map((navItem) => {
               const isOpen = toursOpen === navItem.transportType;
               const isActive =
-                location.pathname === "/" &&
-                getTransportFromHash(location.hash) === navItem.transportType;
+                location.pathname === navItem.to ||
+                (location.pathname === "/" &&
+                  getTransportFromHash(location.hash) === navItem.transportType);
               const tourLinks =
                 tourLinksByTransport[navItem.transportType] || [];
 
