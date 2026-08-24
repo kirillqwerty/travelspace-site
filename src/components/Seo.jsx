@@ -41,6 +41,26 @@ function normalizePath(path = "") {
   return normalized === "/" ? normalized : normalized.replace(/\/$/, "");
 }
 
+function normalizeCanonical(canonical = "", fallbackPath = "/") {
+  const fallback = normalizePath(fallbackPath);
+  const value = String(canonical || "").trim();
+  if (!value) return fallback;
+  if (value.startsWith("/")) return normalizePath(value);
+
+  try {
+    const candidate = new URL(value);
+    const publicSite = new URL(SITE_URL);
+    if (candidate.hostname !== publicSite.hostname) return fallback;
+    return normalizePath(candidate.pathname || "/");
+  } catch {
+    return fallback;
+  }
+}
+
+function canonicalUrl(canonical = "", fallbackPath = "/") {
+  return absoluteUrl(normalizeCanonical(canonical, fallbackPath));
+}
+
 function breadcrumbLabel(segment = "") {
   const labels = {
     tours: "Туры",
@@ -126,21 +146,22 @@ export function Seo({
   description,
   image,
   path,
+  canonical,
   type = "website",
   noIndex = false,
+  noFollow = false,
   siteName = DEFAULT_SITE_NAME,
   structuredData,
 }) {
   const normalizedTitle = limitText(title || DEFAULT_TITLE, 80);
   const normalizedDescription = limitText(description || DEFAULT_DESCRIPTION, 180);
-  const canonicalPath = normalizePath(path);
-  const canonicalUrl = /^https?:\/\//i.test(canonicalPath)
-    ? canonicalPath
-    : absoluteUrl(canonicalPath);
+  const pagePath = normalizePath(path);
+  const canonicalPath = normalizeCanonical(canonical, pagePath);
+  const canonicalUrlValue = absoluteUrl(canonicalPath);
   const imageUrl = absoluteUrl(image || DEFAULT_IMAGE);
   const graph = buildStructuredGraph({
-    canonicalUrl,
-    canonicalPath,
+    canonicalUrl: canonicalUrlValue,
+    canonicalPath: pagePath,
     title: normalizedTitle,
     description: normalizedDescription,
     siteName,
@@ -151,15 +172,18 @@ export function Seo({
     <Helmet prioritizeSeoTags>
       <title>{normalizedTitle}</title>
       <meta name="description" content={normalizedDescription} />
-      <meta name="robots" content={noIndex ? "noindex, follow" : "index, follow"} />
-      <link rel="canonical" href={canonicalUrl} />
+      <meta
+        name="robots"
+        content={`${noIndex ? "noindex" : "index"}, ${noFollow ? "nofollow" : "follow"}`}
+      />
+      <link rel="canonical" href={canonicalUrlValue} />
 
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content={siteName} />
       <meta property="og:locale" content="ru_BY" />
       <meta property="og:title" content={normalizedTitle} />
       <meta property="og:description" content={normalizedDescription} />
-      <meta property="og:url" content={canonicalUrl} />
+      <meta property="og:url" content={canonicalUrlValue} />
       <meta property="og:image" content={imageUrl} />
       <meta property="og:image:secure_url" content={imageUrl} />
 
@@ -173,4 +197,4 @@ export function Seo({
   );
 }
 
-export { absoluteUrl, limitText, stripText };
+export { absoluteUrl, canonicalUrl, limitText, stripText };

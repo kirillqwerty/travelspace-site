@@ -14,8 +14,10 @@ export default function PageSeo({
   description,
   image,
   path,
+  canonical,
   type,
   noIndex,
+  noFollow,
   structuredData,
 }) {
   const { settings } = useSiteData();
@@ -27,8 +29,10 @@ export default function PageSeo({
       description={pageConfig.description || description}
       image={pageConfig.image || image || settings?.seo_default_image}
       path={pageConfig.path || path}
+      canonical={canonical}
       type={type}
       noIndex={pageConfig.no_index ?? noIndex}
+      noFollow={noFollow}
       siteName={settings?.company_short || "TRAVELSPACE"}
       structuredData={structuredData}
     />

@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import LeadForm from "@/components/LeadForm";
 import { useSiteData } from "@/lib/useSiteData";
 import PageSeo from "@/components/PageSeo";
+import { canonicalUrl } from "@/components/Seo";
 import { mediaUrl } from "@/lib/media";
 import { RichText, splitRichTextBlocks } from "@/lib/richText";
 import {
@@ -49,7 +50,9 @@ function ArticleBody({ article }) {
               <figure className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 shadow-sm">
                 <img
                   src={mediaUrl(images[imageIndex])}
-                  alt={article.title}
+                  alt={article.gallery_alts?.[imageIndex] || article.seo_h1 || article.title}
+                  width="1200"
+                  height="750"
                   className="h-auto w-full object-cover"
                   loading="lazy"
                 />
@@ -70,7 +73,9 @@ function ArticleBody({ article }) {
               >
                 <img
                   src={mediaUrl(image)}
-                  alt={article.title}
+                  alt={article.gallery_alts?.[index] || article.seo_h1 || article.title}
+                  width="800"
+                  height="600"
                   className="aspect-[4/3] h-full w-full object-cover"
                   loading="lazy"
                 />
@@ -154,16 +159,20 @@ export default function Article() {
   const articleTitle = a.seo_title || `${a.title} | TRAVELSPACE`;
   const articleDescription = a.seo_description || a.excerpt || a.content;
   const articleImage = a.seo_image || a.cover || articleImages(a)[0];
+  const articleH1 = a.seo_h1 || a.title;
   const articleStructuredData = {
     "@type": "Article",
-    headline: a.title,
+    headline: articleH1,
     description: articleDescription,
-    mainEntityOfPage: `https://travelspace.by/blog/${a.slug || slug}`,
+    mainEntityOfPage: canonicalUrl(
+      a.seo_canonical_url,
+      `/blog/${a.slug || slug}`,
+    ),
     image: articleImage ? mediaUrl(articleImage) : undefined,
     author: { "@id": "https://travelspace.by/#organization" },
     publisher: { "@id": "https://travelspace.by/#organization" },
     datePublished: a.published_at || undefined,
-    dateModified: a.updated_at || undefined,
+    dateModified: a.seo_lastmod || a.updated_at || undefined,
   };
 
   return (
@@ -177,6 +186,9 @@ export default function Article() {
         description={articleDescription}
         image={articleImage}
         path={`/blog/${a.slug || slug}`}
+        canonical={a.seo_canonical_url}
+        noIndex={a.seo_noindex === true}
+        noFollow={a.seo_nofollow === true}
         type="article"
         structuredData={articleStructuredData}
       />
@@ -188,7 +200,7 @@ export default function Article() {
       </Link>
       {a.published_at && <p className="text-xs text-neutral-500 mt-6">{a.published_at}</p>}
       <h1 className="font-heading text-4xl sm:text-5xl mt-2 max-w-3xl">
-        {a.title}
+        {articleH1}
       </h1>
       {a.excerpt && (
         <p className="mt-5 max-w-3xl text-lg leading-8 text-neutral-600">
@@ -199,7 +211,9 @@ export default function Article() {
         <div className="mt-8 aspect-[16/9] rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-100">
           <img
             src={mediaUrl(a.cover)}
-            alt={a.title}
+            alt={a.cover_alt || articleH1}
+            width="1200"
+            height="675"
             className="w-full h-full object-cover"
           />
         </div>

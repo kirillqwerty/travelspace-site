@@ -162,12 +162,56 @@ const SCHEMAS = {
       },
       { key: "hero_image", label: "Главное фото для десктопа", type: "image" },
       {
+        key: "hero_image_alt",
+        label: "ALT главного фото",
+        type: "text",
+        placeholder: "Что изображено на фото — без слов «фото 1»",
+      },
+      {
         key: "hero_mobile_image",
         label: "Главное фото для мобильной версии",
         type: "image",
       },
+      {
+        key: "hero_mobile_image_alt",
+        label: "ALT мобильного главного фото",
+        type: "text",
+        placeholder: "Если пусто, используется ALT главного фото",
+      },
       { key: "seo_title", label: "SEO Title", type: "text" },
       { key: "seo_description", label: "SEO Description", type: "textarea" },
+      {
+        key: "seo_h1",
+        label: "SEO H1",
+        type: "text",
+        placeholder: "Если пусто, используется название тура",
+      },
+      {
+        key: "seo_canonical_url",
+        label: "Canonical URL (необязательно)",
+        type: "text",
+        placeholder: "/tours/slug или полный URL travelspace.by",
+        hint: "Оставьте пустым для обычного canonical на текущую страницу. Внешние домены сервер не примет.",
+      },
+      {
+        key: "seo_noindex",
+        label: "Запретить индексацию страницы (noindex)",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "seo_nofollow",
+        label: "Запретить переход по ссылкам страницы (nofollow)",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "seo_lastmod",
+        label: "Дата существенного обновления для sitemap",
+        type: "date",
+        placeholder: "дд.мм.гггг",
+        hint: "Заполняйте только при реальном обновлении содержания. Если поле пустое, используется дата сохранения содержимого.",
+      },
       {
         key: "seo_image",
         label: "SEO / Open Graph фото для ссылки",
@@ -235,10 +279,12 @@ const SCHEMAS = {
           "Можно указать вручную. Если оставить пустым, создастся из заголовка.",
       },
       { key: "cover", label: "Обложка", type: "image" },
+      { key: "cover_alt", label: "ALT обложки", type: "text" },
       {
         key: "gallery",
         label: "Дополнительные фото внутри статьи",
         type: "image-list",
+        altKey: "gallery_alts",
       },
       { key: "excerpt", label: "Краткое описание", type: "textarea" },
       {
@@ -252,6 +298,30 @@ const SCHEMAS = {
       },
       { key: "seo_title", label: "SEO Title", type: "text" },
       { key: "seo_description", label: "SEO Description", type: "textarea" },
+      { key: "seo_h1", label: "SEO H1", type: "text" },
+      {
+        key: "seo_canonical_url",
+        label: "Canonical URL (необязательно)",
+        type: "text",
+      },
+      {
+        key: "seo_noindex",
+        label: "Запретить индексацию статьи (noindex)",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "seo_nofollow",
+        label: "Запретить переход по ссылкам (nofollow)",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "seo_lastmod",
+        label: "Дата существенного обновления для sitemap",
+        type: "date",
+        placeholder: "дд.мм.гггг",
+      },
       {
         key: "seo_image",
         label: "SEO / Open Graph фото для ссылки",
@@ -309,6 +379,7 @@ const TOUR_JSON_HINT =
 const TOUR_EXTRA_KEYS = [
   "badges",
   "gallery",
+  "gallery_alts",
   "highlights",
   "what_to_see",
   "included",
@@ -523,6 +594,7 @@ const normalizeRoomRecord = (room = {}) => ({
   title: room.title || "",
   description: room.description || "",
   gallery: Array.isArray(room.gallery) ? room.gallery.filter(Boolean) : [],
+  gallery_alts: Array.isArray(room.gallery_alts) ? room.gallery_alts : [],
   video_url: room.video_url || room.videoUrl || "",
   // CHANGE: цена номера теперь может задаваться отдельно для каждой даты цепочки.
   date_prices: Array.isArray(room.date_prices)
@@ -555,6 +627,7 @@ const normalizeHotelRecord = (h = {}) => ({
       ? [h.image]
       : [],
   image: h.image || h.images?.[0] || "",
+  image_alts: Array.isArray(h.image_alts) ? h.image_alts : [],
   meal: h.meal || "",
   location: h.location || "",
   order: h.order ?? "",
@@ -671,13 +744,21 @@ const normalizeRecord = (record = {}, collectionName) => {
     short_description: record.short_description || "",
     description: record.description || "",
     hero_image: record.hero_image || "",
+    hero_image_alt: record.hero_image_alt || "",
     hero_mobile_image:
       record.hero_mobile_image ||
       record.mobile_hero_image ||
       record.hero_mobile ||
       "",
+    hero_mobile_image_alt:
+      record.hero_mobile_image_alt || record.hero_image_alt || "",
     seo_title: record.seo_title || "",
     seo_description: record.seo_description || "",
+    seo_h1: record.seo_h1 || "",
+    seo_canonical_url: record.seo_canonical_url || "",
+    seo_noindex: record.seo_noindex === true,
+    seo_nofollow: record.seo_nofollow === true,
+    seo_lastmod: record.seo_lastmod || "",
     seo_image: record.seo_image || record.og_image || record.hero_image || "",
     order: record.order ?? "",
     active: record.active !== false,
@@ -691,6 +772,9 @@ const normalizeRecord = (record = {}, collectionName) => {
     badges: Array.isArray(record.badges) ? record.badges.filter(Boolean) : [],
     gallery: Array.isArray(record.gallery)
       ? record.gallery.filter(Boolean)
+      : [],
+    gallery_alts: Array.isArray(record.gallery_alts)
+      ? record.gallery_alts
       : [],
     highlights: Array.isArray(record.highlights)
       ? record.highlights.filter(Boolean)
@@ -722,6 +806,7 @@ const normalizeRecord = (record = {}, collectionName) => {
             description: d.description || "",
             image: d.image || images[0] || "",
             images,
+            image_alts: Array.isArray(d.image_alts) ? d.image_alts : [],
             notes: d.notes || "",
           };
         })
@@ -1023,6 +1108,9 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
     if (!record) return;
 
     const knownKeys = new Set(schema.fields.map((f) => f.key));
+    schema.fields.forEach((f) => {
+      if (f.altKey) knownKeys.add(f.altKey);
+    });
     knownKeys.add("id");
 
     if (collectionName === "tours") {
@@ -1117,6 +1205,9 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
               day: String(day.day || index + 1),
               images,
               image: images[0] || "",
+              image_alts: images.map((_, imageIndex) =>
+                String(day.image_alts?.[imageIndex] || "").trim(),
+              ),
             };
           })
         : [];
@@ -1274,10 +1365,12 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                     className="mt-1"
                   />
                 ) : f.type === "image-list" ? (
-                  <ImageListField
+              <ImageListField
                     label=""
                     value={Array.isArray(form[f.key]) ? form[f.key] : []}
                     onChange={(v) => update(f.key, v)}
+                    altValue={f.altKey && Array.isArray(form[f.altKey]) ? form[f.altKey] : []}
+                    onAltChange={f.altKey ? (v) => update(f.altKey, v) : undefined}
                   />
                 ) : f.type === "image" ? (
                   <ImageInput
@@ -1728,6 +1821,10 @@ function TourExtraFields({ form, setForm }) {
 
   const updateBadges = useCallback((v) => update("badges", v), [update]);
   const updateGallery = useCallback((v) => update("gallery", v), [update]);
+  const updateGalleryAlts = useCallback(
+    (v) => update("gallery_alts", v),
+    [update],
+  );
   const updateHighlights = useCallback(
     (v) => update("highlights", v),
     [update],
@@ -1815,6 +1912,8 @@ function TourExtraFields({ form, setForm }) {
         label="Галерея"
         value={form.gallery || []}
         onChange={updateGallery}
+        altValue={form.gallery_alts || []}
+        onAltChange={updateGalleryAlts}
       />
 
       <MemoStringListField
@@ -1989,9 +2088,17 @@ const reorderArray = (list, fromIndex, toIndex) => {
   return next;
 };
 
-function ImageListField({ label, value, onChange }) {
+function ImageListField({
+  label,
+  value,
+  onChange,
+  altValue = [],
+  onAltChange,
+}) {
   const sourceItems = Array.isArray(value) ? value : [];
   const items = sourceItems.length ? sourceItems : [""];
+  const alts = Array.isArray(altValue) ? altValue : [];
+  const editsAlt = typeof onAltChange === "function";
   const [draggedIndex, setDraggedIndex] = useState(null);
 
   const updateItem = (index, text) => {
@@ -2002,15 +2109,25 @@ function ImageListField({ label, value, onChange }) {
 
   const addItem = () => {
     onChange([...items, ""]);
+    if (editsAlt) onAltChange([...items.map((_, index) => alts[index] || ""), ""]);
   };
 
   const removeItem = (index) => {
-    onChange(items.filter((_, i) => i !== index).filter(Boolean));
+    const remaining = items
+      .map((image, itemIndex) => ({ image, alt: alts[itemIndex] || "" }))
+      .filter((_, itemIndex) => itemIndex !== index)
+      .filter((item) => Boolean(item.image));
+    onChange(remaining.map((item) => item.image));
+    if (editsAlt) onAltChange(remaining.map((item) => item.alt));
   };
 
   const moveItem = (fromIndex, toIndex) => {
-    const filledItems = items.filter(Boolean);
-    onChange(reorderArray(filledItems, fromIndex, toIndex));
+    const filledItems = items
+      .map((image, index) => ({ image, alt: alts[index] || "" }))
+      .filter((item) => Boolean(item.image));
+    const moved = reorderArray(filledItems, fromIndex, toIndex);
+    onChange(moved.map((item) => item.image));
+    if (editsAlt) onAltChange(moved.map((item) => item.alt));
   };
 
   return (
@@ -2053,7 +2170,20 @@ function ImageListField({ label, value, onChange }) {
               </span>
             </div>
 
-            <ImageInput value={item} onChange={(v) => updateItem(index, v)} />
+            <div className="w-full min-w-0 space-y-2">
+              <ImageInput value={item} onChange={(v) => updateItem(index, v)} />
+              {editsAlt && (
+                <Input
+                  value={alts[index] || ""}
+                  onChange={(event) => {
+                    const next = items.map((_, itemIndex) => alts[itemIndex] || "");
+                    next[index] = event.target.value;
+                    onAltChange(next);
+                  }}
+                  placeholder="ALT: кратко опишите, что изображено"
+                />
+              )}
+            </div>
 
             <Button
               type="button"
@@ -2396,6 +2526,7 @@ function ProgramField({ value, onChange }) {
           description: "",
           image: "",
           images: [],
+          image_alts: [],
           notes: "",
         },
       ];
@@ -2415,6 +2546,12 @@ function ProgramField({ value, onChange }) {
     });
   };
 
+  const updateImageAlts = (index, imageAlts) => {
+    updateItem(index, {
+      image_alts: Array.isArray(imageAlts) ? imageAlts : [],
+    });
+  };
+
   const addItem = () =>
     onChange([
       ...items,
@@ -2424,6 +2561,7 @@ function ProgramField({ value, onChange }) {
         description: "",
         image: "",
         images: [],
+        image_alts: [],
         notes: "",
       },
     ]);
@@ -2476,6 +2614,8 @@ function ProgramField({ value, onChange }) {
               label="Фото дня"
               value={getProgramItemImages(item)}
               onChange={(images) => updateImages(index, images)}
+              altValue={item.image_alts || []}
+              onAltChange={(imageAlts) => updateImageAlts(index, imageAlts)}
             />
 
             <Input
@@ -3119,6 +3259,8 @@ function ChainHotelsField({ value, dates, tourSlug, onChange }) {
                   image: images[0] || "",
                 })
               }
+              altValue={item.image_alts || []}
+              onAltChange={(image_alts) => updateItem(index, { image_alts })}
             />
 
             <div className="grid sm:grid-cols-2 gap-2">
@@ -3238,6 +3380,10 @@ function RoomsField({ value, dates, onChange }) {
               label="Галерея номера"
               value={room.gallery || []}
               onChange={(gallery) => updateItem(index, { gallery })}
+              altValue={room.gallery_alts || []}
+              onAltChange={(gallery_alts) =>
+                updateItem(index, { gallery_alts })
+              }
             />
 
             <Input

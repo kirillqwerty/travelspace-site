@@ -41,6 +41,7 @@ import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
+import { canonicalUrl } from "@/components/Seo";
 import { trackTourView } from "@/lib/analytics";
 import { RichText } from "@/lib/richText";
 import {
@@ -1593,11 +1594,12 @@ export default function TourPage() {
     `${tour.title}. Даты, программа, отели и стоимость тура.`;
   const tourSeoImage =
     tour.seo_image || tour.og_image || tour.hero_image || tour.gallery?.[0];
+  const tourH1 = tour.seo_h1 || tour.title;
   const tourStructuredData = {
     "@type": "TouristTrip",
-    name: tour.title,
+    name: tourH1,
     description: tourSeoDescription,
-    url: `https://travelspace.by${tourPath}`,
+    url: canonicalUrl(tour.seo_canonical_url, tourPath),
     image: tourSeoImage ? mediaUrl(tourSeoImage) : undefined,
     touristType: "Групповой тур",
     provider: { "@id": "https://travelspace.by/#organization" },
@@ -1616,6 +1618,9 @@ export default function TourPage() {
         description={tourSeoDescription}
         image={tourSeoImage}
         path={tourPath}
+        canonical={tour.seo_canonical_url}
+        noIndex={tour.seo_noindex === true}
+        noFollow={tour.seo_nofollow === true}
         type="article"
         structuredData={tourStructuredData}
       />
@@ -1628,7 +1633,9 @@ export default function TourPage() {
             />
             <img
               src={mediaUrl(getTourHeroImage(tour))}
-              alt={tour.title}
+              alt={tour.hero_image_alt || tourH1}
+              width="1600"
+              height="900"
               className="absolute inset-0 h-full w-full object-cover object-center"
             />
           </picture>
@@ -1663,7 +1670,7 @@ export default function TourPage() {
 
             <div className="mt-3 max-w-5xl">
               <h1 className="font-heading text-3xl sm:text-5xl lg:text-6xl drop-shadow-[0_3px_14px_rgba(0,0,0,0.45)]">
-                {tour.title}
+                {tourH1}
               </h1>
             </div>
 
@@ -1854,8 +1861,14 @@ export default function TourPage() {
             <p className="overline text-[#C2410C]">О туре</p>
 
             <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-4">
-              {tour.tagline || tour.short_description}
+              О туре
             </h2>
+
+            {(tour.tagline || tour.short_description) && (
+              <p className="mb-4 text-xl font-medium text-neutral-900">
+                {tour.tagline || tour.short_description}
+              </p>
+            )}
 
             <RichText
               text={tour.description || tour.short_description}
@@ -1886,7 +1899,12 @@ export default function TourPage() {
                     <div className="relative overflow-hidden rounded-2xl bg-neutral-100">
                       <img
                         src={mediaUrl(currentImage)}
-                        alt={`${tour.title} фото ${tourGallerySlide + 1}`}
+                        alt={
+                          tour.gallery_alts?.[tourGallerySlide] ||
+                          `${tourH1} — фотографии тура`
+                        }
+                        width="1200"
+                        height="750"
                         className="block aspect-[16/10] h-auto w-full object-cover sm:aspect-[16/9]"
                         loading="lazy"
                       />
@@ -1935,7 +1953,12 @@ export default function TourPage() {
                           >
                             <img
                               src={mediaUrl(image)}
-                              alt=""
+                              alt={
+                                tour.gallery_alts?.[index] ||
+                                `${tourH1} — фотографии тура`
+                              }
+                              width="240"
+                              height="160"
                               className="h-full w-full object-cover"
                               loading="lazy"
                             />
@@ -1974,7 +1997,7 @@ export default function TourPage() {
 
           {tour.what_to_see?.length > 0 && (
             <div data-testid="tour-what-to-see">
-              <h3 className="font-heading text-2xl mb-4">Что посмотреть</h3>
+              <h2 className="font-heading text-2xl mb-4">Что посмотреть</h2>
 
               <ul className="grid sm:grid-cols-2 gap-2 text-sm text-neutral-700">
                 {tour.what_to_see.map((x) => (
@@ -1996,12 +2019,14 @@ export default function TourPage() {
               <p className="overline text-[#C2410C]">Программа тура</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
-                Каждый день — на ладони
+                Программа тура
               </h2>
 
               <Accordion
                 type="multiple"
-                defaultValue={["day-1"]}
+                defaultValue={[
+                  `day-${tour.program[0]?.day || 1}-0`,
+                ]}
                 className="divide-y divide-neutral-200 border-y border-neutral-200"
               >
                 {tour.program.map((d, index) => {
@@ -2036,7 +2061,7 @@ export default function TourPage() {
                         </div>
                       </AccordionTrigger>
 
-                      <AccordionContent>
+                      <AccordionContent forceMount>
                         <div className="pb-5">
                           <div className="flex min-w-0 flex-col gap-4">
                             {currentImage && (
@@ -2047,7 +2072,12 @@ export default function TourPage() {
                                 <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
                                   <img
                                     src={mediaUrl(currentImage)}
-                                    alt={d.title || getProgramDayTitle(d)}
+                                    alt={
+                                      d.image_alts?.[currentIndex] ||
+                                      `${tourH1}: ${d.title || getProgramDayTitle(d)}`
+                                    }
+                                    width="1200"
+                                    height="750"
                                     className="block aspect-[16/10] h-auto w-full object-cover sm:aspect-[16/9]"
                                     loading="lazy"
                                   />
@@ -2122,7 +2152,12 @@ export default function TourPage() {
                                       >
                                         <img
                                           src={mediaUrl(image)}
-                                          alt=""
+                                          alt={
+                                            d.image_alts?.[imageIndex] ||
+                                            `${tourH1}: ${d.title || getProgramDayTitle(d)}`
+                                          }
+                                          width="160"
+                                          height="120"
                                           className="h-full w-full object-cover"
                                           loading="lazy"
                                         />
@@ -2158,7 +2193,7 @@ export default function TourPage() {
 
           <div id="price" className="scroll-mt-32 grid sm:grid-cols-2 gap-6">
             <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-6">
-              <h3 className="font-heading text-2xl">Входит в стоимость</h3>
+              <h2 className="font-heading text-2xl">Входит в стоимость</h2>
 
               <ul className="mt-4 space-y-2.5">
                 {(tour.included || []).map((x) => (
@@ -2171,7 +2206,7 @@ export default function TourPage() {
             </div>
 
             <div className="rounded-2xl bg-rose-50 border border-rose-100 p-6">
-              <h3 className="font-heading text-2xl">Не входит</h3>
+              <h2 className="font-heading text-2xl">Не входит в стоимость</h2>
 
               <ul className="mt-4 space-y-2.5">
                 {(tour.excluded || []).map((x) => (
@@ -2183,6 +2218,36 @@ export default function TourPage() {
               </ul>
             </div>
           </div>
+
+          {dates.length > 0 && (
+            <section
+              id="dates-prices"
+              className="scroll-mt-32"
+              data-testid="tour-dates-prices"
+            >
+              <p className="overline text-[#C2410C]">Расписание</p>
+              <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
+                Даты и стоимость
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {dates.map((date) => (
+                  <div
+                    key={date._dateListKey || date.id || fmtDateRange(date)}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3"
+                  >
+                    <span className="text-sm font-medium text-neutral-800">
+                      {fmtDateRange(date)}
+                    </span>
+                    <DatePriceInline
+                      item={date}
+                      fallbackTour={tour}
+                      className="shrink-0 text-right font-semibold text-[#C2410C]"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {chains.some((chain) => chain.hotels?.length > 0) && (
             <div data-testid="tour-hotels">
@@ -2393,7 +2458,12 @@ export default function TourPage() {
                                         <div className="relative aspect-[16/9] w-full overflow-hidden bg-neutral-100">
                                           <img
                                             src={mediaUrl(currentImage)}
-                                            alt={h.name}
+                                            alt={
+                                              h.image_alts?.[currentIndex] ||
+                                              `${h.name || "Отель"} — размещение в туре ${tourH1}`
+                                            }
+                                            width="1200"
+                                            height="675"
                                             className="absolute inset-0 h-full w-full object-cover object-center"
                                             loading="lazy"
                                           />
@@ -2613,9 +2683,11 @@ export default function TourPage() {
                                                                 currentImage,
                                                               )}
                                                               alt={
-                                                                room.title ||
-                                                                room.number
+                                                                room.gallery_alts?.[currentIndex] ||
+                                                                `${room.title || room.number || "Номер"} в отеле ${h.name || "тура"}`
                                                               }
+                                                              width="800"
+                                                              height="600"
                                                               className="aspect-[4/3] w-full object-cover"
                                                               loading="lazy"
                                                             />
@@ -2764,9 +2836,9 @@ export default function TourPage() {
                   <Info className="size-4" />
                 </span>
 
-                <h3 className="font-heading text-2xl">
+                <h2 className="font-heading text-2xl">
                   Важно знать перед поездкой
-                </h3>
+                </h2>
               </div>
 
               <ul className="grid sm:grid-cols-2 gap-3 text-sm text-neutral-300">
@@ -2800,7 +2872,7 @@ export default function TourPage() {
                       {item.question}
                     </AccordionTrigger>
 
-                    <AccordionContent className="text-neutral-700 leading-relaxed">
+                    <AccordionContent forceMount className="text-neutral-700 leading-relaxed">
                       <RichText
                         text={item.answer}
                         className="space-y-3"
@@ -3096,7 +3168,12 @@ export default function TourPage() {
                             selectedRoom.room.gallery[roomSlide] ||
                               selectedRoom.room.gallery[0],
                           )}
-                          alt={`Фото номера ${roomSlide + 1}`}
+                          alt={
+                            selectedRoom.room.gallery_alts?.[roomSlide] ||
+                            `${selectedRoom.room.title || selectedRoom.room.number || "Номер"} в отеле ${selectedRoom.hotel?.name || "тура"}`
+                          }
+                          width="1200"
+                          height="750"
                           className="block h-[300px] w-full max-w-full object-cover sm:h-auto sm:aspect-[16/10]"
                           loading="lazy"
                         />
@@ -3150,7 +3227,12 @@ export default function TourPage() {
                               >
                                 <img
                                   src={mediaUrl(image)}
-                                  alt=""
+                                  alt={
+                                    selectedRoom.room.gallery_alts?.[index] ||
+                                    `${selectedRoom.room.title || selectedRoom.room.number || "Номер"} в отеле ${selectedRoom.hotel?.name || "тура"}`
+                                  }
+                                  width="240"
+                                  height="160"
                                   className="h-full w-full object-cover"
                                   loading="lazy"
                                 />
