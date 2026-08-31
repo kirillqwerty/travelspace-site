@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { COOKIE_CONSENT_KEY, grantMarketingConsent } from "@/lib/analytics";
 
 export default function CookieBanner() {
@@ -18,9 +19,9 @@ export default function CookieBanner() {
       <p className="text-sm leading-relaxed">
         Мы используем cookies для удобства сайта, аналитики и рекламных
         измерений. Нажимая «Принять», вы соглашаетесь с нашей{" "}
-        <a href="/legal" className="underline">
+        <Link to="/legal" className="underline">
           политикой
-        </a>
+        </Link>
         .
       </p>
       <div className="mt-3 flex justify-end gap-2">

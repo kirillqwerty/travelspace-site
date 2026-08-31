@@ -313,7 +313,7 @@ export default function Footer() {
         </div>
 
         <nav
-          aria-label="Разделы сайта"
+          aria-label="Разделы сайта" 
           className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-white/10 pt-6 text-sm text-white/75"
         >
           <Link to="/tours" className="hover:text-[#F97316]">Все туры</Link>

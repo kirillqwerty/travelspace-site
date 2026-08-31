@@ -51,7 +51,10 @@ export default function Faq() {
                   <AccordionTrigger className="text-left text-base font-medium py-5">
                     {q.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-neutral-700 leading-relaxed">
+                  <AccordionContent
+                    forceMount
+                    className="text-neutral-700 leading-relaxed"
+                  >
                     <RichText text={q.answer} className="text-sm leading-6" />
                   </AccordionContent>
                 </AccordionItem>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -498,9 +498,9 @@ export default function LeadForm({
         />
         <span>
           Я согласен на обработку{" "}
-          <a href="/legal" className="underline hover:text-[#C2410C]">
+          <Link to="/legal" className="underline hover:text-[#C2410C]">
             персональных данных
-          </a>{" "}
+          </Link>{" "}
           и принимаю условия публичного договора.
         </span>
       </label>

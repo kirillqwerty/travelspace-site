@@ -72,6 +72,7 @@ function breadcrumbLabel(segment = "") {
     abhaziya: "Туры в Абхазию",
     "severnaya-osetiya": "Туры в Северную Осетию",
     moskva: "Туры в Москву",
+    arktika: "Туры в Арктику",
     "avtobusnye-iz-minska": "Автобусные туры",
     "avia-iz-minska": "Авиационные туры",
   };

@@ -1,6 +1,6 @@
 import "@/App.css";
 import "@/index.css";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BrowserRouter,
@@ -121,17 +121,25 @@ function TourSlugRoute() {
 
 export default function App() {
   const INTRO_DURATION = 1700;
-  const [showIntro, setShowIntro] = useState(true);
-  const [startHeroVideo, setStartHeroVideo] = useState(false);
+  const initialHomePage =
+    typeof window === "undefined" || window.location.pathname === "/";
+  const [showIntro, setShowIntro] = useState(initialHomePage);
+  const [startHeroVideo, setStartHeroVideo] = useState(!initialHomePage);
+
+  useLayoutEffect(() => {
+    document.getElementById("initial-load-cover")?.remove();
+  }, []);
 
   useEffect(() => {
+    if (!showIntro) return undefined;
+
     const timerId = window.setTimeout(() => {
       setShowIntro(false);
       setStartHeroVideo(true);
     }, INTRO_DURATION);
 
     return () => window.clearTimeout(timerId);
-  }, []);
+  }, [showIntro]);
 
   return (
     <>

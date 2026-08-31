@@ -5,13 +5,14 @@ import TourCard from "@/components/TourCard";
 import { useSiteData } from "@/lib/useSiteData";
 import {
   filterToursForLanding,
-  TOUR_LANDINGS,
+  getTourLanding,
   TOUR_LANDING_LINKS,
 } from "@/lib/seoLandings";
+import { RichText } from "@/lib/richText";
 
 export default function TourLanding({ slug }) {
-  const { tours, ready } = useSiteData();
-  const landing = TOUR_LANDINGS[slug];
+  const { tours, ready, settings } = useSiteData();
+  const landing = getTourLanding(settings, slug);
   const matchingTours = filterToursForLanding(tours, slug);
   const relatedLinks = TOUR_LANDING_LINKS.filter((item) => item.slug !== slug);
 
@@ -37,9 +38,11 @@ export default function TourLanding({ slug }) {
           <h1 className="font-heading max-w-4xl text-4xl font-bold leading-tight text-neutral-950 sm:text-5xl lg:text-6xl">
             {landing.heading}
           </h1>
-          <p className="mt-5 max-w-3xl text-lg leading-relaxed text-neutral-600">
-            {landing.intro}
-          </p>
+          <RichText
+            text={landing.intro}
+            className="mt-5 max-w-3xl text-lg leading-relaxed text-neutral-600"
+            paragraphClassName="leading-relaxed"
+          />
         </div>
       </section>
 

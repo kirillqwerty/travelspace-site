@@ -20,6 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import TourCard from "@/components/TourCard";
@@ -27,6 +33,7 @@ import LeadDialog from "@/components/LeadDialog";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
 import { RichText } from "@/lib/richText";
+import { getHomePageContent } from "@/lib/homeContent";
 import {
   getTourSectionAnchor,
   getTourSectionPath,
@@ -109,16 +116,42 @@ export default function Home({ startVideo = false }) {
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [faqItems, setFaqItems] = useState([]);
   const [leadOpen, setLeadOpen] = useState(false);
   const [detailsPromotion, setDetailsPromotion] = useState(null);
   const videoRef = useRef(null);
   const benefitsSection = getBenefitsSection(settings);
+  const homePage = getHomePageContent(settings);
   const activeTransport = getTransportFromHash(location.hash);
 
   useEffect(() => {
     api.get("/reviews").then((r) => setReviews(r.data));
     api.get("/promotions").then((r) => setPromotions(r.data || []));
+    api
+      .get("/faq")
+      .then((r) =>
+        setFaqItems(
+          (Array.isArray(r.data) ? r.data : []).filter(
+            (item) => item?.show_on_home !== false,
+          ),
+        ),
+      );
   }, []);
+
+  const faqStructuredData = useMemo(() => {
+    if (!faqItems.length) return undefined;
+    return {
+      "@type": "FAQPage",
+      mainEntity: faqItems.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    };
+  }, [faqItems]);
 
   useEffect(() => {
     const normalizedHash = location.hash.toLowerCase();
@@ -181,6 +214,7 @@ export default function Home({ startVideo = false }) {
         path="/"
         title="TRAVELSPACE — автобусные и авиа-туры из Минска"
         description="Автобусные и авиа-туры из Минска. Продуманные программы, заботливые гиды и понятная цена без сюрпризов."
+        structuredData={faqStructuredData}
       />
       {/* ======================= HERO ======================= */}
       <section
@@ -192,9 +226,8 @@ export default function Home({ startVideo = false }) {
           muted
           loop
           playsInline
-          preload="none"
-          poster={`${process.env.PUBLIC_URL}/og-image.jpg`}
-          className="absolute inset-0 w-full h-full object-cover"
+          preload="metadata"
+          className="absolute inset-0 w-full h-full bg-neutral-950 object-cover"
         >
           <source
             src={`${process.env.PUBLIC_URL}/background-journey.mp4`}
@@ -207,9 +240,11 @@ export default function Home({ startVideo = false }) {
 
         <div className="relative w-full section-container pt-28 lg:pt-32 text-white">
           <h1 className="font-heading mt-3 sm:mt-4 text-4xl sm:text-6xl lg:text-7xl font-bold max-w-4xl leading-[1.05]">
-            Туры,
-            <br />в которые хочется возвращаться
+            {homePage.h1}
           </h1>
+          <p className="font-heading mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl">
+            Туры, в которые хочется возвращаться
+          </p>
           <p className="mt-5 max-w-xl text-base sm:text-lg text-white/85 leading-relaxed">
             Путешествия автобусом и самолётом. Простые программы, заботливые
             гиды и понятная цена без сюрпризов в дороге.
@@ -239,6 +274,20 @@ export default function Home({ startVideo = false }) {
         </div>
       </section>
 
+      {/* ======================= SEO INTRO ======================= */}
+      <section className="py-12 lg:py-16" data-testid="home-seo-intro">
+        <div className="section-container max-w-5xl">
+          <h2 className="font-heading text-3xl sm:text-4xl">
+            {homePage.intro_title}
+          </h2>
+          <RichText
+            text={homePage.intro_text}
+            className="mt-5 max-w-4xl text-base leading-7 text-neutral-700"
+            paragraphClassName="leading-7"
+          />
+        </div>
+      </section>
+
       {/* ======================= DESTINATION TOURS ======================= */}
       <section
         className="relative section-pad"
@@ -255,10 +304,14 @@ export default function Home({ startVideo = false }) {
         <div className="section-container">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10 lg:mb-14">
             <div>
-              <p className="overline text-[#C2410C]">Куда поедем</p>
               <h2 className="font-heading text-4xl sm:text-5xl mt-2 max-w-xl">
-                Туры, проверенные нами лично
+                {activeTransport === TOUR_TRANSPORT_TYPES.AIR
+                  ? "Популярные авиационные туры из Минска"
+                  : homePage.tours_title}
               </h2>
+              <p className="mt-3 text-neutral-600">
+                Туры, проверенные нами лично
+              </p>
             </div>
             <div
               className="inline-flex w-fit flex-wrap gap-1 rounded-2xl bg-neutral-100 p-1.5"
@@ -308,6 +361,51 @@ export default function Home({ startVideo = false }) {
         </div>
       </section>
 
+      {/* ======================= SEO DIRECTIONS ======================= */}
+      <section
+        className="py-12 lg:py-16 bg-neutral-50"
+        data-testid="home-seo-directions"
+      >
+        <div className="section-container">
+          <h2 className="font-heading max-w-4xl text-3xl sm:text-4xl">
+            {homePage.directions_title}
+          </h2>
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            {homePage.directions_sections.map((section, index) => (
+              <article
+                key={`${section.title || "direction"}-${index}`}
+                className="rounded-3xl border border-neutral-200 bg-white p-6 sm:p-8"
+              >
+                {section.title && (
+                  <h3 className="font-heading text-2xl">{section.title}</h3>
+                )}
+                <RichText
+                  text={section.text}
+                  className="mt-3 text-neutral-700 leading-7"
+                  paragraphClassName="leading-7"
+                />
+                {section.link_label && section.link_url &&
+                  (section.link_url.startsWith("/") ? (
+                    <Link
+                      to={section.link_url}
+                      className="mt-5 inline-flex items-center gap-2 font-medium text-[#C2410C] hover:text-[#9A3412]"
+                    >
+                      {section.link_label} <ArrowRight className="size-4" />
+                    </Link>
+                  ) : (
+                    <a
+                      href={section.link_url}
+                      className="mt-5 inline-flex items-center gap-2 font-medium text-[#C2410C] hover:text-[#9A3412]"
+                    >
+                      {section.link_label} <ArrowRight className="size-4" />
+                    </a>
+                  ))}
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ======================= BENEFITS ======================= */}
       <section
         className="py-12 lg:py-16 bg-neutral-50"
@@ -315,12 +413,12 @@ export default function Home({ startVideo = false }) {
       >
         <div className="section-container">
           <div className="max-w-2xl mb-8 lg:mb-10">
-            <p className="overline text-[#C2410C]">
+            <h2 className="font-heading text-4xl sm:text-5xl">
               {benefitsSection.overline}
-            </p>
-            <h2 className="font-heading text-4xl sm:text-5xl mt-2">
-              {benefitsSection.title}
             </h2>
+            <p className="font-heading text-2xl mt-2 text-neutral-700">
+              {benefitsSection.title}
+            </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6">
             {benefitsSection.items.map((b, index) => {
@@ -353,10 +451,10 @@ export default function Home({ startVideo = false }) {
           <div className="section-container">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="overline text-[#C2410C]">Отзывы туристов</p>
-                <h2 className="font-heading text-4xl sm:text-5xl mt-2 max-w-2xl">
-                  Что о нас говорят
+                <h2 className="font-heading text-4xl sm:text-5xl max-w-2xl">
+                  Отзывы туристов
                 </h2>
+                <p className="mt-2 text-neutral-600">Что о нас говорят</p>
               </div>
               <Link
                 to="/reviews"
@@ -388,7 +486,7 @@ export default function Home({ startVideo = false }) {
                     {r.text}
                   </p>
                   <div className="mt-4 border-t border-neutral-100 pt-3">
-                    <p className="font-medium text-sm">{r.name}</p>
+                    <h3 className="font-medium text-sm">{r.name}</h3>
                     <p className="text-xs text-neutral-500">
                       {r.tour_name || r.direction}
                     </p>
@@ -484,6 +582,40 @@ export default function Home({ startVideo = false }) {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* ======================= HOMEPAGE FAQ ======================= */}
+      {faqItems.length > 0 && (
+        <section className="section-pad bg-neutral-50" data-testid="home-faq">
+          <div className="section-container max-w-5xl">
+            <h2 className="font-heading text-4xl sm:text-5xl">
+              {homePage.faq_title}
+            </h2>
+            <Accordion
+              type="single"
+              collapsible
+              className="mt-8 border-y border-neutral-200"
+            >
+              {faqItems.map((item, index) => (
+                <AccordionItem
+                  key={item.id || `${item.question}-${index}`}
+                  value={String(item.id || index)}
+                  className="px-1"
+                >
+                  <AccordionTrigger className="py-5 text-left text-base font-medium hover:no-underline sm:text-lg">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent
+                    forceMount
+                    className="pb-5 text-neutral-700 leading-relaxed"
+                  >
+                    <RichText text={item.answer} className="leading-7" />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
         </section>
       )}

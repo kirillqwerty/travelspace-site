@@ -19,6 +19,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
   Popover,
@@ -54,6 +60,27 @@ const TITLES = {
   faq: "FAQ",
 };
 
+const TOUR_SEO_FIELD_KEYS = new Set([
+  "seo_title",
+  "seo_description",
+  "seo_image",
+]);
+const TOUR_PUBLISHING_FIELD_KEYS = new Set([
+  "seo_canonical_url",
+  "seo_noindex",
+  "seo_nofollow",
+  "seo_lastmod",
+  "order",
+  "active",
+  "hidden",
+]);
+
+const getTourEditorTab = (field) => {
+  if (TOUR_SEO_FIELD_KEYS.has(field.key)) return "seo";
+  if (TOUR_PUBLISHING_FIELD_KEYS.has(field.key)) return "publishing";
+  return "content";
+};
+
 // Per-collection editor schema. Each field has a key and a render hint.
 // Anything not listed will be edited inside the "Дополнительно (JSON)" textarea.
 const SCHEMAS = {
@@ -67,7 +94,13 @@ const SCHEMAS = {
       } · ${t.region_name || ""} · ${t.duration || ""}`,
     image: (t) => t.hero_image,
     fields: [
-      { key: "title", label: "Название тура", type: "text" },
+      {
+        key: "title",
+        label: "Название тура на сайте",
+        type: "text",
+        placeholder: "Например: Легендарный тур в Арктику из Минска",
+        hint: "Это название видят посетители: в карточке, на странице тура, в формах заявки и PDF-программе. Оно же является видимым H1 страницы.",
+      },
       {
         key: "transport_type",
         label: "Вид тура",
@@ -178,32 +211,50 @@ const SCHEMAS = {
         type: "text",
         placeholder: "Если пусто, используется ALT главного фото",
       },
-      { key: "seo_title", label: "SEO Title", type: "text" },
-      { key: "seo_description", label: "SEO Description", type: "textarea" },
+      {
+        key: "seo_title",
+        label: "Заголовок для поиска и внешних ссылок (SEO Title)",
+        type: "text",
+        placeholder: "Например: Тур в Арктику из Минска — даты и цены | TRAVELSPACE",
+        hint: "Используется во вкладке браузера, как рекомендуемый заголовок результата в поиске и при публикации ссылки в соцсетях. На странице тура крупным текстом не отображается.",
+      },
+      {
+        key: "seo_description",
+        label: "Описание для поиска и внешних ссылок (SEO Description)",
+        type: "textarea",
+        rows: 4,
+        placeholder: "Кратко опишите маршрут, даты, стоимость и главное преимущество тура.",
+        hint: "Используется как рекомендуемое описание результата в поиске. Google может сформировать свой вариант из текста страницы.",
+      },
       {
         key: "seo_h1",
-        label: "SEO H1",
-        type: "text",
-        placeholder: "Если пусто, используется название тура",
+        label: "Устаревший SEO H1",
+        type: "hidden",
       },
       {
         key: "seo_canonical_url",
-        label: "Canonical URL (необязательно)",
+        label: "Основной адрес страницы для поисковика (Canonical URL)",
         type: "text",
-        placeholder: "/tours/slug или полный URL travelspace.by",
-        hint: "Оставьте пустым для обычного canonical на текущую страницу. Внешние домены сервер не примет.",
+        placeholder: "Обычно это поле нужно оставить пустым",
+        hint: "Почти всегда оставляйте пустым — сайт сам укажет текущий адрес тура. Заполняйте только если эта страница является копией другого тура: тогда укажите адрес основной страницы, например /tours/osnovnoi-tur. Ссылки на другие сайты здесь использовать нельзя.",
       },
       {
         key: "seo_noindex",
-        label: "Запретить индексацию страницы (noindex)",
+        label: "Скрыть страницу из Google и Яндекса (noindex)",
         type: "switch",
         defaultValue: false,
+        onLabel: "Страница закрыта от поисковиков",
+        offLabel: "Страница разрешена для поиска — рекомендуется",
+        hint: "Если включить, тур продолжит открываться по прямой ссылке, но поисковикам будет дано указание не показывать его в результатах поиска. Используйте только для тестовых, временных или дублирующихся страниц.",
       },
       {
         key: "seo_nofollow",
-        label: "Запретить переход по ссылкам страницы (nofollow)",
+        label: "Запретить поисковикам учитывать ссылки на странице (nofollow)",
         type: "switch",
         defaultValue: false,
+        onLabel: "Ссылки закрыты для поисковых роботов",
+        offLabel: "Ссылки разрешены — рекомендуется",
+        hint: "На посетителей и работу кнопок это не влияет. Настройка относится только к поисковым роботам и почти всегда должна быть выключена. Включайте её только по указанию SEO-специалиста.",
       },
       {
         key: "seo_lastmod",
@@ -367,6 +418,13 @@ const SCHEMAS = {
       { key: "category", label: "Категория", type: "text" },
       { key: "question", label: "Вопрос", type: "text" },
       { key: "answer", label: "Ответ", type: "textarea" },
+      {
+        key: "show_on_home",
+        label: "Показывать на главной странице",
+        type: "switch",
+        defaultValue: true,
+        hint: "Вопрос останется на общей странице FAQ, даже если отключить его на главной.",
+      },
       { key: "order", label: "Порядок", type: "number" },
       { key: "active", label: "Активен", type: "switch" },
     ],
@@ -1098,11 +1156,51 @@ export default function AdminCollection({ name }) {
   );
 }
 
+function TourSearchPreview({ form }) {
+  const tourTitle = String(form.title || "").trim() || "Название тура";
+  const previewTitle =
+    String(form.seo_title || "").trim() || `${tourTitle} | TRAVELSPACE`;
+  const previewDescription =
+    String(form.seo_description || "").trim() ||
+    String(form.short_description || form.tagline || form.description || "").trim() ||
+    "Добавьте отдельное описание для поисковой выдачи.";
+  const previewSlug =
+    String(form.slug || "").trim() || slugify(tourTitle) || "nazvanie-tura";
+
+  return (
+    <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+        Предпросмотр результата поиска
+      </p>
+      <p className="mt-2 truncate text-xs text-emerald-700">
+        travelspace.by › tours › {previewSlug}
+      </p>
+      <p className="mt-1 line-clamp-2 text-base font-medium leading-snug text-[#1a0dab]">
+        {previewTitle}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-neutral-600">
+        {previewDescription}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-500">
+        <span>Title: {String(form.seo_title || "").length} символов</span>
+        <span>
+          Description: {String(form.seo_description || "").length} символов
+        </span>
+      </div>
+      <p className="mt-2 text-[11px] text-neutral-500">
+        Это ориентировочный вид: поисковая система может изменить заголовок или
+        описание результата.
+      </p>
+    </div>
+  );
+}
+
 function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
   const [form, setForm] = useState({});
   const [extraJson, setExtraJson] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [tourEditorTab, setTourEditorTab] = useState("content");
   useEffect(() => {
     if (!open) return;
     if (!record) return;
@@ -1140,6 +1238,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
       Object.keys(extra).length ? JSON.stringify(extra, null, 2) : "",
     );
     setJsonError("");
+    setTourEditorTab("content");
   }, [open, record, schema, collectionName]);
   const update = useCallback((k, v) => setForm((p) => ({ ...p, [k]: v })), []);
 
@@ -1273,7 +1372,62 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
 
         <form onSubmit={submit} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {schema.fields.map((f) => (
+            {collectionName === "tours" && (
+              <Tabs
+                value={tourEditorTab}
+                onValueChange={setTourEditorTab}
+                className="sticky top-0 z-20 -mx-2 rounded-xl border border-neutral-200 bg-white/95 p-2 shadow-sm backdrop-blur"
+              >
+                <div className="overflow-x-auto">
+                  <TabsList className="h-auto min-w-max justify-start">
+                    <TabsTrigger value="content">Для посетителей</TabsTrigger>
+                    <TabsTrigger value="seo">SEO и поиск</TabsTrigger>
+                    <TabsTrigger value="publishing">
+                      Публикация и индексация
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="content" className="px-2 pb-1 pt-2">
+                  <p className="text-xs text-neutral-600">
+                    Здесь находится всё, что посетители видят непосредственно
+                    на сайте: название, описание, фотографии, программа, цены и
+                    даты.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="seo" className="px-2 pb-1 pt-2">
+                  <p className="text-xs text-neutral-600">
+                    Эти поля помогают оформить результат поиска и превью ссылки
+                    в соцсетях. Они не заменяют видимое название тура на
+                    странице.
+                  </p>
+                  <TourSearchPreview form={form} />
+                </TabsContent>
+
+                <TabsContent value="publishing" className="px-2 pb-1 pt-2">
+                  <p className="text-xs text-neutral-600">
+                    Управление доступностью тура, адресом страницы и правилами
+                    для поисковых роботов. Меняйте запреты индексации только при
+                    необходимости.
+                  </p>
+                  <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                    <span className="font-medium">Для обычного тура:</span>{" "}
+                    основной адрес оставьте пустым, а настройки noindex и
+                    nofollow — выключенными.
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
+
+            {schema.fields
+              .filter((field) => field.type !== "hidden")
+              .filter(
+                (field) =>
+                  collectionName !== "tours" ||
+                  getTourEditorTab(field) === tourEditorTab,
+              )
+              .map((f) => (
               <div key={f.key}>
                 <Label className="text-xs">{f.label}</Label>
                 {f.type === "switch" ? (
@@ -1283,7 +1437,9 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                       onCheckedChange={(v) => update(f.key, v)}
                     />
                     <span className="text-sm text-neutral-500">
-                      {form[f.key] ? "Да" : "Нет"}
+                      {form[f.key]
+                        ? f.onLabel || "Да"
+                        : f.offLabel || "Нет"}
                     </span>
                   </div>
                 ) : f.type === "select" ? (
@@ -1397,7 +1553,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                   <p className="mt-1 text-xs text-neutral-500">{f.hint}</p>
                 )}
               </div>
-            ))}
+              ))}
 
             {/* <details className="rounded-lg border border-neutral-200 p-3">
             <summary className="text-sm font-medium cursor-pointer">
@@ -1422,7 +1578,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
             )}
           </details> */}
 
-            {collectionName === "tours" && (
+            {collectionName === "tours" && tourEditorTab === "content" && (
               <MemoTourExtraFields form={form} setForm={setForm} />
             )}
           </div>

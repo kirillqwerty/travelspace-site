@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0f172a" />
 
+    <style id="initial-load-style">
+      html,
+      body {
+        background: #ffffff;
+      }
+
+      #initial-load-cover {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background: #ffffff;
+      }
+    </style>
+    <noscript>
+      <style>
+        #initial-load-cover {
+          display: none !important;
+        }
+      </style>
+    </noscript>
+
     <title>
       TRAVELSPACE — автобусные туры из Минска в Грузию, Дагестан,
       Санкт-Петербург и Карелию
@@ -125,6 +146,12 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="initial-load-cover" aria-hidden="true"></div>
+    <script>
+      window.setTimeout(function () {
+        document.getElementById("initial-load-cover")?.remove();
+      }, 5000);
+    </script>
     <div id="root"></div>
   </body>
 </html>

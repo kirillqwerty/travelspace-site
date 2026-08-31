@@ -1594,7 +1594,7 @@ export default function TourPage() {
     `${tour.title}. Даты, программа, отели и стоимость тура.`;
   const tourSeoImage =
     tour.seo_image || tour.og_image || tour.hero_image || tour.gallery?.[0];
-  const tourH1 = tour.seo_h1 || tour.title;
+  const tourH1 = tour.title || "Тур";
   const tourStructuredData = {
     "@type": "TouristTrip",
     name: tourH1,

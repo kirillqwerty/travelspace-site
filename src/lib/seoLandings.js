@@ -85,6 +85,15 @@ export const TOUR_LANDINGS = {
       "Короткие автобусные поездки в Москву из Минска для насыщенных выходных. Проверьте программу, даты и включённые услуги.",
     keywords: ["москв", "moskv"],
   },
+  arktika: {
+    title: "Туры в Арктику из Минска | TRAVELSPACE",
+    description:
+      "Автобусные туры в Арктику из Минска: программа поездки, даты, маршрут и стоимость.",
+    heading: "Туры в Арктику из Минска",
+    intro:
+      "Поездки за Полярный круг, северные пейзажи и необычная экскурсионная программа. На странице появятся актуальные даты и маршруты TRAVELSPACE.",
+    keywords: ["аркти", "arkti"],
+  },
 };
 
 export const TOUR_LANDING_LINKS = [
@@ -97,7 +106,22 @@ export const TOUR_LANDING_LINKS = [
   ["abhaziya", "Абхазия"],
   ["severnaya-osetiya", "Северная Осетия"],
   ["moskva", "Москва"],
+  ["arktika", "Арктика"],
 ].map(([slug, label]) => ({ slug, label, path: `/tours/${slug}` }));
+
+export function getTourLanding(settings, slug = "") {
+  const fallback = TOUR_LANDINGS[slug];
+  if (!fallback) return null;
+  const configured = settings?.seo_hubs?.[slug] || {};
+  const editable = {};
+
+  ["title", "description", "heading", "intro"].forEach((field) => {
+    const value = configured[field];
+    if (typeof value === "string" && value.trim()) editable[field] = value.trim();
+  });
+
+  return { ...fallback, ...editable };
+}
 
 function tourSearchText(tour) {
   return [

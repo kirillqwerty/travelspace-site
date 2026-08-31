@@ -1,12 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
+import { Bold, Italic, Link as LinkIcon, Loader2, Upload, X } from "lucide-react";
 import { mediaUrl } from "@/lib/media";
+import { DEFAULT_HOME_PAGE } from "@/lib/homeContent";
+import { TOUR_LANDINGS, TOUR_LANDING_LINKS } from "@/lib/seoLandings";
 
 const STATIC_SEO_PAGES = [
   { key: "home", path: "/", label: "Главная" },
@@ -21,6 +29,13 @@ const STATIC_SEO_PAGES = [
   { key: "payment", path: "/payment", label: "Оплата" },
   { key: "legal", path: "/legal", label: "Юридическая информация" },
 ];
+
+const SEO_HUBS = TOUR_LANDING_LINKS.map(({ slug, label, path }) => ({
+  slug,
+  label,
+  path,
+  defaults: TOUR_LANDINGS[slug],
+}));
 
 const BENEFIT_ICON_OPTIONS = [
   { value: "badge", label: "Знак качества" },
@@ -74,6 +89,17 @@ const DEFAULT_HOME_BENEFITS = {
     },
   ],
 };
+
+function getEditableHomePageContent(settings) {
+  const configured = settings?.home_page || {};
+  return {
+    ...DEFAULT_HOME_PAGE,
+    ...configured,
+    directions_sections: Array.isArray(configured.directions_sections)
+      ? configured.directions_sections
+      : DEFAULT_HOME_PAGE.directions_sections,
+  };
+}
 
 const FIXED_FOOTER_SOCIAL_LINKS = [
   {
@@ -159,6 +185,25 @@ export default function AdminSettings() {
         ...patch,
       },
     }));
+  const updateHomePage = (patch) =>
+    setData((p) => ({
+      ...p,
+      home_page: {
+        ...getEditableHomePageContent(p),
+        ...patch,
+      },
+    }));
+  const updateSeoHub = (slug, patch) =>
+    setData((p) => ({
+      ...p,
+      seo_hubs: {
+        ...(p.seo_hubs || {}),
+        [slug]: {
+          ...(p.seo_hubs?.[slug] || {}),
+          ...patch,
+        },
+      },
+    }));
 
   const save = async (e) => {
     e.preventDefault();
@@ -191,189 +236,122 @@ export default function AdminSettings() {
         onSubmit={save}
         className="mt-8 rounded-2xl bg-white border border-neutral-200 p-6 pb-28 sm:p-8 sm:pb-28 max-w-6xl space-y-5"
       >
-        <Group title="Основное">
-          <Field
-            label="Название компании"
-            value={data.company_name}
-            onChange={(v) => update("company_name", v)}
-          />
-          <Field
-            label="Короткое имя"
-            value={data.company_short}
-            onChange={(v) => update("company_short", v)}
-          />
-          <Field
-            label="Юридическое название"
-            value={data.legal_name}
-            onChange={(v) => update("legal_name", v)}
-          />
-          <Field
-            label="УНП"
-            value={data.unp}
-            onChange={(v) => update("unp", v)}
-          />
-        </Group>
-
-        <Group title="Блок на главной “Почему едут именно с нами”">
-          <div className="sm:col-span-2">
-            <HomeBenefitsField
-              value={data.home_benefits || DEFAULT_HOME_BENEFITS}
-              onChange={updateHomeBenefits}
-            />
+        <Tabs defaultValue="home" className="w-full">
+          <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
+            <TabsList className="h-auto min-w-max justify-start gap-1 rounded-none bg-transparent p-0">
+              {[
+                ["home", "Главная"],
+                ["pages", "Статичные страницы"],
+                ["hubs", "SEO-хабы"],
+                ["company", "Компания и контакты"],
+                ["social", "Связь и соцсети"],
+                ["analytics", "Аналитика"],
+              ].map(([value, label]) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="rounded-b-none border border-transparent border-b-0 px-4 py-3 data-[state=active]:border-neutral-200 data-[state=active]:bg-white data-[state=active]:shadow-none"
+                >
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
-        </Group>
 
-        <Group title="Контакты">
-          <Field
-            label="Телефон (формат)"
-            value={data.phone}
-            onChange={(v) => update("phone", v)}
-          />
-          <Field
-            label="Телефон (для tel:)"
-            value={data.phone_link}
-            onChange={(v) => update("phone_link", v)}
-          />
-          <Field
-            label="Email"
-            value={data.email}
-            onChange={(v) => update("email", v)}
-          />
-          <Field
-            label="Email для заявок"
-            value={data.lead_email}
-            onChange={(v) => update("lead_email", v)}
-          />
-          <Field
-            label="Адрес"
-            value={data.address}
-            onChange={(v) => update("address", v)}
-          />
-          <Field
-            label="Ссылка на карту / точку"
-            value={data.map_url || ""}
-            onChange={(v) => update("map_url", v)}
-            placeholder="https://yandex.ru/maps/..."
-          />
-          <Field
-            label="Ссылка для iframe карты"
-            value={data.map_embed_url || ""}
-            onChange={(v) => update("map_embed_url", v)}
-            placeholder="Можно оставить пустым — карта построится по адресу"
-          />
-          <Field
-            label="Ссылка построить маршрут"
-            value={data.map_route_url || ""}
-            onChange={(v) => update("map_route_url", v)}
-            placeholder="Можно оставить пустым"
-          />
-          <Field
-            label="Часы работы"
-            value={data.work_hours}
-            onChange={(v) => update("work_hours", v)}
-          />
-        </Group>
+          <TabsContent value="home" className="mt-7 space-y-8">
+            <Group title="Заголовки и SEO-тексты главной">
+              <div className="sm:col-span-2">
+                <HomePageContentField
+                  value={getEditableHomePageContent(data)}
+                  onChange={updateHomePage}
+                />
+              </div>
+            </Group>
+            <Group title="Блок “Почему едут именно с нами”">
+              <div className="sm:col-span-2">
+                <HomeBenefitsField
+                  value={data.home_benefits || DEFAULT_HOME_BENEFITS}
+                  onChange={updateHomeBenefits}
+                />
+              </div>
+            </Group>
+          </TabsContent>
 
-        <Group title="Телефоны в шапке и футере">
-          <div className="sm:col-span-2 space-y-3">
-            <HeaderPhonesField
-              value={data.header_phones || []}
-              onChange={(v) => update("header_phones", v)}
-            />
-          </div>
-        </Group>
-
-        <Group title="Мессенджеры в шапке">
-          <div className="sm:col-span-2 rounded-xl border border-orange-100 bg-orange-50/60 p-3 text-xs text-neutral-600">
-            В шапке всегда отображаются только Viber, Telegram и WhatsApp. Здесь
-            редактируются только номера/ссылки для этих трёх мессенджеров.
-          </div>
-          <Field
-            label="Viber: номер или ссылка"
-            value={data.messengers?.viber}
-            onChange={(v) => updateNested("messengers", "viber", v)}
-            placeholder="+375296369911 или viber://chat?..."
-          />
-          <Field
-            label="Telegram: username или ссылка"
-            value={data.messengers?.telegram}
-            onChange={(v) => updateNested("messengers", "telegram", v)}
-            placeholder="travelspaceby или https://t.me/travelspaceby"
-          />
-          <Field
-            label="WhatsApp: номер или ссылка"
-            value={data.messengers?.whatsapp}
-            onChange={(v) => updateNested("messengers", "whatsapp", v)}
-            placeholder="+375296369911 или https://wa.me/..."
-          />
-        </Group>
-
-        <Group title="Соцсети в футере">
-          <div className="sm:col-span-2">
-            <FixedFooterSocialLinksField
-              value={data.social_buttons || []}
-              onChange={(v) => update("social_buttons", v)}
-            />
-          </div>
-        </Group>
-
-        <Group title="SEO и превью ссылок">
-          <div className="sm:col-span-2 space-y-6">
-            <p className="text-xs text-neutral-500">
-              Здесь задаются title, description и картинка, которая будет
-              отображаться при отправке ссылки в Telegram, Viber, WhatsApp,
-              соцсетях и поисковой выдаче. Для отдельных туров и статей эти поля
-              редактируются в их карточке.
+          <TabsContent value="pages" className="mt-7 space-y-7">
+            <p className="text-sm text-neutral-600">
+              Выберите страницу во вкладках ниже. Здесь редактируются данные
+              для поисковой выдачи и превью ссылок.
             </p>
-
             <ImageUploadField
               label="Картинка по умолчанию для всех страниц"
               value={data.seo_default_image || ""}
               onChange={(v) => update("seo_default_image", v)}
             />
-
             <SeoPagesField
               value={data.seo_pages || {}}
               onChange={updateSeoPage}
             />
-          </div>
-        </Group>
-        <Group title="Аналитика и рекламные пиксели">
-          <Field
-            label="Google Tag Manager ID"
-            value={data.gtm_id || ""}
-            onChange={(v) => update("gtm_id", v)}
-            placeholder="GTM-XXXXXXX"
-          />
-          <Field
-            label="Google Analytics 4 ID"
-            value={data.google_analytics_id || ""}
-            onChange={(v) => update("google_analytics_id", v)}
-            placeholder="G-XXXXXXXXXX"
-          />
-          <Field
-            label="Яндекс.Метрика ID"
-            value={data.yandex_metrika_id || ""}
-            onChange={(v) => update("yandex_metrika_id", v)}
-            placeholder="12345678"
-          />
-          <Field
-            label="Meta / Facebook Pixel ID"
-            value={data.facebook_pixel_id || ""}
-            onChange={(v) => update("facebook_pixel_id", v)}
-            placeholder="1234567890"
-          />
-          <Field
-            label="TikTok Pixel ID"
-            value={data.tiktok_pixel_id || ""}
-            onChange={(v) => update("tiktok_pixel_id", v)}
-            placeholder="CXXXXXXXXXXXX"
-          />
-          {/* <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
-            Токены server-side conversions сюда не добавляй: META_ACCESS_TOKEN и
-            TIKTOK_ACCESS_TOKEN должны лежать только в backend/.env.
-          </div> */}
-        </Group>
+          </TabsContent>
+
+          <TabsContent value="hubs" className="mt-7">
+            <SeoHubsField
+              value={data.seo_hubs || {}}
+              onChange={updateSeoHub}
+            />
+          </TabsContent>
+
+          <TabsContent value="company" className="mt-7 space-y-8">
+            <Group title="Основное">
+              <Field label="Название компании" value={data.company_name} onChange={(v) => update("company_name", v)} />
+              <Field label="Короткое имя" value={data.company_short} onChange={(v) => update("company_short", v)} />
+              <Field label="Юридическое название" value={data.legal_name} onChange={(v) => update("legal_name", v)} />
+              <Field label="УНП" value={data.unp} onChange={(v) => update("unp", v)} />
+            </Group>
+            <Group title="Контакты">
+              <Field label="Телефон (формат)" value={data.phone} onChange={(v) => update("phone", v)} />
+              <Field label="Телефон (для tel:)" value={data.phone_link} onChange={(v) => update("phone_link", v)} />
+              <Field label="Email" value={data.email} onChange={(v) => update("email", v)} />
+              <Field label="Email для заявок" value={data.lead_email} onChange={(v) => update("lead_email", v)} />
+              <Field label="Адрес" value={data.address} onChange={(v) => update("address", v)} />
+              <Field label="Ссылка на карту / точку" value={data.map_url || ""} onChange={(v) => update("map_url", v)} placeholder="https://yandex.ru/maps/..." />
+              <Field label="Ссылка для iframe карты" value={data.map_embed_url || ""} onChange={(v) => update("map_embed_url", v)} placeholder="Можно оставить пустым — карта построится по адресу" />
+              <Field label="Ссылка построить маршрут" value={data.map_route_url || ""} onChange={(v) => update("map_route_url", v)} placeholder="Можно оставить пустым" />
+              <Field label="Часы работы" value={data.work_hours} onChange={(v) => update("work_hours", v)} />
+            </Group>
+            <Group title="Телефоны в шапке и футере">
+              <div className="sm:col-span-2 space-y-3">
+                <HeaderPhonesField value={data.header_phones || []} onChange={(v) => update("header_phones", v)} />
+              </div>
+            </Group>
+          </TabsContent>
+
+          <TabsContent value="social" className="mt-7 space-y-8">
+            <Group title="Мессенджеры в шапке">
+              <div className="sm:col-span-2 rounded-xl border border-orange-100 bg-orange-50/60 p-3 text-xs text-neutral-600">
+                В шапке отображаются Viber, Telegram и WhatsApp. Здесь
+                редактируются номера и ссылки.
+              </div>
+              <Field label="Viber: номер или ссылка" value={data.messengers?.viber} onChange={(v) => updateNested("messengers", "viber", v)} />
+              <Field label="Telegram: username или ссылка" value={data.messengers?.telegram} onChange={(v) => updateNested("messengers", "telegram", v)} />
+              <Field label="WhatsApp: номер или ссылка" value={data.messengers?.whatsapp} onChange={(v) => updateNested("messengers", "whatsapp", v)} />
+            </Group>
+            <Group title="Соцсети в футере">
+              <div className="sm:col-span-2">
+                <FixedFooterSocialLinksField value={data.social_buttons || []} onChange={(v) => update("social_buttons", v)} />
+              </div>
+            </Group>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="mt-7">
+            <Group title="Аналитика и рекламные пиксели">
+              <Field label="Google Tag Manager ID" value={data.gtm_id || ""} onChange={(v) => update("gtm_id", v)} placeholder="GTM-XXXXXXX" />
+              <Field label="Google Analytics 4 ID" value={data.google_analytics_id || ""} onChange={(v) => update("google_analytics_id", v)} placeholder="G-XXXXXXXXXX" />
+              <Field label="Яндекс.Метрика ID" value={data.yandex_metrika_id || ""} onChange={(v) => update("yandex_metrika_id", v)} placeholder="12345678" />
+              <Field label="Meta / Facebook Pixel ID" value={data.facebook_pixel_id || ""} onChange={(v) => update("facebook_pixel_id", v)} placeholder="1234567890" />
+              <Field label="TikTok Pixel ID" value={data.tiktok_pixel_id || ""} onChange={(v) => update("tiktok_pixel_id", v)} placeholder="CXXXXXXXXXXXX" />
+            </Group>
+          </TabsContent>
+        </Tabs>
       </form>
       <div className="pointer-events-none fixed bottom-4 left-4 right-4 z-50 flex justify-end md:left-[280px]">
         <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur">
@@ -414,6 +392,238 @@ function Group({ title, children }) {
     <div>
       <p className="overline text-neutral-500 mb-3">{title}</p>
       <div className="grid sm:grid-cols-2 gap-3">{children}</div>
+    </div>
+  );
+}
+
+function HomePageContentField({ value = DEFAULT_HOME_PAGE, onChange }) {
+  const content = { ...DEFAULT_HOME_PAGE, ...(value || {}) };
+  const sections = Array.isArray(content.directions_sections)
+    ? content.directions_sections
+    : [];
+
+  const updateSection = (index, patch) => {
+    const next = [...sections];
+    next[index] = { ...next[index], ...patch };
+    onChange({ directions_sections: next });
+  };
+
+  const addSection = () =>
+    onChange({
+      directions_sections: [
+        ...sections,
+        {
+          title: "Новый подраздел",
+          text: "",
+          link_label: "",
+          link_url: "",
+        },
+      ],
+    });
+
+  const removeSection = (index) =>
+    onChange({
+      directions_sections: sections.filter(
+        (_, sectionIndex) => sectionIndex !== index,
+      ),
+    });
+
+  return (
+    <div className="space-y-7">
+      <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 text-sm text-neutral-700">
+        На главной будет только один H1. Маркетинговая фраза в интро останется
+        обычным текстом. Изменения этих полей автоматически обновят дату
+        главной в sitemap.
+      </div>
+
+      <Field
+        label="H1 главной страницы"
+        value={content.h1}
+        onChange={(h1) => onChange({ h1 })}
+        placeholder="Автобусные туры из Минска"
+      />
+
+      <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
+        <Field
+          label="H2 первого SEO-блока"
+          value={content.intro_title}
+          onChange={(intro_title) => onChange({ intro_title })}
+        />
+        <RichTextareaField
+          label="Текст первого SEO-блока"
+          value={content.intro_text}
+          onChange={(intro_text) => onChange({ intro_text })}
+          rows={7}
+          hint="Рекомендуется 2–4 абзаца. Выделите понятный анкор и добавьте внутреннюю ссылку на тур или направление."
+        />
+      </div>
+
+      <Field
+        label="H2 над карточками автобусных туров"
+        value={content.tours_title}
+        onChange={(tours_title) => onChange({ tours_title })}
+      />
+
+      <div className="space-y-4 rounded-xl border border-neutral-200 p-4">
+        <Field
+          label="H2 блока направлений"
+          value={content.directions_title}
+          onChange={(directions_title) => onChange({ directions_title })}
+        />
+
+        <div>
+          <Label>Подразделы направлений</Label>
+          <p className="mt-1 text-xs text-neutral-500">
+            Заголовок каждого подраздела выводится как H3. Ссылка под текстом
+            необязательна; ссылки также можно добавлять прямо в тексте.
+          </p>
+        </div>
+
+        {sections.map((section, index) => (
+          <div
+            key={index}
+            className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4"
+          >
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Field
+                label="H3 подраздела"
+                value={section.title}
+                onChange={(title) => updateSection(index, { title })}
+              />
+              <div className="flex items-end justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => removeSection(index)}
+                >
+                  Удалить подраздел
+                </Button>
+              </div>
+            </div>
+            <RichTextareaField
+              label="Текст подраздела"
+              value={section.text}
+              onChange={(text) => updateSection(index, { text })}
+              rows={5}
+            />
+            <div className="grid gap-3 lg:grid-cols-2">
+              <Field
+                label="Подпись отдельной ссылки (необязательно)"
+                value={section.link_label}
+                onChange={(link_label) =>
+                  updateSection(index, { link_label })
+                }
+              />
+              <Field
+                label="Адрес отдельной ссылки"
+                value={section.link_url}
+                onChange={(link_url) => updateSection(index, { link_url })}
+                placeholder="/tours/sankt-peterburg"
+              />
+            </div>
+          </div>
+        ))}
+
+        <Button type="button" variant="outline" onClick={addSection}>
+          Добавить подраздел
+        </Button>
+      </div>
+
+      <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
+        <Field
+          label="H2 блока частых вопросов"
+          value={content.faq_title}
+          onChange={(faq_title) => onChange({ faq_title })}
+        />
+        <p className="text-xs text-neutral-500">
+          Сами вопросы редактируются в разделе «FAQ». Для каждого вопроса есть
+          переключатель «Показывать на главной странице».
+        </p>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onChange(DEFAULT_HOME_PAGE)}
+      >
+        Вернуть стандартную структуру главной
+      </Button>
+    </div>
+  );
+}
+
+function RichTextareaField({
+  label,
+  value = "",
+  onChange,
+  rows = 5,
+  hint = "",
+}) {
+  const textareaRef = useRef(null);
+
+  const wrapSelection = (prefix, suffix, placeholder) => {
+    const textarea = textareaRef.current;
+    const current = String(value || "");
+    const start = textarea?.selectionStart ?? current.length;
+    const end = textarea?.selectionEnd ?? current.length;
+    const selected = current.slice(start, end) || placeholder;
+    const inserted = `${prefix}${selected}${suffix}`;
+    onChange(`${current.slice(0, start)}${inserted}${current.slice(end)}`);
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+    });
+  };
+
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <div className="mt-1 overflow-hidden rounded-md border border-input bg-background">
+        <div className="flex flex-wrap gap-1 border-b border-neutral-200 bg-neutral-50 p-1.5">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 px-2"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => wrapSelection("**", "**", "жирный текст")}
+          >
+            <Bold className="size-4" /> Жирный
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 px-2"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => wrapSelection("_", "_", "курсив")}
+          >
+            <Italic className="size-4" /> Курсив
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1 px-2"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() =>
+              wrapSelection("[", "](/tours/адрес-страницы)", "текст ссылки")
+            }
+          >
+            <LinkIcon className="size-4" /> Ссылка
+          </Button>
+        </div>
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          rows={rows}
+          className="resize-y rounded-none border-0 leading-6 focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+      </div>
+      <p className="mt-1 text-xs text-neutral-500">
+        Пустая строка создаёт новый абзац. {hint}
+      </p>
     </div>
   );
 }
@@ -683,49 +893,169 @@ function SeoPagesField({ value = {}, onChange }) {
         </p>
       </div>
 
-      {STATIC_SEO_PAGES.map((page) => {
-        const item = value[page.key] || {};
+      <Tabs defaultValue={STATIC_SEO_PAGES[0].key}>
+        <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
+          <TabsList className="h-auto min-w-max justify-start rounded-none bg-transparent p-0">
+            {STATIC_SEO_PAGES.map((page) => (
+              <TabsTrigger
+                key={page.key}
+                value={page.key}
+                className="rounded-b-none px-3 py-2.5 data-[state=active]:bg-neutral-100"
+              >
+                {page.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-        return (
-          <div
-            key={page.key}
-            className="rounded-xl border border-neutral-200 p-4"
-          >
-            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-medium text-sm">{page.label}</p>
-                <p className="text-xs text-neutral-500">{page.path}</p>
+        {STATIC_SEO_PAGES.map((page) => {
+          const item = value[page.key] || {};
+          return (
+            <TabsContent key={page.key} value={page.key} className="mt-5">
+              <div className="rounded-xl border border-neutral-200 p-4 sm:p-5">
+                <div className="mb-4">
+                  <p className="font-medium">{page.label}</p>
+                  <p className="text-xs text-neutral-500">{page.path}</p>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Field
+                    label="SEO Title"
+                    value={item.title}
+                    onChange={(v) =>
+                      onChange(page.key, { title: v, path: page.path })
+                    }
+                  />
+                  <TextareaField
+                    label="SEO Description"
+                    value={item.description}
+                    onChange={(v) =>
+                      onChange(page.key, {
+                        description: v,
+                        path: page.path,
+                      })
+                    }
+                  />
+                  <div className="lg:col-span-2">
+                    <ImageUploadField
+                      label="Фото для превью ссылки"
+                      value={item.image || ""}
+                      onChange={(v) =>
+                        onChange(page.key, { image: v, path: page.path })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </div>
+  );
+}
 
-            <div className="grid gap-3 lg:grid-cols-2">
-              <Field
-                label="SEO Title"
-                value={item.title}
-                onChange={(v) =>
-                  onChange(page.key, { title: v, path: page.path })
-                }
-              />
-              <TextareaField
-                label="SEO Description"
-                value={item.description}
-                onChange={(v) =>
-                  onChange(page.key, { description: v, path: page.path })
-                }
-              />
-              <div className="lg:col-span-2">
-                <ImageUploadField
-                  label="Фото для превью ссылки"
-                  value={item.image || ""}
-                  onChange={(v) =>
-                    onChange(page.key, { image: v, path: page.path })
-                  }
-                />
+function SeoHubsField({ value = {}, onChange }) {
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+        <p className="font-medium text-neutral-900">SEO-хабы направлений</p>
+        <p className="mt-1 text-sm leading-6 text-neutral-600">
+          Это страницы, которые объединяют подходящие туры по направлению.
+          Изменения применяются одновременно к видимой странице, поисковым
+          метатегам и серверной HTML-версии.
+        </p>
+      </div>
+
+      <Tabs defaultValue={SEO_HUBS[0].slug}>
+        <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
+          <TabsList className="h-auto min-w-max justify-start rounded-none bg-transparent p-0">
+            {SEO_HUBS.map((hub) => (
+              <TabsTrigger
+                key={hub.slug}
+                value={hub.slug}
+                className="rounded-b-none px-3 py-2.5 data-[state=active]:bg-neutral-100"
+              >
+                {hub.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {SEO_HUBS.map((hub) => {
+          const item = { ...hub.defaults, ...(value[hub.slug] || {}) };
+          return (
+            <TabsContent key={hub.slug} value={hub.slug} className="mt-5">
+              <div className="space-y-5 rounded-xl border border-neutral-200 p-4 sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-heading text-xl">{hub.label}</p>
+                    <p className="mt-1 text-sm text-neutral-500">{hub.path}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      onChange(hub.slug, {
+                        path: hub.path,
+                        title: hub.defaults.title,
+                        description: hub.defaults.description,
+                        heading: hub.defaults.heading,
+                        intro: hub.defaults.intro,
+                      })
+                    }
+                  >
+                    Вернуть стандартные тексты
+                  </Button>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Field
+                    label="SEO Title"
+                    value={item.title}
+                    onChange={(title) =>
+                      onChange(hub.slug, { title, path: hub.path })
+                    }
+                  />
+                  <TextareaField
+                    label="SEO Description"
+                    value={item.description}
+                    onChange={(description) =>
+                      onChange(hub.slug, { description, path: hub.path })
+                    }
+                    rows={3}
+                  />
+                  <div className="lg:col-span-2">
+                    <Field
+                      label="H1 на странице"
+                      value={item.heading}
+                      onChange={(heading) =>
+                        onChange(hub.slug, { heading, path: hub.path })
+                      }
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <RichTextareaField
+                      label="Вводный текст под H1"
+                      value={item.intro}
+                      onChange={(intro) =>
+                        onChange(hub.slug, { intro, path: hub.path })
+                      }
+                      rows={7}
+                      hint="Можно использовать несколько абзацев и внутренние ссылки на конкретные туры."
+                    />
+                  </div>
+                </div>
+
+                {item.content_updated_at && (
+                  <p className="text-xs text-neutral-500">
+                    Последнее существенное обновление: {item.content_updated_at}
+                  </p>
+                )}
               </div>
-            </div>
-          </div>
-        );
-      })}
+            </TabsContent>
+          );
+        })}
+      </Tabs>
     </div>
   );
 }

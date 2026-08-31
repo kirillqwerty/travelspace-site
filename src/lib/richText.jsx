@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { Link } from "react-router-dom";
 
 import checkIcon from "@/assets/rich-icons/check.svg";
 import minusIcon from "@/assets/rich-icons/minus.svg";
@@ -20,7 +21,10 @@ const ICON_BY_TOKEN = RICH_TEXT_ICONS.reduce((acc, item) => {
 const INLINE_RE = /(:check:|:minus:|:warning:|:triangle:|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|https?:\/\/[^\s]+)/g;
 
 function isSafeUrl(url = "") {
-  return /^https?:\/\//i.test(url) || url.startsWith("/");
+  return (
+    /^https?:\/\//i.test(url) ||
+    (url.startsWith("/") && !url.startsWith("//"))
+  );
 }
 
 function renderRichIcon(token, key) {
@@ -60,7 +64,15 @@ function renderInline(text = "", keyPrefix = "rt") {
       if (matchLink) {
         const [, label, href] = matchLink;
         parts.push(
-          isSafeUrl(href) ? (
+          href.startsWith("/") && !href.startsWith("//") ? (
+            <Link
+              key={key}
+              to={href}
+              className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
+            >
+              {label}
+            </Link>
+          ) : isSafeUrl(href) ? (
             <a
               key={key}
               href={href}
