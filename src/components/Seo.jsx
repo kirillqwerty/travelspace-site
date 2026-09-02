@@ -8,9 +8,9 @@ const SITE_URL = /^https?:\/\//i.test(configuredSiteUrl)
   : "https://travelspace.by";
 
 const DEFAULT_SITE_NAME = "TRAVELSPACE";
-const DEFAULT_TITLE = "TRAVELSPACE — автобусные и авиационные туры из Минска";
+const DEFAULT_TITLE = "TRAVELSPACE — автобусные и авиа туры из Минска";
 const DEFAULT_DESCRIPTION =
-  "Автобусные и авиационные туры из Минска. Программы, даты и стоимость поездок.";
+  "Автобусные и авиа туры из Минска. Программы, даты и стоимость поездок.";
 const DEFAULT_IMAGE = "/og-image.jpg";
 
 function stripText(value = "") {
@@ -74,7 +74,7 @@ function breadcrumbLabel(segment = "") {
     moskva: "Туры в Москву",
     arktika: "Туры в Арктику",
     "avtobusnye-iz-minska": "Автобусные туры",
-    "avia-iz-minska": "Авиационные туры",
+    "avia-iz-minska": "Авиа туры",
   };
   return labels[segment] || segment.replace(/-/g, " ");
 }

@@ -212,8 +212,8 @@ export default function Home({ startVideo = false }) {
       <PageSeo
         pageKey="home"
         path="/"
-        title="TRAVELSPACE — автобусные и авиа-туры из Минска"
-        description="Автобусные и авиа-туры из Минска. Продуманные программы, заботливые гиды и понятная цена без сюрпризов."
+        title="TRAVELSPACE — автобусные и авиа туры из Минска"
+        description="Автобусные и авиа туры из Минска. Продуманные программы, заботливые гиды и понятная цена без сюрпризов."
         structuredData={faqStructuredData}
       />
       {/* ======================= HERO ======================= */}
@@ -275,14 +275,17 @@ export default function Home({ startVideo = false }) {
       </section>
 
       {/* ======================= SEO INTRO ======================= */}
-      <section className="py-12 lg:py-16" data-testid="home-seo-intro">
-        <div className="section-container max-w-5xl">
+      <section
+        className="pt-12 pb-6 lg:pt-16 lg:pb-8"
+        data-testid="home-seo-intro"
+      >
+        <div className="section-container">
           <h2 className="font-heading text-3xl sm:text-4xl">
             {homePage.intro_title}
           </h2>
           <RichText
             text={homePage.intro_text}
-            className="mt-5 max-w-4xl text-base leading-7 text-neutral-700"
+            className="mt-5 w-full text-base leading-7 text-neutral-700"
             paragraphClassName="leading-7"
           />
         </div>
@@ -290,7 +293,7 @@ export default function Home({ startVideo = false }) {
 
       {/* ======================= DESTINATION TOURS ======================= */}
       <section
-        className="relative section-pad"
+        className="relative pt-8 pb-10 sm:pt-10 sm:pb-12 lg:pb-14"
         data-testid="destinations-section"
       >
         {TOUR_TRANSPORT_OPTIONS.map((option) => (
@@ -306,7 +309,7 @@ export default function Home({ startVideo = false }) {
             <div>
               <h2 className="font-heading text-4xl sm:text-5xl mt-2 max-w-xl">
                 {activeTransport === TOUR_TRANSPORT_TYPES.AIR
-                  ? "Популярные авиационные туры из Минска"
+                  ? "Популярные авиа туры из Минска"
                   : homePage.tours_title}
               </h2>
               <p className="mt-3 text-neutral-600">
@@ -363,7 +366,7 @@ export default function Home({ startVideo = false }) {
 
       {/* ======================= SEO DIRECTIONS ======================= */}
       <section
-        className="py-12 lg:py-16 bg-neutral-50"
+        className="py-8 lg:py-10 bg-neutral-50"
         data-testid="home-seo-directions"
       >
         <div className="section-container">
@@ -408,7 +411,7 @@ export default function Home({ startVideo = false }) {
 
       {/* ======================= BENEFITS ======================= */}
       <section
-        className="py-12 lg:py-16 bg-neutral-50"
+        className="py-8 lg:py-10 bg-neutral-50"
         data-testid="benefits-section"
       >
         <div className="section-container">
@@ -445,7 +448,7 @@ export default function Home({ startVideo = false }) {
       {/* ======================= REVIEWS ======================= */}
       {reviews.length > 0 && (
         <section
-          className="section-pad bg-neutral-50"
+          className="py-8 bg-neutral-50 lg:py-10"
           data-testid="reviews-section"
         >
           <div className="section-container">
@@ -499,7 +502,7 @@ export default function Home({ startVideo = false }) {
       )}
       {/* ======================= PROMOTIONS BLOCK ======================= */}
       {promotions.length > 0 && (
-        <section className="py-12 lg:py-16" data-testid="promotions-section">
+        <section className="py-8 lg:py-10" data-testid="promotions-section">
           <div className="section-container">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7">
               <div>
@@ -588,8 +591,8 @@ export default function Home({ startVideo = false }) {
 
       {/* ======================= HOMEPAGE FAQ ======================= */}
       {faqItems.length > 0 && (
-        <section className="section-pad bg-neutral-50" data-testid="home-faq">
-          <div className="section-container max-w-5xl">
+        <section className="py-8 bg-neutral-50 lg:py-10" data-testid="home-faq">
+          <div className="section-container">
             <h2 className="font-heading text-4xl sm:text-5xl">
               {homePage.faq_title}
             </h2>

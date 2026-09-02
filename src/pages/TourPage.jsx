@@ -1581,7 +1581,7 @@ export default function TourPage() {
   )}/program.pdf`;
   const transportSeoLabel =
     getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR
-      ? "авиа-тур"
+      ? "авиа тур"
       : "автобусный тур";
   const tourSeoTitle =
     tour.seo_title ||
@@ -1606,7 +1606,7 @@ export default function TourPage() {
   };
   const categoryLanding =
     getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR
-      ? { path: "/tours/avia-iz-minska", label: "Авиационные туры" }
+      ? { path: "/tours/avia-iz-minska", label: "Авиа туры" }
       : { path: "/tours/avtobusnye-iz-minska", label: "Автобусные туры" };
   const directionLanding = getDirectionLandingForTour(tour);
 

@@ -13,8 +13,12 @@ import {
 import { toast } from "sonner";
 import { Bold, Italic, Link as LinkIcon, Loader2, Upload, X } from "lucide-react";
 import { mediaUrl } from "@/lib/media";
+import { formatMinskDateTime } from "@/lib/formatDate";
 import { DEFAULT_HOME_PAGE } from "@/lib/homeContent";
-import { TOUR_LANDINGS, TOUR_LANDING_LINKS } from "@/lib/seoLandings";
+import {
+  getTourLandingDefaults,
+  TOUR_LANDING_LINKS,
+} from "@/lib/seoLandings";
 
 const STATIC_SEO_PAGES = [
   { key: "home", path: "/", label: "Главная" },
@@ -34,7 +38,7 @@ const SEO_HUBS = TOUR_LANDING_LINKS.map(({ slug, label, path }) => ({
   slug,
   label,
   path,
-  defaults: TOUR_LANDINGS[slug],
+  defaults: getTourLandingDefaults(slug),
 }));
 
 const BENEFIT_ICON_OPTIONS = [
@@ -982,7 +986,39 @@ function SeoHubsField({ value = {}, onChange }) {
         </div>
 
         {SEO_HUBS.map((hub) => {
-          const item = { ...hub.defaults, ...(value[hub.slug] || {}) };
+          const stored = value[hub.slug] || {};
+          const item = {
+            ...hub.defaults,
+            ...stored,
+            content_sections: Array.isArray(stored.content_sections)
+              ? stored.content_sections
+              : hub.defaults.content_sections || [],
+            faq_items: Array.isArray(stored.faq_items)
+              ? stored.faq_items
+              : hub.defaults.faq_items || [],
+          };
+          const contentLength =
+            String(item.content_body || "").length +
+            item.content_sections.reduce(
+              (total, section) => total + String(section?.text || "").length,
+              0,
+            );
+
+          const updateContentSection = (index, patch) => {
+            const next = [...item.content_sections];
+            next[index] = { ...next[index], ...patch };
+            onChange(hub.slug, {
+              content_sections: next,
+              path: hub.path,
+            });
+          };
+
+          const updateFaqItem = (index, patch) => {
+            const next = [...item.faq_items];
+            next[index] = { ...next[index], ...patch };
+            onChange(hub.slug, { faq_items: next, path: hub.path });
+          };
+
           return (
             <TabsContent key={hub.slug} value={hub.slug} className="mt-5">
               <div className="space-y-5 rounded-xl border border-neutral-200 p-4 sm:p-6">
@@ -1001,6 +1037,16 @@ function SeoHubsField({ value = {}, onChange }) {
                         description: hub.defaults.description,
                         heading: hub.defaults.heading,
                         intro: hub.defaults.intro,
+                        content_title: hub.defaults.content_title,
+                        content_body: hub.defaults.content_body,
+                        content_sections: hub.defaults.content_sections.map(
+                          (section) => ({ ...section }),
+                        ),
+                        how_to_title: hub.defaults.how_to_title,
+                        faq_title: hub.defaults.faq_title,
+                        faq_items: hub.defaults.faq_items.map((faqItem) => ({
+                          ...faqItem,
+                        })),
                       })
                     }
                   >
@@ -1008,47 +1054,243 @@ function SeoHubsField({ value = {}, onChange }) {
                   </Button>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <Field
-                    label="SEO Title"
-                    value={item.title}
-                    onChange={(title) =>
-                      onChange(hub.slug, { title, path: hub.path })
-                    }
-                  />
-                  <TextareaField
-                    label="SEO Description"
-                    value={item.description}
-                    onChange={(description) =>
-                      onChange(hub.slug, { description, path: hub.path })
-                    }
-                    rows={3}
-                  />
-                  <div className="lg:col-span-2">
+                <Tabs defaultValue="main">
+                  <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
+                    <TabsList className="h-auto min-w-max justify-start rounded-none bg-transparent p-0">
+                      <TabsTrigger value="main">Основное</TabsTrigger>
+                      <TabsTrigger value="content">
+                        Текст после каталога
+                      </TabsTrigger>
+                      <TabsTrigger value="faq">
+                        Частые вопросы ({item.faq_items.length})
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  <TabsContent value="main" className="mt-5">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <Field
+                        label="SEO Title"
+                        value={item.title}
+                        onChange={(title) =>
+                          onChange(hub.slug, { title, path: hub.path })
+                        }
+                      />
+                      <TextareaField
+                        label="SEO Description"
+                        value={item.description}
+                        onChange={(description) =>
+                          onChange(hub.slug, { description, path: hub.path })
+                        }
+                        rows={3}
+                      />
+                      <div className="lg:col-span-2">
+                        <Field
+                          label="H1 на странице"
+                          value={item.heading}
+                          onChange={(heading) =>
+                            onChange(hub.slug, { heading, path: hub.path })
+                          }
+                        />
+                      </div>
+                      <div className="lg:col-span-2">
+                        <RichTextareaField
+                          label="Короткий вводный текст под H1"
+                          value={item.intro}
+                          onChange={(intro) =>
+                            onChange(hub.slug, { intro, path: hub.path })
+                          }
+                          rows={6}
+                          hint="Этот текст находится вверху страницы. Для большого SEO-текста используйте соседнюю вкладку «Текст после каталога»."
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="content" className="mt-5 space-y-5">
+                    <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 text-sm leading-6 text-neutral-700">
+                      Блок появится после карточек туров и перед разделом «Как
+                      выбрать тур». Рекомендуемый общий объём — 1500–2500
+                      знаков полезного уникального текста. Сейчас: {contentLength}
+                      {" "}знаков.
+                    </div>
+
                     <Field
-                      label="H1 на странице"
-                      value={item.heading}
-                      onChange={(heading) =>
-                        onChange(hub.slug, { heading, path: hub.path })
+                      label="H2 большого SEO-блока"
+                      value={item.content_title}
+                      onChange={(content_title) =>
+                        onChange(hub.slug, {
+                          content_title,
+                          path: hub.path,
+                        })
                       }
+                      placeholder="Автобусные туры из Беларуси: направления, цены и формат поездок"
                     />
-                  </div>
-                  <div className="lg:col-span-2">
                     <RichTextareaField
-                      label="Вводный текст под H1"
-                      value={item.intro}
-                      onChange={(intro) =>
-                        onChange(hub.slug, { intro, path: hub.path })
+                      label="Основной текст под H2"
+                      value={item.content_body}
+                      onChange={(content_body) =>
+                        onChange(hub.slug, { content_body, path: hub.path })
                       }
-                      rows={7}
-                      hint="Можно использовать несколько абзацев и внутренние ссылки на конкретные туры."
+                      rows={10}
+                      hint="Можно использовать абзацы, выделения и внутренние ссылки на туры или другие SEO-хабы."
                     />
-                  </div>
-                </div>
+
+                    <div>
+                      <Label>Подразделы H3</Label>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Добавьте от двух до четырёх смысловых подразделов. H3 и
+                        текст выводятся как настоящая семантическая разметка.
+                      </p>
+                    </div>
+
+                    {item.content_sections.map((section, index) => (
+                      <div
+                        key={index}
+                        className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50/60 p-4"
+                      >
+                        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                          <Field
+                            label={`H3 подраздела ${index + 1}`}
+                            value={section.title}
+                            onChange={(title) =>
+                              updateContentSection(index, { title })
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              onChange(hub.slug, {
+                                content_sections: item.content_sections.filter(
+                                  (_, sectionIndex) => sectionIndex !== index,
+                                ),
+                                path: hub.path,
+                              })
+                            }
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                        <RichTextareaField
+                          label="Текст подраздела"
+                          value={section.text}
+                          onChange={(text) =>
+                            updateContentSection(index, { text })
+                          }
+                          rows={6}
+                          hint="Внутренние ссылки можно добавлять прямо в тексте."
+                        />
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={item.content_sections.length >= 4}
+                      onClick={() =>
+                        onChange(hub.slug, {
+                          content_sections: [
+                            ...item.content_sections,
+                            { title: "", text: "" },
+                          ],
+                          path: hub.path,
+                        })
+                      }
+                    >
+                      Добавить подраздел H3
+                    </Button>
+
+                    <Field
+                      label="H2 блока «Как выбрать тур»"
+                      value={item.how_to_title}
+                      onChange={(how_to_title) =>
+                        onChange(hub.slug, { how_to_title, path: hub.path })
+                      }
+                      placeholder="Как выбрать автобусный тур из Минска"
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="faq" className="mt-5 space-y-5">
+                    <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 text-sm leading-6 text-neutral-700">
+                      Вопросы находятся внизу SEO-хаба. Даже закрытые ответы
+                      остаются в HTML страницы и доступны поисковым роботам.
+                      Рекомендуется добавить 6–8 действительно полезных
+                      вопросов.
+                    </div>
+
+                    <Field
+                      label="H2 блока частых вопросов"
+                      value={item.faq_title}
+                      onChange={(faq_title) =>
+                        onChange(hub.slug, { faq_title, path: hub.path })
+                      }
+                      placeholder="Частые вопросы о турах"
+                    />
+
+                    {item.faq_items.map((faqItem, index) => (
+                      <div
+                        key={index}
+                        className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50/60 p-4"
+                      >
+                        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                          <Field
+                            label={`Вопрос ${index + 1}`}
+                            value={faqItem.question}
+                            onChange={(question) =>
+                              updateFaqItem(index, { question })
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              onChange(hub.slug, {
+                                faq_items: item.faq_items.filter(
+                                  (_, faqIndex) => faqIndex !== index,
+                                ),
+                                path: hub.path,
+                              })
+                            }
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                        <RichTextareaField
+                          label="Ответ"
+                          value={faqItem.answer}
+                          onChange={(answer) =>
+                            updateFaqItem(index, { answer })
+                          }
+                          rows={5}
+                          hint="Ответ должен быть понятным пользователю и соответствовать реальным условиям тура."
+                        />
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={item.faq_items.length >= 8}
+                      onClick={() =>
+                        onChange(hub.slug, {
+                          faq_items: [
+                            ...item.faq_items,
+                            { question: "", answer: "" },
+                          ],
+                          path: hub.path,
+                        })
+                      }
+                    >
+                      Добавить вопрос
+                    </Button>
+                  </TabsContent>
+                </Tabs>
 
                 {item.content_updated_at && (
                   <p className="text-xs text-neutral-500">
-                    Последнее существенное обновление: {item.content_updated_at}
+                    Последнее существенное обновление:{" "}
+                    {formatMinskDateTime(item.content_updated_at)} (по Минску)
                   </p>
                 )}
               </div>

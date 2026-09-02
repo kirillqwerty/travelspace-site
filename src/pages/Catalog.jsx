@@ -78,8 +78,8 @@ export default function Catalog() {
       <PageSeo
         pageKey="tours"
         path="/tours"
-        title="Каталог автобусных и авиа-туров из Минска | TRAVELSPACE"
-        description="Выбирайте автобусные и авиа-туры из Минска по направлениям, датам и форматам отдыха. TRAVELSPACE поможет подобрать подходящий тур."
+        title="Каталог автобусных и авиа туров из Минска | TRAVELSPACE"
+        description="Выбирайте автобусные и авиа туры из Минска по направлениям, датам и форматам отдыха. TRAVELSPACE поможет подобрать подходящий тур."
       />
       <p className="overline text-[#C2410C]">Каталог туров</p>
       <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">

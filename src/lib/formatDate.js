@@ -27,3 +27,28 @@ export function formatDate(value) {
 
   return raw;
 }
+
+export function formatMinskDateTime(value) {
+  if (!value) return "";
+
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return formatDate(raw);
+
+  const parts = new Intl.DateTimeFormat("ru-BY", {
+    timeZone: "Europe/Minsk",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(parsed);
+  const valueByType = Object.fromEntries(
+    parts.map(({ type, value: partValue }) => [type, partValue]),
+  );
+
+  return `${valueByType.day}.${valueByType.month}.${valueByType.year} в ${valueByType.hour}:${valueByType.minute}`;
+}
