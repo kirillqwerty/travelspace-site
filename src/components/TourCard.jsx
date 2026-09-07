@@ -339,10 +339,13 @@ export default function TourCard({ tour, size = "default" }) {
   "
       data-testid={`tour-card-${tour.slug}`}
     >
-      <div
-        className={`relative ${isLarge ? "aspect-[4/3] lg:aspect-[16/11]" : "aspect-[4/3]"} overflow-hidden bg-neutral-100`}
-      >
-        <picture>
+      <div className="relative grid min-w-0 overflow-hidden bg-neutral-100">
+        {/* The image keeps its usual ratio, but long titles can grow this row. */}
+        <div
+          aria-hidden="true"
+          className={`col-start-1 row-start-1 ${isLarge ? "aspect-[4/3] lg:aspect-[16/11]" : "aspect-[4/3]"}`}
+        />
+        <picture className="absolute inset-0">
           <source
             media="(max-width: 767px)"
             srcSet={mediaUrl(getCardImage(tour, "mobile"))}
@@ -358,39 +361,40 @@ export default function TourCard({ tour, size = "default" }) {
             "
           />
         </picture>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent sm:from-black/70 sm:via-black/15" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-        {/* Badges over image — clearly readable */}
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pr-3">
-          {(tour.badges || []).slice(0, 3).map((b) => (
-            <Badge
-              key={b}
-              className={`
-                pointer-events-none rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:opacity-100
-                border shadow-sm
-                ${BADGE_STYLES[b] || DEFAULT_BADGE}
-              `}
+        <div className="relative col-start-1 row-start-1 flex min-w-0 flex-col justify-between">
+          {/* Badges over image — clearly readable */}
+          <div className="m-3 flex shrink-0 flex-wrap gap-1.5">
+            {(tour.badges || []).slice(0, 3).map((b) => (
+              <Badge
+                key={b}
+                className={`
+                  pointer-events-none rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide hover:opacity-100
+                  border shadow-sm
+                  ${BADGE_STYLES[b] || DEFAULT_BADGE}
+                `}
+              >
+                {b}
+              </Badge>
+            ))}
+            {hasPromotions && (
+              <Badge className="pointer-events-none rounded-full border-rose-500 bg-rose-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm hover:bg-rose-500">
+                Есть акции
+              </Badge>
+            )}
+          </div>
+
+          <div className="mt-auto shrink-0 p-5 pt-6 text-white">
+            <h3
+              className="
+                font-heading leading-snug [overflow-wrap:anywhere]
+                text-lg sm:text-xl
+              "
             >
-              {b}
-            </Badge>
-          ))}
-          {hasPromotions && (
-            <Badge className="pointer-events-none rounded-full border-rose-500 bg-rose-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm hover:bg-rose-500">
-              Есть акции
-            </Badge>
-          )}
-        </div>
-
-        {/* Title and meta overlay (compact, similar heights between cards) */}
-        <div className="absolute bottom-0 inset-x-0 p-5 text-white">
-          <h3
-            className="
-              font-heading leading-tight line-clamp-2
-              text-xl sm:text-2xl
-            "
-          >
-            {tour.title}
-          </h3>
+              {tour.title}
+            </h3>
+          </div>
         </div>
       </div>
 

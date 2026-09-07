@@ -28,7 +28,7 @@ function richTextToPlain(value = "") {
 export default function TourLanding({ slug }) {
   const { tours, ready, settings } = useSiteData();
   const landing = getTourLanding(settings, slug);
-  const matchingTours = filterToursForLanding(tours, slug);
+  const matchingTours = filterToursForLanding(tours, slug, landing?.tour_ids);
   const relatedLinks = TOUR_LANDING_LINKS.filter((item) => item.slug !== slug);
 
   if (!landing) return null;
@@ -66,6 +66,7 @@ export default function TourLanding({ slug }) {
       <PageSeo
         title={landing.title}
         description={landing.description}
+        image={landing.seo_image}
         path={`/tours/${slug}`}
         structuredData={faqStructuredData}
       />
@@ -94,7 +95,9 @@ export default function TourLanding({ slug }) {
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm font-bold uppercase tracking-widest text-orange-600">Актуальные программы</p>
-            <h2 className="font-heading mt-2 text-3xl font-bold text-neutral-950">Выберите подходящий тур</h2>
+            <h2 className="font-heading mt-2 text-3xl font-bold text-neutral-950">
+              {landing.catalog_title || "Выберите подходящий тур"}
+            </h2>
           </div>
           <Link to="/tours" className="inline-flex items-center gap-2 font-semibold text-orange-600 hover:text-orange-700">
             Весь каталог <ArrowRight className="size-4" />

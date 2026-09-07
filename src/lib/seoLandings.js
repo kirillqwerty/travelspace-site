@@ -172,6 +172,7 @@ export const TOUR_LANDINGS = {
 };
 
 const EMPTY_LANDING_CONTENT = {
+  catalog_title: "Выберите подходящий тур",
   content_title: "",
   content_body: "",
   content_sections: [],
@@ -220,7 +221,7 @@ export function getTourLanding(settings, slug = "") {
     if (typeof value === "string" && value.trim()) editable[field] = value.trim();
   });
 
-  ["content_title", "content_body", "how_to_title", "faq_title"].forEach(
+  ["catalog_title", "content_title", "content_body", "how_to_title", "faq_title", "seo_image"].forEach(
     (field) => {
       const value = configured[field];
       if (typeof value === "string") editable[field] = value.trim();
@@ -239,6 +240,10 @@ export function getTourLanding(settings, slug = "") {
       question: String(item?.question || "").trim(),
       answer: String(item?.answer || "").trim(),
     }));
+  }
+
+  if (Array.isArray(configured.tour_ids)) {
+    editable.tour_ids = [...new Set(configured.tour_ids.map(String))];
   }
 
   return { ...fallback, ...editable };
@@ -262,9 +267,20 @@ export function isTourLandingSlug(slug = "") {
   return Boolean(TOUR_LANDINGS[slug]);
 }
 
-export function filterToursForLanding(tours = [], slug = "") {
+export function filterToursForLanding(tours = [], slug = "", tourIds) {
   const landing = TOUR_LANDINGS[slug];
   if (!landing) return [];
+
+  if (Array.isArray(tourIds)) {
+    const byReference = new Map();
+    tours.forEach((tour) => {
+      if (tour?.id) byReference.set(String(tour.id), tour);
+      if (tour?.slug) byReference.set(String(tour.slug), tour);
+    });
+    return tourIds
+      .map((tourId) => byReference.get(String(tourId)))
+      .filter(Boolean);
+  }
 
   if (landing.transportType) {
     return tours.filter(

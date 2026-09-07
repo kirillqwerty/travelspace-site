@@ -148,6 +148,13 @@ export default function Header() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
+  useEffect(() => {
+    setToursOpen(null);
+    setArticlesOpen(false);
+    setMobileToursOpen(null);
+    setMobileArticlesOpen(false);
+  }, [location.pathname, location.hash]);
+
   const tourLinksByTransport = useMemo(() => {
     const links = {
       [TOUR_TRANSPORT_TYPES.BUS]: [],
@@ -293,14 +300,44 @@ export default function Header() {
                 <div
                   key={navItem.transportType}
                   className="relative"
-                  onMouseEnter={() => setToursOpen(navItem.transportType)}
-                  onMouseLeave={() => setToursOpen(null)}
+                  onPointerEnter={(event) => {
+                    if (event.pointerType === "mouse") setToursOpen(navItem.transportType);
+                  }}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType === "mouse") setToursOpen(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.stopPropagation();
+                      setToursOpen(null);
+                      event.currentTarget.querySelector("button")?.focus();
+                    }
+                  }}
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setToursOpen(null);
+                    }
+                  }}
                 >
-                  <Link
-                    to={navItem.to}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      // Mouse hover may already have opened the menu before
+                      // the click. Keep it open; keyboard/touch clicks toggle.
+                      const shouldToggle =
+                        event.detail === 0 ||
+                        ["touch", "pen"].includes(event.nativeEvent.pointerType);
+                      setToursOpen((current) =>
+                        shouldToggle && current === navItem.transportType
+                          ? null
+                          : navItem.transportType,
+                      );
+                    }}
                     className={`flex items-center gap-1 whitespace-nowrap rounded-full px-0.5 py-1.5 transition-all duration-200 hover:bg-white/15 hover:text-[#F97316] hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.4)] xl:px-1 2xl:px-1.5 ${
                       isActive || isOpen ? "text-[#F97316]" : headerMutedText
                     }`}
+                    aria-expanded={isOpen}
+                    aria-controls={`desktop-tours-${navItem.transportType}`}
                     data-testid={`nav-tours-${navItem.transportType}`}
                   >
                     {navItem.label}
@@ -309,32 +346,48 @@ export default function Header() {
                         isOpen ? "rotate-180" : ""
                       }`}
                     />
-                  </Link>
+                  </button>
 
                   {isOpen && (
-                    <div className="absolute left-0 top-full pt-4">
-                      <div className="w-64 rounded-2xl border border-white/50 bg-white/95 p-2 shadow-2xl backdrop-blur-xl">
-                        {tourLinks.length ? (
-                          tourLinks.map((item) => (
-                            <NavLink
-                              key={item.slug}
-                              to={`/tours/${item.slug}`}
-                              className={({ isActive: isTourActive }) =>
-                                `block rounded-xl px-4 py-2.5 text-sm transition-colors ${
-                                  isTourActive
-                                    ? "bg-orange-50 text-[#C2410C]"
-                                    : "text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
-                                }`
-                              }
-                            >
-                              {item.label}
-                            </NavLink>
-                          ))
-                        ) : (
-                          <p className="px-4 py-3 text-sm text-neutral-500">
-                            Туры скоро появятся
-                          </p>
-                        )}
+                    <div
+                      id={`desktop-tours-${navItem.transportType}`}
+                      className="absolute left-0 top-full pt-4"
+                    >
+                      <div className="w-[min(440px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-2xl">
+                        <NavLink
+                          to={navItem.to}
+                          onClick={() => setToursOpen(null)}
+                          className="block rounded-xl px-4 py-2.5 text-sm font-semibold text-[#C2410C] hover:bg-orange-50"
+                        >
+                          Все {navItem.label.toLowerCase()}
+                        </NavLink>
+                        <div
+                          className="max-h-[min(560px,calc(100dvh-200px))] overflow-y-auto overscroll-contain border-t border-neutral-100"
+                          data-testid={`desktop-tour-list-${navItem.transportType}`}
+                        >
+                          {tourLinks.length ? (
+                            tourLinks.map((item) => (
+                              <NavLink
+                                key={item.slug}
+                                to={`/tours/${item.slug}`}
+                                onClick={() => setToursOpen(null)}
+                                className={({ isActive: isTourActive }) =>
+                                  `block whitespace-normal rounded-xl px-4 py-2.5 text-sm leading-snug [overflow-wrap:anywhere] transition-colors ${
+                                    isTourActive
+                                      ? "bg-orange-50 text-[#C2410C]"
+                                      : "text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
+                                  }`
+                                }
+                              >
+                                {item.label}
+                              </NavLink>
+                            ))
+                          ) : (
+                            <p className="px-4 py-3 text-sm text-neutral-500">
+                              Туры скоро появятся
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -429,9 +482,9 @@ export default function Header() {
             </div>
 
             <div
-              className={`flex min-w-[250px] max-w-[320px] items-center gap-1 text-left leading-none xl:min-w-[300px] xl:max-w-[360px] ${headerMutedText}`}
+              className={`flex min-w-[90px] max-w-[320px] flex-1 items-center gap-1 text-left leading-none xl:max-w-[360px] ${headerMutedText}`}
             >
-              <div className="hidden xl:flex shrink-0 items-center gap-1">
+              <div className="hidden shrink-0 items-center gap-1 2xl:flex">
                 <span className="rounded bg-red-600 px-1 py-0.5 text-[9px] font-black uppercase leading-none text-white">
                   МТС
                 </span>
@@ -550,6 +603,8 @@ export default function Header() {
                           }
                           className="grid size-10 place-items-center rounded-xl text-neutral-500 hover:bg-neutral-100"
                           aria-label={`Показать туры: ${n.label}`}
+                          aria-expanded={mobileToursOpen === n.transportType}
+                          aria-controls={`mobile-tours-${n.transportType}`}
                           data-testid={`mobile-nav-tours-toggle-${n.transportType}`}
                         >
                           {mobileToursOpen === n.transportType ? (
@@ -562,6 +617,7 @@ export default function Header() {
                       <AnimatePresence initial={false}>
                         {mobileToursOpen === n.transportType && (
                           <motion.div
+                            id={`mobile-tours-${n.transportType}`}
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
@@ -576,7 +632,7 @@ export default function Header() {
                                       key={item.slug}
                                       to={`/tours/${item.slug}`}
                                       onClick={closeMenu}
-                                      className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
+                                      className="whitespace-normal rounded-lg px-2 py-2 text-sm leading-snug text-neutral-700 [overflow-wrap:anywhere] hover:bg-orange-50 hover:text-[#C2410C]"
                                     >
                                       {item.label}
                                     </NavLink>

@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { Link } from "react-router-dom";
 
 import checkIcon from "@/assets/rich-icons/check.svg";
 import minusIcon from "@/assets/rich-icons/minus.svg";
@@ -64,20 +63,12 @@ function renderInline(text = "", keyPrefix = "rt") {
       if (matchLink) {
         const [, label, href] = matchLink;
         parts.push(
-          href.startsWith("/") && !href.startsWith("//") ? (
-            <Link
-              key={key}
-              to={href}
-              className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
-            >
-              {label}
-            </Link>
-          ) : isSafeUrl(href) ? (
+          isSafeUrl(href) ? (
             <a
               key={key}
               href={href}
-              target={href.startsWith("http") ? "_blank" : undefined}
-              rel={href.startsWith("http") ? "noreferrer" : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
             >
               {label}
@@ -113,7 +104,7 @@ function renderInline(text = "", keyPrefix = "rt") {
           key={key}
           href={match}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
         >
           {match}

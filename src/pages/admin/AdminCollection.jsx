@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { mediaUrl } from "@/lib/media";
 import { formatDate } from "@/lib/formatDate";
 import { RICH_TEXT_ICONS } from "@/lib/richText";
+import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
 import {
   getTourTransportType,
   TOUR_TRANSPORT_TYPES,
@@ -344,8 +345,8 @@ const SCHEMAS = {
         type: "textarea",
         rows: 14,
         placeholder:
-          "Разбивайте текст на короткие абзацы. Можно использовать **жирный**, _курсив_, __подчеркнутый__, [ссылку](https://example.com).",
-        hint: "Для акцентов используйте: **жирный**, _курсив_, __подчеркнутый__. Дополнительные фото будут автоматически вставляться между абзацами.",
+          "Разбивайте текст на короткие абзацы. Ссылки добавляйте через кнопку над полем.",
+        hint: "Дополнительные фото будут автоматически вставляться между абзацами.",
       },
       { key: "seo_title", label: "SEO Title", type: "text" },
       { key: "seo_description", label: "SEO Description", type: "textarea" },
@@ -385,6 +386,15 @@ const SCHEMAS = {
         placeholder: "01.09.2025",
       },
       { key: "active", label: "Опубликовано", type: "switch" },
+      {
+        key: "hidden",
+        label: "Скрыть из общего списка блога",
+        type: "switch",
+        defaultValue: false,
+        onLabel: "Статья доступна по ссылке и поисковикам, но не показана в блоге",
+        offLabel: "Статья показана в общем списке блога",
+        hint: "Подходит для SEO-статей: прямая ссылка работает, статья остаётся в sitemap и может индексироваться.",
+      },
     ],
   },
   promotions: {
@@ -1257,6 +1267,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
   // };
   const submit = async (e) => {
     e.preventDefault();
+    if (e.target !== e.currentTarget) return;
 
     const payload = {
       ...form,
@@ -1802,6 +1813,13 @@ function RichTextarea({
             <span className="hidden sm:inline">{item.label}</span>
           </button>
         ))}
+
+        <MarkdownLinkButton
+          textareaRef={textareaRef}
+          value={value}
+          onChange={onChange}
+          className="h-7 gap-1 px-2 text-xs"
+        />
       </div>
 
       <Textarea
@@ -1814,8 +1832,8 @@ function RichTextarea({
       />
 
       <p className="text-xs text-neutral-500">
-        Enter — новая строка, пустая строка — отдельный абзац. Для акцентов:
-        <b> **жирный**</b>, _курсив_, __подчёркнутый__, [ссылка](https://...).
+        Enter — новая строка, пустая строка — отдельный абзац. Ссылки
+        добавляются через кнопку выше.
       </p>
     </div>
   );

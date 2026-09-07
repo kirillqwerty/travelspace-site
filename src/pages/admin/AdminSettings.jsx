@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,11 +11,23 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Bold, Italic, Link as LinkIcon, Loader2, Upload, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Bold,
+  GripVertical,
+  Italic,
+  Loader2,
+  Plus,
+  Upload,
+  X,
+} from "lucide-react";
 import { mediaUrl } from "@/lib/media";
 import { formatMinskDateTime } from "@/lib/formatDate";
 import { DEFAULT_HOME_PAGE } from "@/lib/homeContent";
+import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
 import {
+  filterToursForLanding,
   getTourLandingDefaults,
   TOUR_LANDING_LINKS,
 } from "@/lib/seoLandings";
@@ -158,10 +170,17 @@ const FIXED_FOOTER_SOCIAL_LINKS = [
 
 export default function AdminSettings() {
   const [data, setData] = useState(null);
+  const [tours, setTours] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get("/admin/settings").then((r) => setData(r.data));
+    Promise.all([
+      api.get("/admin/settings"),
+      api.get("/admin/tours").catch(() => ({ data: [] })),
+    ]).then(([settingsResponse, toursResponse]) => {
+      setData(settingsResponse.data);
+      setTours(Array.isArray(toursResponse.data) ? toursResponse.data : []);
+    });
   }, []);
 
   if (!data) return <p>Загрузка…</p>;
@@ -211,6 +230,7 @@ export default function AdminSettings() {
 
   const save = async (e) => {
     e.preventDefault();
+    if (e.target !== e.currentTarget) return;
 
     try {
       setSaving(true);
@@ -301,6 +321,7 @@ export default function AdminSettings() {
             <SeoHubsField
               value={data.seo_hubs || {}}
               onChange={updateSeoHub}
+              tours={tours}
             />
           </TabsContent>
 
@@ -604,18 +625,11 @@ function RichTextareaField({
           >
             <Italic className="size-4" /> Курсив
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() =>
-              wrapSelection("[", "](/tours/адрес-страницы)", "текст ссылки")
-            }
-          >
-            <LinkIcon className="size-4" /> Ссылка
-          </Button>
+          <MarkdownLinkButton
+            textareaRef={textareaRef}
+            value={value}
+            onChange={onChange}
+          />
         </div>
         <Textarea
           ref={textareaRef}
@@ -958,7 +972,7 @@ function SeoPagesField({ value = {}, onChange }) {
   );
 }
 
-function SeoHubsField({ value = {}, onChange }) {
+function SeoHubsField({ value = {}, onChange, tours = [] }) {
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
@@ -1037,6 +1051,7 @@ function SeoHubsField({ value = {}, onChange }) {
                         description: hub.defaults.description,
                         heading: hub.defaults.heading,
                         intro: hub.defaults.intro,
+                        catalog_title: hub.defaults.catalog_title,
                         content_title: hub.defaults.content_title,
                         content_body: hub.defaults.content_body,
                         content_sections: hub.defaults.content_sections.map(
@@ -1060,6 +1075,9 @@ function SeoHubsField({ value = {}, onChange }) {
                       <TabsTrigger value="main">Основное</TabsTrigger>
                       <TabsTrigger value="content">
                         Текст после каталога
+                      </TabsTrigger>
+                      <TabsTrigger value="tours">
+                        Туры в хабе
                       </TabsTrigger>
                       <TabsTrigger value="faq">
                         Частые вопросы ({item.faq_items.length})
@@ -1102,6 +1120,18 @@ function SeoHubsField({ value = {}, onChange }) {
                           }
                           rows={6}
                           hint="Этот текст находится вверху страницы. Для большого SEO-текста используйте соседнюю вкладку «Текст после каталога»."
+                        />
+                      </div>
+                      <div className="lg:col-span-2">
+                        <ImageUploadField
+                          label="SEO / Open Graph фото для ссылки"
+                          value={item.seo_image || ""}
+                          onChange={(seo_image) =>
+                            onChange(hub.slug, {
+                              seo_image,
+                              path: hub.path,
+                            })
+                          }
                         />
                       </div>
                     </div>
@@ -1211,6 +1241,15 @@ function SeoHubsField({ value = {}, onChange }) {
                     />
                   </TabsContent>
 
+                  <TabsContent value="tours" className="mt-5">
+                    <SeoHubToursField
+                      hub={hub}
+                      stored={stored}
+                      tours={tours}
+                      onChange={onChange}
+                    />
+                  </TabsContent>
+
                   <TabsContent value="faq" className="mt-5 space-y-5">
                     <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 text-sm leading-6 text-neutral-700">
                       Вопросы находятся внизу SEO-хаба. Даже закрытые ответы
@@ -1298,6 +1337,306 @@ function SeoHubsField({ value = {}, onChange }) {
           );
         })}
       </Tabs>
+    </div>
+  );
+}
+
+const tourReference = (tour) => String(tour?.id || tour?.slug || "");
+
+function SeoHubToursField({ hub, stored = {}, tours = [], onChange }) {
+  const [draggedTourId, setDraggedTourId] = useState("");
+  const [search, setSearch] = useState("");
+  const automaticTourIds = useMemo(
+    () =>
+      filterToursForLanding(tours, hub.slug)
+        .map(tourReference)
+        .filter(Boolean),
+    [hub.slug, tours],
+  );
+  const isManual = Array.isArray(stored.tour_ids);
+  const requestedIds = isManual ? stored.tour_ids : automaticTourIds;
+  const toursByReference = useMemo(() => {
+    const result = new Map();
+    tours.forEach((tour) => {
+      if (tour?.id) result.set(String(tour.id), tour);
+      if (tour?.slug) result.set(String(tour.slug), tour);
+    });
+    return result;
+  }, [tours]);
+  const selectedIds = [
+    ...new Set(
+      requestedIds
+        .map((id) => toursByReference.get(String(id)))
+        .filter(Boolean)
+        .map(tourReference),
+    ),
+  ];
+  const selectedSet = new Set(selectedIds);
+  const selectedTours = selectedIds.map((id) => toursByReference.get(id));
+  const normalizedSearch = search.trim().toLowerCase();
+  const availableTours = tours
+    .filter((tour) => !selectedSet.has(tourReference(tour)))
+    .filter((tour) => {
+      if (!normalizedSearch) return true;
+      return `${tour?.title || ""} ${tour?.region_name || ""} ${tour?.slug || ""}`
+        .toLowerCase()
+        .includes(normalizedSearch);
+    })
+    .sort(
+      (left, right) =>
+        String(left?.title || "").localeCompare(
+          String(right?.title || ""),
+          "ru",
+        ),
+    );
+
+  const saveTourIds = (tourIds) =>
+    onChange(hub.slug, {
+      tour_ids: [...new Set(tourIds.filter(Boolean))],
+      path: hub.path,
+    });
+
+  const moveSelected = (tourId, offset) => {
+    const currentIndex = selectedIds.indexOf(tourId);
+    const nextIndex = currentIndex + offset;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= selectedIds.length) {
+      return;
+    }
+    const next = [...selectedIds];
+    [next[currentIndex], next[nextIndex]] = [next[nextIndex], next[currentIndex]];
+    saveTourIds(next);
+  };
+
+  const dropIntoSelected = (event, targetIndex = selectedIds.length) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const tourId =
+      event.dataTransfer.getData("text/plain") || draggedTourId;
+    if (!tourId || !toursByReference.has(tourId)) return;
+
+    const previousIndex = selectedIds.indexOf(tourId);
+    const next = selectedIds.filter((id) => id !== tourId);
+    let insertIndex = targetIndex;
+    if (previousIndex >= 0 && previousIndex < targetIndex) insertIndex -= 1;
+    insertIndex = Math.max(0, Math.min(insertIndex, next.length));
+    next.splice(insertIndex, 0, tourId);
+    saveTourIds(next);
+    setDraggedTourId("");
+  };
+
+  const dropIntoAvailable = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const tourId =
+      event.dataTransfer.getData("text/plain") || draggedTourId;
+    if (!tourId) return;
+    saveTourIds(selectedIds.filter((id) => id !== tourId));
+    setDraggedTourId("");
+  };
+
+  const statusForTour = (tour) => {
+    if (tour?.active === false) {
+      return { label: "выключен", className: "bg-red-100 text-red-700" };
+    }
+    if (
+      tour?.hidden === true ||
+      tour?.hide_from_catalog === true ||
+      tour?.catalog_hidden === true
+    ) {
+      return { label: "скрыт", className: "bg-amber-100 text-amber-800" };
+    }
+    return { label: "виден", className: "bg-emerald-100 text-emerald-700" };
+  };
+
+  const TourItem = ({ tour, selected, index }) => {
+    const tourId = tourReference(tour);
+    const status = statusForTour(tour);
+    return (
+      <div
+        draggable
+        onDragStart={(event) => {
+          setDraggedTourId(tourId);
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", tourId);
+        }}
+        onDragEnd={() => setDraggedTourId("")}
+        onDragOver={selected ? (event) => event.preventDefault() : undefined}
+        onDrop={selected ? (event) => dropIntoSelected(event, index) : undefined}
+        className={`flex items-center gap-2 rounded-lg border bg-white p-2 shadow-sm transition ${
+          draggedTourId === tourId
+            ? "border-orange-300 opacity-60"
+            : "border-neutral-200"
+        }`}
+      >
+        <GripVertical className="size-4 shrink-0 cursor-grab text-neutral-400" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-neutral-900">
+            {tour.title || tour.slug}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="truncate text-[11px] text-neutral-500">
+              {tour.region_name || tour.slug}
+            </span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${status.className}`}
+            >
+              {status.label}
+            </span>
+          </div>
+        </div>
+
+        {selected ? (
+          <div className="flex shrink-0 items-center">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-8"
+              disabled={index === 0}
+              onClick={() => moveSelected(tourId, -1)}
+              aria-label="Поднять тур"
+            >
+              <ArrowUp className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-8"
+              disabled={index === selectedIds.length - 1}
+              onClick={() => moveSelected(tourId, 1)}
+              aria-label="Опустить тур"
+            >
+              <ArrowDown className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-8 text-neutral-500 hover:text-red-600"
+              onClick={() =>
+                saveTourIds(selectedIds.filter((id) => id !== tourId))
+              }
+              aria-label="Убрать тур из хаба"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 shrink-0 gap-1"
+            onClick={() => saveTourIds([...selectedIds, tourId])}
+          >
+            <Plus className="size-3.5" /> Добавить
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <Field
+        label="Заголовок над списком туров (H2)"
+        value={stored.catalog_title ?? hub.defaults.catalog_title ?? ""}
+        onChange={(catalog_title) =>
+          onChange(hub.slug, { catalog_title, path: hub.path })
+        }
+        placeholder="Актуальные автобусные туры из Минска 2026–2027"
+        hint="Этот заголовок видят посетители и поисковые роботы. Напишите естественную фразу, которая точно соответствует турам в хабе."
+      />
+
+      <div className="flex flex-col gap-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-6 text-neutral-700">
+          Перетащите тур справа налево, чтобы добавить его в хаб. Порядок в
+          списке «Туры в этом хабе» совпадает с порядком карточек на странице.
+          Скрытые и выключенные туры отмечены статусом и публично не выводятся.
+        </p>
+        {isManual && (
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            onClick={() =>
+              onChange(hub.slug, { tour_ids: null, path: hub.path })
+            }
+          >
+            Вернуть автоподбор
+          </Button>
+        )}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div
+          className="min-h-64 rounded-xl border border-neutral-200 bg-neutral-50/70 p-3"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={dropIntoSelected}
+        >
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <p className="font-semibold text-neutral-900">
+                Туры в этом хабе
+              </p>
+              <p className="text-xs text-neutral-500">
+                {isManual ? "ручной порядок" : "автоматический подбор"}
+              </p>
+            </div>
+            <span className="rounded-full bg-white px-2 py-1 text-xs text-neutral-600 ring-1 ring-neutral-200">
+              {selectedTours.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {selectedTours.length ? (
+              selectedTours.map((tour, index) => (
+                <TourItem
+                  key={tourReference(tour)}
+                  tour={tour}
+                  selected
+                  index={index}
+                />
+              ))
+            ) : (
+              <div className="grid min-h-40 place-items-center rounded-lg border border-dashed border-neutral-300 px-4 text-center text-sm text-neutral-500">
+                Перетащите сюда нужные туры
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          className="min-h-64 rounded-xl border border-neutral-200 bg-neutral-50/70 p-3"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={dropIntoAvailable}
+        >
+          <div className="mb-3">
+            <p className="font-semibold text-neutral-900">Все остальные туры</p>
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Найти тур по названию или направлению"
+              className="mt-2 bg-white"
+            />
+          </div>
+          <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
+            {availableTours.length ? (
+              availableTours.map((tour) => (
+                <TourItem
+                  key={tourReference(tour)}
+                  tour={tour}
+                  selected={false}
+                />
+              ))
+            ) : (
+              <p className="rounded-lg border border-dashed border-neutral-300 p-4 text-center text-sm text-neutral-500">
+                Подходящих туров не найдено
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
