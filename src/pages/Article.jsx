@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { api } from "@/lib/api";
+import { usePublicRecord } from "@/lib/usePublicRecord";
+import PageLoadState from "@/components/PageLoadState";
 import LeadForm from "@/components/LeadForm";
 import { useSiteData } from "@/lib/useSiteData";
 import PageSeo from "@/components/PageSeo";
-import { canonicalUrl } from "@/components/Seo";
+import { canonicalUrl, firstSeoText } from "@/components/Seo";
 import { mediaUrl } from "@/lib/media";
 import { RichText, splitRichTextBlocks } from "@/lib/richText";
 import {
@@ -89,18 +90,8 @@ function ArticleBody({ article }) {
 
 export default function Article() {
   const { slug } = useParams();
-  const [a, setA] = useState(null);
-  const [error, setError] = useState(false);
+  const { record: a, notFound: error, failed, retry } = usePublicRecord("articles", slug);
   const { tours } = useSiteData();
-
-  useEffect(() => {
-    setA(null);
-    setError(false);
-    api
-      .get(`/articles/${slug}`)
-      .then((r) => setA(r.data))
-      .catch(() => setError(true));
-  }, [slug]);
 
   const relatedTours = useMemo(() => {
     if (!a) return [];
@@ -143,21 +134,11 @@ export default function Article() {
     );
   }
   if (!a) {
-    return (
-      <div className="section-container section-pad text-neutral-400">
-        <PageSeo
-          title="Блог | TRAVELSPACE"
-          description="Загрузка статьи."
-          path={`/blog/${slug}`}
-          noIndex
-        />
-        Загрузка…
-      </div>
-    );
+    return <PageLoadState failed={failed} retry={retry} />;
   }
 
-  const articleTitle = a.seo_title || `${a.title} | TRAVELSPACE`;
-  const articleDescription = a.seo_description || a.excerpt || a.content;
+  const articleTitle = firstSeoText(a.seo_title, `${a.title} | TRAVELSPACE`);
+  const articleDescription = firstSeoText(a.seo_description, a.excerpt, a.content);
   const articleImage = a.seo_image || a.cover || articleImages(a)[0];
   const articleH1 = a.seo_h1 || a.title;
   const articleStructuredData = {
@@ -177,7 +158,7 @@ export default function Article() {
 
   return (
     <article
-      className="section-container py-12 lg:py-20 max-w-4xl"
+      className="section-container py-12 lg:py-20"
       data-testid="article-page"
     >
       <PageSeo
@@ -199,13 +180,11 @@ export default function Article() {
         ← В блог
       </Link>
       {a.published_at && <p className="text-xs text-neutral-500 mt-6">{a.published_at}</p>}
-      <h1 className="font-heading text-4xl sm:text-5xl mt-2 max-w-3xl">
+      <h1 className="font-heading text-4xl sm:text-5xl mt-2">
         {articleH1}
       </h1>
       {a.excerpt && (
-        <p className="mt-5 max-w-3xl text-lg leading-8 text-neutral-600">
-          {a.excerpt}
-        </p>
+        <RichText text={a.excerpt} className="mt-5 text-lg leading-8 text-neutral-600" />
       )}
       {a.cover && (
         <div className="mt-8 aspect-[16/9] rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-100">

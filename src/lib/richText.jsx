@@ -44,7 +44,7 @@ function renderRichIcon(token, key) {
   );
 }
 
-function renderInline(text = "", keyPrefix = "rt") {
+function renderInline(text = "", keyPrefix = "rt", links = true) {
   const parts = [];
   let lastIndex = 0;
   let index = 0;
@@ -63,7 +63,7 @@ function renderInline(text = "", keyPrefix = "rt") {
       if (matchLink) {
         const [, label, href] = matchLink;
         parts.push(
-          isSafeUrl(href) ? (
+          links && isSafeUrl(href) ? (
             <a
               key={key}
               href={href}
@@ -82,7 +82,7 @@ function renderInline(text = "", keyPrefix = "rt") {
       }
     } else if (match.startsWith("**") && match.endsWith("**")) {
       parts.push(
-        <strong key={key} className="font-semibold text-neutral-950">
+        <strong key={key} className="font-bold text-inherit">
           {match.slice(2, -2)}
         </strong>,
       );
@@ -98,7 +98,7 @@ function renderInline(text = "", keyPrefix = "rt") {
           {match.slice(1, -1)}
         </em>,
       );
-    } else if (/^https?:\/\//i.test(match)) {
+    } else if (links && /^https?:\/\//i.test(match)) {
       parts.push(
         <a
           key={key}
@@ -193,6 +193,6 @@ export function RichText({
   );
 }
 
-export function RichInline({ text, className = "" }) {
-  return <span className={className}>{renderInline(text, "inline")}</span>;
+export function RichInline({ text, className = "", links = true }) {
+  return <span className={className}>{renderInline(text, "inline", links)}</span>;
 }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
+import { getInitialSiteData } from "@/lib/pageBootstrap";
 
 function articlePreviewImage(article) {
   return (
@@ -25,7 +26,7 @@ function articleExcerpt(article) {
 }
 
 export default function Blog() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getInitialSiteData()?.articles || []);
   const formatDate = (date) => {
     if (!date) return "";
 
@@ -41,7 +42,8 @@ export default function Blog() {
   useEffect(() => {
     api
       .get("/articles")
-      .then((r) => setItems(Array.isArray(r.data) ? r.data : []));
+      .then((r) => setItems(Array.isArray(r.data) ? r.data : []))
+      .catch(() => {}); // Keep the server-provided list on a transient failure.
   }, []);
 
   return (
@@ -56,10 +58,10 @@ export default function Blog() {
         description="Полезные статьи, чек-листы и советы для комфортных путешествий и автобусных туров."
       />
       <p className="overline text-[#C2410C]">Блог</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
+      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
         Полезное о путешествиях
       </h1>
-      <p className="text-neutral-600 mt-3 max-w-2xl">
+      <p className="text-neutral-600 mt-3">
         Чек-листы, советы и истории из дороги, чтобы ваша поездка была
         комфортнее.
       </p>

@@ -1,5 +1,7 @@
 export const DEFAULT_HOME_PAGE = {
   h1: "Автобусные туры из Минска",
+  hero_tagline: "Туры, в которые хочется возвращаться",
+  hero_description: "Путешествия автобусом и самолётом. Простые программы, заботливые гиды и понятная цена без сюрпризов в дороге.",
   intro_title: "Автобусные туры из Минска и Беларуси",
   intro_text:
     "TRAVELSPACE организует автобусные туры из Минска и других городов Беларуси. В программах заранее указаны маршрут, даты, проживание, экскурсии и состав стоимости.\n\nВыберите подходящее направление в каталоге [автобусных туров из Минска](/tours/avtobusnye-iz-minska) — менеджер поможет сравнить программы и оформить поездку.",
@@ -53,6 +55,9 @@ export function getHomePageContent(settings) {
   ].forEach((key) => {
     const value = configured[key];
     if (typeof value === "string" && value.trim()) content[key] = value.trim();
+  });
+  ["hero_tagline", "hero_description"].forEach((key) => {
+    if (typeof configured[key] === "string") content[key] = configured[key].trim();
   });
 
   return {

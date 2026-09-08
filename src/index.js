@@ -10,10 +10,16 @@ import ReactDOM from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import "@/index.css";
 import App from "@/App";
+import AppStartupBoundary from "@/components/AppStartupBoundary";
+import BootstrapSeo from "@/components/BootstrapSeo";
+import { installPublicNavigation, preserveServerPage } from "@/lib/pageBootstrap";
 
+preserveServerPage();
+installPublicNavigation();
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <HelmetProvider>
-    <App />
+    <BootstrapSeo />
+    <AppStartupBoundary><App /></AppStartupBoundary>
   </HelmetProvider>,
 );

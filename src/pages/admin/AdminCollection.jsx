@@ -48,6 +48,9 @@ import { mediaUrl } from "@/lib/media";
 import { formatDate } from "@/lib/formatDate";
 import { RICH_TEXT_ICONS } from "@/lib/richText";
 import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
+import MarkdownBoldButton, { useMarkdownBold } from "@/components/admin/MarkdownBoldButton";
+import TourTitleField from "@/components/admin/TourTitleField";
+import { invalidateSiteData } from "@/lib/useSiteData";
 import {
   getTourTransportType,
   TOUR_TRANSPORT_TYPES,
@@ -98,10 +101,11 @@ const SCHEMAS = {
       {
         key: "title",
         label: "Название тура на сайте",
-        type: "text",
+        type: "tour-title",
         placeholder: "Например: Легендарный тур в Арктику из Минска",
         hint: "Это название видят посетители: в карточке, на странице тура, в формах заявки и PDF-программе. Оно же является видимым H1 страницы.",
       },
+      { key: "title_highlighted", type: "hidden", defaultValue: "" },
       {
         key: "transport_type",
         label: "Вид тура",
@@ -127,7 +131,6 @@ const SCHEMAS = {
         key: "tagline",
         label: "Подзаголовок в карточке тура",
         type: "textarea",
-        plain: true,
         rows: 2,
         maxLength: 180,
         placeholder: "Короткая фраза под названием тура",
@@ -981,6 +984,7 @@ export default function AdminCollection({ name }) {
       toast.success("Создано");
     }
 
+    invalidateSiteData();
     setEditing(null);
     await load();
   };
@@ -1251,6 +1255,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
     setTourEditorTab("content");
   }, [open, record, schema, collectionName]);
   const update = useCallback((k, v) => setForm((p) => ({ ...p, [k]: v })), []);
+  const updateTourTitle = useCallback((fields) => setForm((previous) => ({ ...previous, ...fields })), []);
 
   // const submit = (e) => {
   //   e.preventDefault();
@@ -1441,7 +1446,9 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
               .map((f) => (
               <div key={f.key}>
                 <Label className="text-xs">{f.label}</Label>
-                {f.type === "switch" ? (
+                {f.type === "tour-title" ? (
+                  <TourTitleField tour={form} onChange={updateTourTitle} placeholder={f.placeholder} />
+                ) : f.type === "switch" ? (
                   <div className="mt-1 flex items-center gap-2">
                     <Switch
                       checked={!!form[f.key]}
@@ -1764,8 +1771,11 @@ function RichTextarea({
   rows = 3,
   placeholder = "",
   className = "",
+  maxLength,
+  compact = false,
 }) {
   const textareaRef = useRef(null);
+  const bold = useMarkdownBold({ textareaRef, value, onChange });
 
   const insertToken = (token) => {
     const textarea = textareaRef.current;
@@ -1791,11 +1801,12 @@ function RichTextarea({
   return (
     <div className="mt-1 space-y-2">
       <div className="flex flex-wrap items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-1">
-        <span className="px-2 text-[11px] font-medium text-neutral-500">
+        <MarkdownBoldButton onClick={bold.toggle} className="h-7 gap-1 px-2 text-xs" />
+        {!compact && <span className="px-2 text-[11px] font-medium text-neutral-500">
           Смайлы:
-        </span>
+        </span>}
 
-        {RICH_TEXT_ICONS.map((item) => (
+        {!compact && RICH_TEXT_ICONS.map((item) => (
           <button
             key={item.token}
             type="button"
@@ -1826,15 +1837,17 @@ function RichTextarea({
         ref={textareaRef}
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={bold.onKeyDown}
+        maxLength={maxLength}
         rows={rows}
         placeholder={placeholder}
         className={`leading-6 ${className}`}
       />
 
-      <p className="text-xs text-neutral-500">
+      {!compact && <p className="text-xs text-neutral-500">
         Enter — новая строка, пустая строка — отдельный абзац. Ссылки
-        добавляются через кнопку выше.
-      </p>
+        добавляются через кнопку выше. Для жирного текста выделите слова и нажмите «Жирный» или Ctrl+B.
+      </p>}
     </div>
   );
 }
@@ -2091,6 +2104,7 @@ function TourExtraFields({ form, setForm }) {
       />
 
       <MemoStringListField
+        rich
         label="Главные впечатления"
         value={form.highlights || []}
         onChange={updateHighlights}
@@ -2098,6 +2112,7 @@ function TourExtraFields({ form, setForm }) {
       />
 
       <MemoStringListField
+        rich
         label="Что посмотреть"
         value={form.what_to_see || []}
         onChange={updateWhatToSee}
@@ -2105,6 +2120,7 @@ function TourExtraFields({ form, setForm }) {
       />
 
       <MemoStringListField
+        rich
         label="Что входит"
         value={form.included || []}
         onChange={updateIncluded}
@@ -2112,6 +2128,7 @@ function TourExtraFields({ form, setForm }) {
       />
 
       <MemoStringListField
+        rich
         label="Что не входит"
         value={form.excluded || []}
         onChange={updateExcluded}
@@ -2119,6 +2136,7 @@ function TourExtraFields({ form, setForm }) {
       />
 
       <MemoStringListField
+        rich
         label="Важная информация"
         value={form.important_info || []}
         onChange={updateImportantInfo}
@@ -2198,7 +2216,7 @@ function TourExtraFields({ form, setForm }) {
   );
 }
 
-function StringListField({ label, value, onChange, placeholder }) {
+function StringListField({ label, value, onChange, placeholder, rich = false }) {
   const items = Array.isArray(value) ? value : [];
 
   const updateItem = (index, text) => {
@@ -2217,11 +2235,11 @@ function StringListField({ label, value, onChange, placeholder }) {
       <div className="mt-2 space-y-2">
         {items.map((item, index) => (
           <div key={index} className="flex gap-2">
-            <Input
+            {rich ? <div className="min-w-0 flex-1"><RichTextarea compact rows={2} value={item} placeholder={placeholder} onChange={(text) => updateItem(index, text)} /></div> : <Input
               value={item}
               placeholder={placeholder}
               onChange={(e) => updateItem(index, e.target.value)}
-            />
+            />}
             <Button
               type="button"
               variant="outline"

@@ -15,6 +15,7 @@ const DEFAULT_IMAGE = "/og-image.jpg";
 
 function stripText(value = "") {
   return String(value)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/<[^>]*>/g, " ")
     .replace(/[*_`#>]+/g, " ")
     .replace(/\s+/g, " ")
@@ -24,7 +25,11 @@ function stripText(value = "") {
 function limitText(value = "", max = 170) {
   const text = stripText(value);
   if (text.length <= max) return text;
-  return `${text.slice(0, max - 1).trim()}…`;
+  return `${text.slice(0, max - 1).trim().replace(/[ ,.;:-]+$/, "")}…`;
+}
+
+export function firstSeoText(...values) {
+  return values.map((value) => stripText(value || "")).find(Boolean) || "";
 }
 
 function absoluteUrl(url = "") {
@@ -153,14 +158,17 @@ export function Seo({
   noFollow = false,
   siteName = DEFAULT_SITE_NAME,
   structuredData,
+  serverSeo,
 }) {
-  const normalizedTitle = limitText(title || DEFAULT_TITLE, 80);
-  const normalizedDescription = limitText(description || DEFAULT_DESCRIPTION, 180);
+  const normalizedTitle = serverSeo?.title || limitText(stripText(title) || DEFAULT_TITLE, 80);
+  const normalizedDescription = serverSeo?.description || limitText(stripText(description) || DEFAULT_DESCRIPTION, 180);
   const pagePath = normalizePath(path);
   const canonicalPath = normalizeCanonical(canonical, pagePath);
-  const canonicalUrlValue = absoluteUrl(canonicalPath);
-  const imageUrl = absoluteUrl(image || DEFAULT_IMAGE);
-  const graph = buildStructuredGraph({
+  const canonicalUrlValue = serverSeo?.canonical || absoluteUrl(canonicalPath);
+  const imageUrl = serverSeo?.image || absoluteUrl(image || DEFAULT_IMAGE);
+  const resolvedNoIndex = serverSeo?.noIndex ?? noIndex;
+  const resolvedNoFollow = serverSeo?.noFollow ?? noFollow;
+  const graph = serverSeo?.graph || buildStructuredGraph({
     canonicalUrl: canonicalUrlValue,
     canonicalPath: pagePath,
     title: normalizedTitle,
@@ -175,12 +183,12 @@ export function Seo({
       <meta name="description" content={normalizedDescription} />
       <meta
         name="robots"
-        content={`${noIndex ? "noindex" : "index"}, ${noFollow ? "nofollow" : "follow"}`}
+        content={`${resolvedNoIndex ? "noindex" : "index"}, ${resolvedNoFollow ? "nofollow" : "follow"}`}
       />
       <link rel="canonical" href={canonicalUrlValue} />
 
-      <meta property="og:type" content={type} />
-      <meta property="og:site_name" content={siteName} />
+      <meta property="og:type" content={serverSeo?.type || type} />
+      <meta property="og:site_name" content={serverSeo?.siteName || siteName} />
       <meta property="og:locale" content="ru_BY" />
       <meta property="og:title" content={normalizedTitle} />
       <meta property="og:description" content={normalizedDescription} />

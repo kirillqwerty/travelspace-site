@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import TourCard from "@/components/TourCard";
 import PageSeo from "@/components/PageSeo";
+import { getInitialSiteData } from "@/lib/pageBootstrap";
 import { isTourShownInCatalog } from "@/lib/tourVisibility";
 import { Bus, Plane } from "lucide-react";
 import {
@@ -21,8 +22,8 @@ const BADGES = [
 ];
 
 export default function Catalog() {
-  const [tours, setTours] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tours, setTours] = useState(() => getInitialSiteData()?.tours || []);
+  const [loading, setLoading] = useState(() => !getInitialSiteData());
   const [params, setParams] = useSearchParams();
   const region = params.get("region") || "";
   const badge = params.get("badge") || "";
@@ -32,7 +33,7 @@ export default function Catalog() {
       : TOUR_TRANSPORT_TYPES.BUS;
 
   useEffect(() => {
-    setLoading(true);
+    if (!getInitialSiteData()) setLoading(true);
 
     api
       .get("/tours")
@@ -41,6 +42,7 @@ export default function Catalog() {
           Array.isArray(r.data) ? r.data.filter(isTourShownInCatalog) : [],
         ),
       )
+      .catch(() => {}) // Do not erase initial cards when the API is unavailable.
       .finally(() => setLoading(false));
   }, []);
 

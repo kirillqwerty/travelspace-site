@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
-import { api, API_BASE } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
 import {
   Accordion,
   AccordionItem,
@@ -41,9 +41,11 @@ import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
-import { canonicalUrl } from "@/components/Seo";
+import PageLoadState from "@/components/PageLoadState";
+import { usePublicRecord } from "@/lib/usePublicRecord";
+import { canonicalUrl, firstSeoText } from "@/components/Seo";
 import { trackTourView } from "@/lib/analytics";
-import { RichText } from "@/lib/richText";
+import { RichText, RichInline } from "@/lib/richText";
 import {
   getTourTransportType,
   TOUR_TRANSPORT_TYPES,
@@ -1268,8 +1270,7 @@ function getTourHeroImage(tour, variant = "desktop") {
 export default function TourPage() {
   const { slug } = useParams();
   const location = useLocation();
-  const [tour, setTour] = useState(null);
-  const [error, setError] = useState(false);
+  const { record: tour, notFound: error, failed, retry } = usePublicRecord("tours", slug);
   const [leadOpen, setLeadOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
   const [mobilePromotionPreview, setMobilePromotionPreview] = useState(null);
@@ -1416,15 +1417,6 @@ export default function TourPage() {
   }, [chains, observeRoomLastCard]);
 
   useEffect(() => {
-    setTour(null);
-    setError(false);
-    api
-      .get(`/tours/${slug}`)
-      .then((r) => setTour(r.data))
-      .catch(() => setError(true));
-  }, [slug]);
-
-  useEffect(() => {
     if (!selectedRoom) {
       setBookingStep(null);
       setSelectedMealPlan("breakfast");
@@ -1561,17 +1553,7 @@ export default function TourPage() {
   }
 
   if (!tour) {
-    return (
-      <div className="pt-32 lg:pt-36 min-h-screen">
-        <PageSeo
-          title="Тур | TRAVELSPACE"
-          description="Загрузка тура."
-          path={`/tours/${slug}`}
-          noIndex
-        />
-        <div className="section-container text-neutral-400">Загрузка...</div>
-      </div>
-    );
+    return <PageLoadState failed={failed} retry={retry} />;
   }
 
   const dates = upcomingDates;
@@ -1579,19 +1561,11 @@ export default function TourPage() {
   const programPdfUrl = `${API_BASE}/tours/${encodeURIComponent(
     tour.slug || slug,
   )}/program.pdf`;
-  const transportSeoLabel =
-    getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR
-      ? "авиа тур"
-      : "автобусный тур";
-  const tourSeoTitle =
-    tour.seo_title ||
-    `${tour.title} — ${transportSeoLabel} из Минска | TRAVELSPACE`;
-  const tourSeoDescription =
-    tour.seo_description ||
-    tour.short_description ||
-    tour.tagline ||
-    tour.description ||
-    `${tour.title}. Даты, программа, отели и стоимость тура.`;
+  const tourSeoTitle = firstSeoText(tour.seo_title, `${tour.title} | TRAVELSPACE`);
+  const tourSeoDescription = firstSeoText(
+    tour.seo_description, tour.short_description, tour.tagline, tour.description,
+    `${tour.title}: программа, даты и стоимость поездки.`,
+  );
   const tourSeoImage =
     tour.seo_image || tour.og_image || tour.hero_image || tour.gallery?.[0];
   const tourH1 = tour.title || "Тур";
@@ -1866,7 +1840,7 @@ export default function TourPage() {
 
             {(tour.tagline || tour.short_description) && (
               <p className="mb-4 text-xl font-medium text-neutral-900">
-                {tour.tagline || tour.short_description}
+                <RichInline text={tour.tagline || tour.short_description} />
               </p>
             )}
 
@@ -1988,7 +1962,7 @@ export default function TourPage() {
                 {tour.highlights.map((h) => (
                   <p key={h} className="flex items-start gap-3 text-sm">
                     <BadgeCheck className="size-5 mt-0.5 text-[#C2410C] shrink-0" />
-                    {h}
+                    <RichInline text={h} />
                   </p>
                 ))}
               </div>
@@ -2003,7 +1977,7 @@ export default function TourPage() {
                 {tour.what_to_see.map((x) => (
                   <li key={x} className="flex items-start gap-2.5">
                     <MapPin className="size-4 mt-0.5 text-[#C2410C] shrink-0" />
-                    {x}
+                    <RichInline text={x} />
                   </li>
                 ))}
               </ul>
@@ -2199,7 +2173,7 @@ export default function TourPage() {
                 {(tour.included || []).map((x) => (
                   <li key={x} className="flex items-start gap-2.5 text-sm">
                     <BadgeCheck className="size-4 mt-0.5 text-emerald-600 shrink-0" />
-                    <span>{x}</span>
+                    <RichInline text={x} />
                   </li>
                 ))}
               </ul>
@@ -2212,7 +2186,7 @@ export default function TourPage() {
                 {(tour.excluded || []).map((x) => (
                   <li key={x} className="flex items-start gap-2.5 text-sm">
                     <XIcon className="size-4 mt-0.5 text-rose-500 shrink-0" />
-                    <span>{x}</span>
+                    <RichInline text={x} />
                   </li>
                 ))}
               </ul>
@@ -2843,7 +2817,7 @@ export default function TourPage() {
 
               <ul className="grid sm:grid-cols-2 gap-3 text-sm text-neutral-300">
                 {tour.important_info.map((x) => (
-                  <li key={x}>• {x}</li>
+                  <li key={x}>• <RichInline text={x} /></li>
                 ))}
               </ul>
             </div>

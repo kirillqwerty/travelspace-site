@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Bus, Plane, Calendar, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { mediaUrl } from "@/lib/media";
+import { RichInline } from "@/lib/richText";
 import {
   getTourTransportType,
   TOUR_TRANSPORT_TYPES,
@@ -401,7 +402,7 @@ export default function TourCard({ tour, size = "default" }) {
       <div className="flex flex-1 flex-col p-5">
         {" "}
         <p className="text-sm leading-relaxed text-neutral-700 line-clamp-2 min-h-[2.6em]">
-          {description}
+          <RichInline text={description} links={false} />
         </p>
         <div className="mt-4 flex min-h-[72px] flex-wrap items-start gap-2">
           {" "}

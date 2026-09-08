@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import {
   ArrowDown,
   ArrowUp,
-  Bold,
   GripVertical,
   Italic,
   Loader2,
@@ -26,6 +25,7 @@ import { mediaUrl } from "@/lib/media";
 import { formatMinskDateTime } from "@/lib/formatDate";
 import { DEFAULT_HOME_PAGE } from "@/lib/homeContent";
 import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
+import MarkdownBoldButton, { useMarkdownBold } from "@/components/admin/MarkdownBoldButton";
 import {
   filterToursForLanding,
   getTourLandingDefaults,
@@ -469,6 +469,24 @@ function HomePageContentField({ value = DEFAULT_HOME_PAGE, onChange }) {
       />
 
       <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
+        <p className="font-medium">Первый экран — текст поверх видео</p>
+        <RichTextareaField
+          label="Подзаголовок под главным заголовком"
+          value={content.hero_tagline}
+          onChange={(hero_tagline) => onChange({ hero_tagline })}
+          rows={2}
+          hint="Фраза под H1. Оставьте пустым, чтобы скрыть."
+        />
+        <RichTextareaField
+          label="Описание под подзаголовком"
+          value={content.hero_description}
+          onChange={(hero_description) => onChange({ hero_description })}
+          rows={3}
+          hint="Короткий текст над кнопками «Выбрать тур» и «Получить консультацию». Оставьте пустым, чтобы скрыть."
+        />
+      </div>
+
+      <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
         <Field
           label="H2 первого SEO-блока"
           value={content.intro_title}
@@ -585,6 +603,7 @@ function RichTextareaField({
   hint = "",
 }) {
   const textareaRef = useRef(null);
+  const bold = useMarkdownBold({ textareaRef, value, onChange });
 
   const wrapSelection = (prefix, suffix, placeholder) => {
     const textarea = textareaRef.current;
@@ -605,16 +624,7 @@ function RichTextareaField({
       <Label className="text-xs">{label}</Label>
       <div className="mt-1 overflow-hidden rounded-md border border-input bg-background">
         <div className="flex flex-wrap gap-1 border-b border-neutral-200 bg-neutral-50 p-1.5">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-8 gap-1 px-2"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => wrapSelection("**", "**", "жирный текст")}
-          >
-            <Bold className="size-4" /> Жирный
-          </Button>
+          <MarkdownBoldButton onClick={bold.toggle} />
           <Button
             type="button"
             size="sm"
@@ -635,12 +645,13 @@ function RichTextareaField({
           ref={textareaRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={bold.onKeyDown}
           rows={rows}
           className="resize-y rounded-none border-0 leading-6 focus-visible:ring-0 focus-visible:ring-offset-0"
         />
       </div>
       <p className="mt-1 text-xs text-neutral-500">
-        Пустая строка создаёт новый абзац. {hint}
+        Жирный текст: выделите слова и нажмите «Жирный» или Ctrl+B. Повторное нажатие убирает выделение. Пустая строка создаёт новый абзац. {hint}
       </p>
     </div>
   );
@@ -718,7 +729,7 @@ function HomeBenefitsField({ value = DEFAULT_HOME_BENEFITS, onChange }) {
               onChange={(v) => updateItem(index, { title: v })}
             />
 
-            <TextareaField
+            <RichTextareaField
               label="Описание карточки"
               value={item.desc}
               onChange={(v) => updateItem(index, { desc: v })}

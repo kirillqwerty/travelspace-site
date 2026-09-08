@@ -3,13 +3,15 @@ import { api } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { Star } from "lucide-react";
 import PageSeo from "@/components/PageSeo";
+import { RichInline } from "@/lib/richText";
+import { getInitialCollection } from "@/lib/pageBootstrap";
 
 export default function Reviews() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getInitialCollection("reviews"));
   const [active, setActive] = useState(null);
 
   useEffect(() => {
-    api.get("/reviews").then((r) => setItems(r.data || []));
+    api.get("/reviews").then((r) => setItems(r.data || [])).catch(() => {});
   }, []);
 
   return (
@@ -58,7 +60,7 @@ export default function Reviews() {
               ))}
             </div>
             <p className="mt-3 text-sm leading-relaxed text-neutral-700">
-              {r.text}
+              <RichInline text={r.text} />
             </p>
             <div className="mt-4 border-t border-neutral-100 pt-3">
               <p className="font-medium text-sm">{r.name}</p>

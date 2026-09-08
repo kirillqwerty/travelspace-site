@@ -8,11 +8,12 @@ import {
 } from "@/components/ui/accordion";
 import PageSeo from "@/components/PageSeo";
 import { RichText } from "@/lib/richText";
+import { getInitialCollection } from "@/lib/pageBootstrap";
 
 export default function Faq() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getInitialCollection("faq"));
   useEffect(() => {
-    api.get("/faq").then((r) => setItems(r.data));
+    api.get("/faq").then((r) => setItems(r.data)).catch(() => {});
   }, []);
   const grouped = items.reduce((acc, it) => {
     const c = it.category || "Общее";

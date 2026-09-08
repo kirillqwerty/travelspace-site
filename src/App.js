@@ -20,6 +20,7 @@ import MarketingScripts from "@/components/MarketingScripts";
 import IntroScreen from "@/components/IntroScreen";
 import { initAttribution, trackPageView } from "@/lib/analytics";
 import { isTourLandingSlug } from "@/lib/seoLandings";
+import { completePageMount, getPageBootstrap } from "@/lib/pageBootstrap";
 
 const Home = lazy(() => import("@/pages/Home"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
@@ -91,6 +92,13 @@ function PublicLayout({ children }) {
 }
 
 function PublicPage({ children }) {
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    const tour = pathname.match(/^\/tours\/([^/]+)\/?$/);
+    const article = /^\/blog\/[^/]+\/?$/.test(pathname);
+    // Detail pages release the server document only after their data is ready.
+    if (!article && (!tour || isTourLandingSlug(tour[1]))) completePageMount();
+  }, [pathname]);
   return <PublicLayout>{children}</PublicLayout>;
 }
 
@@ -122,7 +130,7 @@ function TourSlugRoute() {
 export default function App() {
   const INTRO_DURATION = 1700;
   const initialHomePage =
-    typeof window === "undefined" || window.location.pathname === "/";
+    !getPageBootstrap() && (typeof window === "undefined" || window.location.pathname === "/");
   const [showIntro, setShowIntro] = useState(initialHomePage);
   const [startHeroVideo, setStartHeroVideo] = useState(!initialHomePage);
 
@@ -145,7 +153,7 @@ export default function App() {
     <>
       <IntroScreen visible={showIntro} />
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={getPageBootstrap() ? false : { opacity: 0 }}
         animate={{ opacity: showIntro ? 0 : 1 }}
         transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
       >

@@ -9,6 +9,7 @@ jest.mock("@/lib/useSiteData", () => ({
       Array.from({ length: 20 }, (_, index) => ({
         slug: `${transport_type}-${index}`, transport_type,
         title: `Длинное название тура из Минска на праздники — программа ${index + 1}`,
+        title_highlighted: index === 0 ? "Длинное название тура из **Минска** на праздники — программа 1" : "",
       })),
     ),
   }),
@@ -90,4 +91,17 @@ test("mobile tour sections expand and collapse independently", async () => {
   await dispatch(air, "click", "touch");
   expect(air.getAttribute("aria-expanded")).toBe("false");
   expect(container.querySelector('#mobile-tours-air')).toBeNull();
+});
+
+test.each(["bus", "air"])("%s destinations are bold in desktop and mobile menus without changing link names", async (type) => {
+  await dispatch(byId(`nav-tours-${type}`), "click");
+  let link = byId(`desktop-tour-list-${type}`).querySelector(`a[href="/tours/${type}-0"]`);
+  expect(link.querySelector("strong").textContent).toBe("Минска");
+  expect(link.textContent).toBe("Длинное название тура из Минска на праздники — программа 1");
+  expect(link.querySelectorAll("a")).toHaveLength(0);
+  await dispatch(byId("mobile-menu-open"), "click", "touch");
+  await dispatch(byId(`mobile-nav-tours-toggle-${type}`), "click", "touch");
+  link = container.querySelector(`#mobile-tours-${type} a[href="/tours/${type}-0"]`);
+  expect(link.querySelector("strong").textContent).toBe("Минска");
+  expect(link.textContent).not.toContain("**");
 });

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import MessengerModal from "@/components/MessengerModal";
 import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
+import { TourMenuTitle } from "@/lib/tourTitle";
 import logoBlack from "../assets/logo-travelspace-black.png";
 import logoWhite from "../assets/logo-travelspace-white.png";
 import socialTelegram from "../assets/social-telegram.png";
@@ -172,6 +173,7 @@ export default function Header() {
         links[getTourTransportType(tour)].push({
           slug: tour.slug,
           label: tour.title,
+          tour,
         });
       });
 
@@ -379,7 +381,7 @@ export default function Header() {
                                   }`
                                 }
                               >
-                                {item.label}
+                                <TourMenuTitle tour={item.tour} />
                               </NavLink>
                             ))
                           ) : (
@@ -634,7 +636,7 @@ export default function Header() {
                                       onClick={closeMenu}
                                       className="whitespace-normal rounded-lg px-2 py-2 text-sm leading-snug text-neutral-700 [overflow-wrap:anywhere] hover:bg-orange-50 hover:text-[#C2410C]"
                                     >
-                                      {item.label}
+                                      <TourMenuTitle tour={item.tour} />
                                     </NavLink>
                                   ),
                                 )

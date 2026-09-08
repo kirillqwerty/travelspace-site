@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { isTourShownInCatalog } from "@/lib/tourVisibility";
+import { getInitialSiteData, invalidatePageBootstrap } from "@/lib/pageBootstrap";
 
 const EMPTY_DATA = {
   settings: null,
@@ -9,7 +10,7 @@ const EMPTY_DATA = {
   ready: false,
 };
 
-let siteDataCache = null;
+let siteDataCache = getInitialSiteData();
 let siteDataPromise = null;
 
 function loadSiteData() {
@@ -35,6 +36,7 @@ function loadSiteData() {
 }
 
 export function invalidateSiteData() {
+  invalidatePageBootstrap();
   siteDataCache = null;
   siteDataPromise = null;
 }

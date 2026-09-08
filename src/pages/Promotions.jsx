@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { getInitialCollection } from "@/lib/pageBootstrap";
 import { Link } from "react-router-dom";
 import { Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,11 @@ import { formatDate } from "@/lib/formatDate";
 
 export default function Promotions() {
   const { tours } = useSiteData();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(() => getInitialCollection("promotions"));
   const [pickedTour, setPickedTour] = useState(null);
   const [detailsPromotion, setDetailsPromotion] = useState(null);
   useEffect(() => {
-    api.get("/promotions").then((r) => setItems(r.data));
+    api.get("/promotions").then((r) => setItems(r.data)).catch(() => {});
   }, []);
 
   const getRelatedSlugs = (p) => {

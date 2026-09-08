@@ -28,11 +28,12 @@ import {
 } from "@/components/ui/accordion";
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
+import { getInitialCollection } from "@/lib/pageBootstrap";
 import TourCard from "@/components/TourCard";
 import LeadDialog from "@/components/LeadDialog";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
-import { RichText } from "@/lib/richText";
+import { RichText, RichInline } from "@/lib/richText";
 import { getHomePageContent } from "@/lib/homeContent";
 import {
   getTourSectionAnchor,
@@ -114,9 +115,9 @@ export default function Home({ startVideo = false }) {
   const { tours, settings } = useSiteData();
   const location = useLocation();
   const navigate = useNavigate();
-  const [reviews, setReviews] = useState([]);
-  const [promotions, setPromotions] = useState([]);
-  const [faqItems, setFaqItems] = useState([]);
+  const [reviews, setReviews] = useState(() => getInitialCollection("reviews"));
+  const [promotions, setPromotions] = useState(() => getInitialCollection("promotions"));
+  const [faqItems, setFaqItems] = useState(() => getInitialCollection("faq").filter((item) => item.show_on_home !== false));
   const [leadOpen, setLeadOpen] = useState(false);
   const [detailsPromotion, setDetailsPromotion] = useState(null);
   const videoRef = useRef(null);
@@ -125,8 +126,8 @@ export default function Home({ startVideo = false }) {
   const activeTransport = getTransportFromHash(location.hash);
 
   useEffect(() => {
-    api.get("/reviews").then((r) => setReviews(r.data));
-    api.get("/promotions").then((r) => setPromotions(r.data || []));
+    api.get("/reviews").then((r) => setReviews(r.data)).catch(() => {});
+    api.get("/promotions").then((r) => setPromotions(r.data || [])).catch(() => {});
     api
       .get("/faq")
       .then((r) =>
@@ -135,7 +136,7 @@ export default function Home({ startVideo = false }) {
             (item) => item?.show_on_home !== false,
           ),
         ),
-      );
+      ).catch(() => {});
   }, []);
 
   const faqStructuredData = useMemo(() => {
@@ -242,13 +243,8 @@ export default function Home({ startVideo = false }) {
           <h1 className="font-heading mt-3 sm:mt-4 text-4xl sm:text-6xl lg:text-7xl font-bold max-w-4xl leading-[1.05]">
             {homePage.h1}
           </h1>
-          <p className="font-heading mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl">
-            Туры, в которые хочется возвращаться
-          </p>
-          <p className="mt-5 max-w-xl text-base sm:text-lg text-white/85 leading-relaxed">
-            Путешествия автобусом и самолётом. Простые программы, заботливые
-            гиды и понятная цена без сюрпризов в дороге.
-          </p>
+          {homePage.hero_tagline && <RichText text={homePage.hero_tagline} className="font-heading mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl" />}
+          {homePage.hero_description && <RichText text={homePage.hero_description} className="mt-5 max-w-xl text-base sm:text-lg text-white/85 leading-relaxed" />}
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
@@ -437,7 +433,7 @@ export default function Home({ startVideo = false }) {
                   </div>
                   <h3 className="font-heading text-xl">{b.title}</h3>
                   <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                    {b.desc}
+                    <RichInline text={b.desc} />
                   </p>
                 </div>
               );
@@ -486,7 +482,7 @@ export default function Home({ startVideo = false }) {
                     <Quote className="size-7 text-[#C2410C] mb-3" />
                   )}
                   <p className="line-clamp-4 text-sm leading-relaxed text-neutral-700">
-                    {r.text}
+                    <RichInline text={r.text} />
                   </p>
                   <div className="mt-4 border-t border-neutral-100 pt-3">
                     <h3 className="font-medium text-sm">{r.name}</h3>
