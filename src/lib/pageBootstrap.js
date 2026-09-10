@@ -29,6 +29,12 @@ export function getInitialCollection(name) { return bootstrap?.collections?.[nam
 export function invalidatePageBootstrap() { bootstrap = null; }
 
 export function preserveServerPage(doc = document) {
+  // Admin routes do not use the public-page readiness lifecycle. An older
+  // backend may still include a SEO snapshot here: discard it, never hide React.
+  if (/^\/admin(?:\/|$)/.test(doc.location?.pathname || "")) {
+    completePageMount(doc);
+    return;
+  }
   const root = doc.getElementById("root");
   const snapshot = root?.querySelector("[data-seo-prerender]");
   if (snapshot) {

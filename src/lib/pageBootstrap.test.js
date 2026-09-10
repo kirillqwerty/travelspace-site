@@ -2,7 +2,21 @@ import {
   readPageBootstrap, preserveServerPage, completePageMount, publicNavigationUrl,
 } from "./pageBootstrap";
 
-afterEach(() => { document.body.innerHTML = ""; });
+afterEach(() => {
+  document.body.innerHTML = "";
+  window.history.replaceState({}, "", "/");
+});
+
+test.each(["/admin", "/admin/", "/admin/login", "/admin/tours", "/admin/settings"])(
+  "%s discards a legacy SEO snapshot without hiding the admin interface", (path) => {
+    window.history.replaceState({}, "", path);
+    document.body.innerHTML = '<div id="initial-load-cover"></div><div id="root" hidden><div data-seo-prerender="true">Страница не найдена</div></div>';
+    preserveServerPage();
+    expect(document.getElementById("root").hidden).toBe(false);
+    expect(document.querySelector("[data-seo-prerender]")).toBeNull();
+    expect(document.getElementById("initial-load-cover")).toBeNull();
+  },
+);
 
 test("server content remains visible until the actual page commits", () => {
   document.body.innerHTML = '<div id="initial-load-cover"></div><div id="root"><div data-seo-prerender="true"><h1>Тур в Грузию</h1><p>Полная программа</p></div></div>';
