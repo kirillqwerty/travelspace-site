@@ -35,9 +35,11 @@ import {
   WalletCards,
   Percent,
   Download,
+  Play,
 } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
+import TourCard from "@/components/TourCard";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
@@ -51,6 +53,11 @@ import {
   TOUR_TRANSPORT_TYPES,
 } from "@/lib/tourTransport";
 import { getDirectionLandingForTour } from "@/lib/seoLandings";
+import {
+  getYoutubeEmbedUrl,
+  getYoutubeThumbnail,
+  getYoutubeVideoId,
+} from "@/lib/youtube";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -621,7 +628,7 @@ function MobilePromotionPricePreview({ date, chains, tour }) {
             <WalletCards className="size-3.5" /> Цена по акции
           </span>
           {/* <p className="mt-0.5 truncate text-xs font-medium text-neutral-700">
-            {fmtDateRangeCompact(date)}
+            {fmtDateRangeCompact(date)}{date.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{date.comment}</span>}
           </p> */}
         </div>
 
@@ -1267,6 +1274,60 @@ function getTourHeroImage(tour, variant = "desktop") {
   return tour?.hero_image;
 }
 
+function LazyYoutubeVideo({ video, tourTitle }) {
+  const [playing, setPlaying] = useState(false);
+  const id = getYoutubeVideoId(video?.url);
+  if (!id) return null;
+
+  const title = video?.title || `Видео о туре ${tourTitle || "TRAVELSPACE"}`;
+  const cover = video?.cover || getYoutubeThumbnail(video?.url);
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+      <div className="relative aspect-video bg-neutral-950">
+        {playing ? (
+          <iframe
+            src={getYoutubeEmbedUrl(video.url)}
+            title={title}
+            className="absolute inset-0 h-full w-full"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPlaying(true)}
+            className="group absolute inset-0 w-full"
+            aria-label={`Воспроизвести: ${title}`}
+          >
+            <img
+              src={mediaUrl(cover)}
+              alt={video?.cover_alt || title}
+              className="h-full w-full object-cover opacity-90 transition group-hover:opacity-75"
+              loading="lazy"
+            />
+            <span className="absolute left-1/2 top-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#C2410C] text-white shadow-xl transition group-hover:scale-105">
+              <Play className="ml-1 size-7 fill-current" />
+            </span>
+          </button>
+        )}
+      </div>
+      {(video?.title || video?.description) && (
+        <div className="p-5">
+          {video.title && <h3 className="font-heading text-xl">{video.title}</h3>}
+          {video.description && (
+            <RichText
+              text={video.description}
+              className="mt-2 text-sm leading-6 text-neutral-600"
+            />
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function TourPage() {
   const { slug } = useParams();
   const location = useLocation();
@@ -1291,6 +1352,18 @@ export default function TourPage() {
   const roomLastCardRefs = useRef({});
   const roomHintObservers = useRef({});
   const { tours } = useSiteData();
+  const relatedTours = useMemo(() => {
+    const requested = Array.isArray(tour?.related_tour_slugs)
+      ? tour.related_tour_slugs.map(String)
+      : [];
+    const bySlug = new Map(tours.map((item) => [String(item?.slug || ""), item]));
+    return requested
+      .map((relatedSlug) => bySlug.get(relatedSlug))
+      .filter(
+        (item) =>
+          item && item.slug !== tour?.slug && item.active !== false && !item.hidden,
+      );
+  }, [tour, tours]);
   const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
   const mapEmbedUrl = useMemo(
     () => safeMapEmbedUrl(tour?.map_embed),
@@ -1650,7 +1723,7 @@ export default function TourPage() {
 
             {tour.tagline && (
               <p className="mt-3 max-w-3xl text-base sm:text-lg text-white/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
-                {tour.tagline}
+                <RichInline text={tour.tagline} />
               </p>
             )}
 
@@ -2193,6 +2266,25 @@ export default function TourPage() {
             </div>
           </div>
 
+          {Array.isArray(tour.videos) &&
+            tour.videos.some((video) => getYoutubeVideoId(video?.url)) && (
+              <section data-testid="tour-videos">
+                <p className="overline text-[#C2410C]">Видео</p>
+                <h2 className="font-heading mt-2 mb-6 text-3xl sm:text-4xl">
+                  Посмотрите, как проходит тур
+                </h2>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {tour.videos.map((video, index) => (
+                    <LazyYoutubeVideo
+                      key={video?.id || `${video?.url}-${index}`}
+                      video={video}
+                      tourTitle={tour.title}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
           {dates.length > 0 && (
             <section
               id="dates-prices"
@@ -2210,7 +2302,7 @@ export default function TourPage() {
                     className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3"
                   >
                     <span className="text-sm font-medium text-neutral-800">
-                      {fmtDateRange(date)}
+                      {fmtDateRange(date)}{date.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{date.comment}</span>}
                     </span>
                     <DatePriceInline
                       item={date}
@@ -2294,7 +2386,7 @@ export default function TourPage() {
                                             }
                                             aria-label={
                                               promotion
-                                                ? `${fmtDateRangeCompact(d)}. Показать акционную цену`
+                                                ? `${fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}. Показать акционную цену`
                                                 : undefined
                                             }
                                             data-promo-date-key={dateDomKey(d)}
@@ -2334,7 +2426,7 @@ export default function TourPage() {
                                             }`}
                                           >
                                             <span className="block whitespace-nowrap">
-                                              {fmtDateRangeCompact(d)}
+                                              {fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                             </span>
 
                                             {promotion && (
@@ -2358,7 +2450,7 @@ export default function TourPage() {
                                                 : "bg-white text-[#C2410C] ring-orange-100"
                                             }`}
                                           >
-                                            {fmtDateRange(d)}
+                                            {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                             {promotion && (
                                               <span className="ml-1 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
                                                 акция
@@ -2525,13 +2617,13 @@ export default function TourPage() {
                                       value={`hotel-description-${hotelAnchorId}`}
                                       className="border-0"
                                     >
-                                      <AccordionTrigger className="py-3 text-left text-sm font-medium hover:no-underline">
+                                      <AccordionTrigger className="py-2.5 text-left text-sm font-medium hover:no-underline">
                                         Описание отеля
                                       </AccordionTrigger>
                                       <AccordionContent>
                                         <RichText
                                           text={h.description}
-                                          className="pb-3 text-sm leading-6 text-neutral-600"
+                                          className="pb-2.5 text-sm leading-6 text-neutral-600"
                                         />
                                       </AccordionContent>
                                     </AccordionItem>
@@ -2823,6 +2915,24 @@ export default function TourPage() {
             </div>
           )}
 
+          {relatedTours.length > 0 && (
+            <section data-testid="tour-related-tours">
+              <p className="overline text-[#C2410C]">Другие программы</p>
+              <h2 className="font-heading mt-2 mb-6 text-3xl sm:text-4xl">
+                {tour.related_tours_title ||
+                  "Туры, которые вас также могут заинтересовать"}
+              </h2>
+              <div className="grid gap-6 md:grid-cols-2">
+                {relatedTours.map((relatedTour) => (
+                  <TourCard
+                    key={relatedTour.id || relatedTour.slug}
+                    tour={relatedTour}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {tour.faq?.length > 0 && (
             <div id="faq" className="scroll-mt-32" data-testid="tour-faq">
               <p className="overline text-[#C2410C]">FAQ</p>
@@ -2842,11 +2952,11 @@ export default function TourPage() {
                     value={`faq-${index}`}
                     className="border-0"
                   >
-                    <AccordionTrigger className="text-left py-5 hover:no-underline">
+                    <AccordionTrigger className="py-2.5 text-left hover:no-underline">
                       {item.question}
                     </AccordionTrigger>
 
-                    <AccordionContent forceMount className="text-neutral-700 leading-relaxed">
+                    <AccordionContent forceMount className="pb-2.5 text-neutral-700 leading-relaxed">
                       <RichText
                         text={item.answer}
                         className="space-y-3"
@@ -2924,7 +3034,7 @@ export default function TourPage() {
                             }`}
                           >
                             <span className="min-w-0 whitespace-nowrap">
-                              {fmtDateRangeCompact(d)}
+                              {fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                             </span>
 
                             <DatePriceInline
@@ -3040,7 +3150,7 @@ export default function TourPage() {
                             >
                               <div className="flex min-w-0 flex-col gap-1 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
                                 <span className="min-w-0 break-words text-sm font-medium sm:whitespace-nowrap sm:text-base">
-                                  {fmtDateRangeCompact(d)}
+                                  {fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                   {isPromotionDate(d) && (
                                     <span className="ml-2 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
                                       акция
@@ -3239,7 +3349,7 @@ export default function TourPage() {
                           >
                             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <span className="font-medium">
-                                {fmtDateRange(d)}
+                                {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                               </span>
 
                               {unavailable ? (
@@ -3307,7 +3417,7 @@ export default function TourPage() {
                               className="odd:bg-white even:bg-neutral-50/60"
                             >
                               <td className="border-r px-3 py-2 font-medium text-neutral-800">
-                                {fmtDateRange(d)}
+                                {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                               </td>
                               {ROOM_MEAL_PLANS.map((plan) => {
                                 const price = getRoomDatePrice(
@@ -3361,7 +3471,7 @@ export default function TourPage() {
                                 className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm"
                               >
                                 <p className="mb-2 text-sm font-semibold text-neutral-900">
-                                  {fmtDateRange(d)}
+                                  {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                 </p>
 
                                 <div className="space-y-1.5">
@@ -3516,7 +3626,7 @@ export default function TourPage() {
                                       <div className="flex items-start justify-between gap-3">
                                         <div>
                                           <p className="font-medium text-neutral-900">
-                                            {fmtDateRange(d)}
+                                            {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                             {isPromotionDate(d) && (
                                               <span className="ml-2 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
                                                 акция

@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { mediaUrl } from "@/lib/media";
+import { richTextToPlain } from "@/lib/richText";
 
 const configuredSiteUrl =
   process.env.REACT_APP_SITE_URL || process.env.REACT_APP_PUBLIC_URL || "";
@@ -14,12 +15,7 @@ const DEFAULT_DESCRIPTION =
 const DEFAULT_IMAGE = "/og-image.jpg";
 
 function stripText(value = "") {
-  return String(value)
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/[*_`#>]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return richTextToPlain(value);
 }
 
 function limitText(value = "", max = 170) {

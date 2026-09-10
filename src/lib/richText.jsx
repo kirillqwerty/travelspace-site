@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { normalizeMarkdownLinks, tokenizeRichText, tokensToPlain, isSafeRichUrl } from "./richTextTokens";
 
 import checkIcon from "@/assets/rich-icons/check.svg";
 import minusIcon from "@/assets/rich-icons/minus.svg";
@@ -16,15 +17,6 @@ const ICON_BY_TOKEN = RICH_TEXT_ICONS.reduce((acc, item) => {
   acc[item.token] = item;
   return acc;
 }, {});
-
-const INLINE_RE = /(:check:|:minus:|:warning:|:triangle:|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|_[^_]+_|https?:\/\/[^\s]+)/g;
-
-function isSafeUrl(url = "") {
-  return (
-    /^https?:\/\//i.test(url) ||
-    (url.startsWith("/") && !url.startsWith("//"))
-  );
-}
 
 function renderRichIcon(token, key) {
   const item = ICON_BY_TOKEN[token];
@@ -44,93 +36,40 @@ function renderRichIcon(token, key) {
   );
 }
 
-function renderInline(text = "", keyPrefix = "rt", links = true) {
-  const parts = [];
-  let lastIndex = 0;
-  let index = 0;
-
-  String(text).replace(INLINE_RE, (match, _group, offset) => {
-    if (offset > lastIndex) {
-      parts.push(String(text).slice(lastIndex, offset));
-    }
-
-    const key = `${keyPrefix}-${index++}`;
-
-    if (ICON_BY_TOKEN[match]) {
-      parts.push(renderRichIcon(match, key));
-    } else if (match.startsWith("[") && match.includes("](")) {
-      const matchLink = match.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-      if (matchLink) {
-        const [, label, href] = matchLink;
-        parts.push(
-          links && isSafeUrl(href) ? (
-            <a
-              key={key}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
-            >
-              {label}
-            </a>
-          ) : (
-            label
-          ),
-        );
-      } else {
-        parts.push(match);
-      }
-    } else if (match.startsWith("**") && match.endsWith("**")) {
-      parts.push(
-        <strong key={key} className="font-bold text-inherit">
-          {match.slice(2, -2)}
-        </strong>,
-      );
-    } else if (match.startsWith("__") && match.endsWith("__")) {
-      parts.push(
-        <u key={key} className="underline underline-offset-4 decoration-[#C2410C]/50">
-          {match.slice(2, -2)}
-        </u>,
-      );
-    } else if (match.startsWith("_") && match.endsWith("_")) {
-      parts.push(
-        <em key={key} className="italic">
-          {match.slice(1, -1)}
-        </em>,
-      );
-    } else if (links && /^https?:\/\//i.test(match)) {
-      parts.push(
-        <a
-          key={key}
-          href={match}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412]"
-        >
-          {match}
-        </a>,
-      );
-    } else {
-      parts.push(match);
-    }
-
-    lastIndex = offset + match.length;
-    return match;
+function renderTokens(tokens, keyPrefix, links) {
+  return tokens.map((token, index) => {
+    const key = `${keyPrefix}-${index}`;
+    if (token.type === "text") return token.text;
+    if (token.type === "icon") return renderRichIcon(token.text, key);
+    const children = renderTokens(token.children, key, token.type === "link" ? false : links);
+    if (token.type === "link") return links && isSafeRichUrl(token.href)
+      ? <a key={key} href={token.href} target="_blank" rel="noopener noreferrer" className="text-[#C2410C] underline underline-offset-4 hover:text-[#9A3412] [overflow-wrap:anywhere]" style={{ fontWeight: "inherit" }}>{children}</a>
+      : <Fragment key={key}>{children}</Fragment>;
+    if (token.type === "bold") return <strong key={key} className="font-bold text-inherit">{children}</strong>;
+    if (token.type === "underline") return <u key={key} className="underline underline-offset-4">{children}</u>;
+    return <em key={key} className="italic">{children}</em>;
   });
+}
 
-  if (lastIndex < String(text).length) {
-    parts.push(String(text).slice(lastIndex));
-  }
-
-  return parts;
+function renderInline(text = "", keyPrefix = "rt", links = true) {
+  return renderTokens(tokenizeRichText(text), keyPrefix, links);
 }
 
 export function splitRichTextBlocks(text = "") {
-  return String(text || "")
+  return normalizeMarkdownLinks(text)
     .replace(/\r\n/g, "\n")
     .split(/\n\s*\n/g)
     .map((block) => block.trim())
     .filter(Boolean);
+}
+
+export function richTextToPlain(value = "") {
+  return tokensToPlain(tokenizeRichText(value))
+    .replace(/<[^>]*>/g, " ")
+    .replace(/^[\s*_]+$/, "")
+    .replace(/[`#>]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function splitSemanticHeading(block = "") {

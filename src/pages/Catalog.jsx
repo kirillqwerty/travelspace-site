@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import TourCard from "@/components/TourCard";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 import { getInitialSiteData } from "@/lib/pageBootstrap";
 import { isTourShownInCatalog } from "@/lib/tourVisibility";
 import { Bus, Plane } from "lucide-react";
@@ -83,16 +84,16 @@ export default function Catalog() {
         title="Каталог автобусных и авиа туров из Минска | TRAVELSPACE"
         description="Выбирайте автобусные и авиа туры из Минска по направлениям, датам и форматам отдыха. TRAVELSPACE поможет подобрать подходящий тур."
       />
-      <p className="overline text-[#C2410C]">Каталог туров</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-        {activeTransport === TOUR_TRANSPORT_TYPES.AIR
-          ? "Все авиа туры из Минска"
-          : "Все автобусные туры из Минска"}
-      </h1>
-      <p className="text-neutral-600 mt-4 max-w-2xl">
-        Выбирайте тур или интересующий формат — мы расскажем подробнее и
-        подберём ближайшую дату.
-      </p>
+      <StaticPageIntro
+        pageKey="tours"
+        overline="Каталог туров"
+        heading={
+          activeTransport === TOUR_TRANSPORT_TYPES.AIR
+            ? "Все авиа туры из Минска"
+            : "Все автобусные туры из Минска"
+        }
+        description="Выбирайте тур или интересующий формат — мы расскажем подробнее и подберём ближайшую дату."
+      />
 
       <div
         className="mt-8 inline-flex flex-wrap gap-1 rounded-2xl bg-neutral-100 p-1.5"

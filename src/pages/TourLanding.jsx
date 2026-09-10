@@ -12,24 +12,17 @@ import { useSiteData } from "@/lib/useSiteData";
 import {
   filterToursForLanding,
   getTourLanding,
-  TOUR_LANDING_LINKS,
+  getTourLandingLinks,
 } from "@/lib/seoLandings";
-import { RichText } from "@/lib/richText";
-
-function richTextToPlain(value = "") {
-  return String(value || "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/[*_`#>]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+import { RichText, richTextToPlain } from "@/lib/richText";
 
 export default function TourLanding({ slug }) {
   const { tours, ready, settings } = useSiteData();
   const landing = getTourLanding(settings, slug);
   const matchingTours = filterToursForLanding(tours, slug, landing?.tour_ids);
-  const relatedLinks = TOUR_LANDING_LINKS.filter((item) => item.slug !== slug);
+  const relatedLinks = getTourLandingLinks(settings).filter(
+    (item) => item.slug !== slug,
+  );
 
   if (!landing) return null;
 
@@ -118,7 +111,7 @@ export default function TourLanding({ slug }) {
       </section>
 
       {hasContentBlock && (
-        <section className="border-t border-neutral-200 bg-neutral-50 py-14 lg:py-20">
+        <section className="border-t border-neutral-200 bg-neutral-50 py-10 lg:py-12">
           <div className="section-container">
             <h2 className="font-heading text-3xl font-bold leading-tight text-neutral-950 sm:text-4xl">
               {landing.content_title}
@@ -193,7 +186,7 @@ export default function TourLanding({ slug }) {
             <Accordion
               type="single"
               collapsible
-              className="mt-8 rounded-2xl border border-neutral-200 bg-white px-5 sm:px-7"
+              className="mt-5 rounded-2xl border border-neutral-200 bg-white px-5 sm:px-7"
             >
               {faqItems.map((item, index) => (
                 <AccordionItem
@@ -201,10 +194,10 @@ export default function TourLanding({ slug }) {
                   value={`faq-${index}`}
                   className="last:border-b-0"
                 >
-                  <AccordionTrigger className="py-5 text-base font-semibold text-neutral-950 sm:text-lg">
+                  <AccordionTrigger className="py-2.5 text-base font-semibold text-neutral-950 sm:text-lg">
                     {item.question}
                   </AccordionTrigger>
-                  <AccordionContent forceMount className="pb-5">
+                  <AccordionContent forceMount className="pb-2.5">
                     <RichText
                       text={item.answer}
                       className="w-full leading-7 text-neutral-600"

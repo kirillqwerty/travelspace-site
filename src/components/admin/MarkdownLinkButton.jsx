@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readMarkdownLink, isSafeRichUrl } from "@/lib/richTextTokens";
 
 export default function MarkdownLinkButton({
   textareaRef,
@@ -23,12 +24,24 @@ export default function MarkdownLinkButton({
   const [linkText, setLinkText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [error, setError] = useState("");
 
   const openEditor = () => {
     const textarea = textareaRef?.current;
     const current = String(value || "");
     const start = textarea?.selectionStart ?? current.length;
     const end = textarea?.selectionEnd ?? current.length;
+    setError("");
+    for (let i = 0; i < current.length; i++) {
+      const existing = readMarkdownLink(current, i);
+      if (existing && start >= i && end <= existing.end && start < existing.end) {
+        setSelection({ start: i, end: existing.end });
+        setLinkText(existing.label);
+        setLinkUrl(existing.href);
+        setOpen(true);
+        return;
+      }
+    }
     setSelection({ start, end });
     setLinkText(current.slice(start, end));
     setLinkUrl("");
@@ -42,18 +55,19 @@ export default function MarkdownLinkButton({
     event.stopPropagation();
     const url = linkUrl.trim();
     if (!url) return;
+    if (!isSafeRichUrl(url)) { setError("Укажите адрес https://… или путь внутри сайта /tours/… без пробелов."); return; }
 
     const current = String(value || "");
-    const text = linkText.trim() || url;
+    const text = (linkText.trim() || url).replace(/(?<!\\)([\[\]])/g, "\\$1");
     const markdown = `[${text}](${url})`;
     const nextValue = `${current.slice(0, selection.start)}${markdown}${current.slice(selection.end)}`;
-    const nextCursor = selection.start + markdown.length;
 
     onChange(nextValue);
     setOpen(false);
     requestAnimationFrame(() => {
       textareaRef?.current?.focus();
-      textareaRef?.current?.setSelectionRange(nextCursor, nextCursor);
+      // Keep the label selected so Bold can immediately format the new link.
+      textareaRef?.current?.setSelectionRange(selection.start + 1, selection.start + 1 + text.length);
     });
   };
 
@@ -103,6 +117,7 @@ export default function MarkdownLinkButton({
               />
             </div>
 
+            {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
             <DialogFooter>
               <Button
                 type="button"

@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 import { getInitialSiteData } from "@/lib/pageBootstrap";
+import { richTextToPlain } from "@/lib/richText";
 
 function articlePreviewImage(article) {
   return (
@@ -17,11 +19,7 @@ function articlePreviewImage(article) {
 
 function articleExcerpt(article) {
   const value = article.excerpt || article.seo_description || article.content || "";
-  const clean = String(value)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/[*_`#>]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const clean = richTextToPlain(value);
   return clean.length > 190 ? `${clean.slice(0, 189).trim()}…` : clean;
 }
 
@@ -57,14 +55,13 @@ export default function Blog() {
         title="Блог о путешествиях | TRAVELSPACE"
         description="Полезные статьи, чек-листы и советы для комфортных путешествий и автобусных туров."
       />
-      <p className="overline text-[#C2410C]">Блог</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
-        Полезное о путешествиях
-      </h1>
-      <p className="text-neutral-600 mt-3">
-        Чек-листы, советы и истории из дороги, чтобы ваша поездка была
-        комфортнее.
-      </p>
+      <StaticPageIntro
+        pageKey="blog"
+        overline="Блог"
+        heading="Полезное о путешествиях"
+        description="Чек-листы, советы и истории из дороги, чтобы ваша поездка была комфортнее."
+        headingClassName=""
+      />
 
       <div className="mt-12 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((a) => {

@@ -40,7 +40,9 @@ export function preserveServerPage(doc = document) {
   if (snapshot) {
     root.before(snapshot);
     root.hidden = true;
-    doc.getElementById("initial-load-cover")?.remove();
+    // Keep the branded cover over the server snapshot until React has
+    // committed the real page. The snapshot remains in the DOM for crawlers,
+    // while visitors see a polished loading state instead of raw HTML.
   }
 }
 

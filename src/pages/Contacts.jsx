@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 
 const DEFAULT_PHONES = [
   {
@@ -85,10 +86,12 @@ export default function Contacts() {
         title="Контакты TRAVELSPACE"
         description="Свяжитесь с TRAVELSPACE: телефоны, email, офис, режим работы и форма заявки на подбор тура."
       />
-      <p className="overline text-[#C2410C]">Контакты</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
-        Свяжитесь с нами
-      </h1>
+      <StaticPageIntro
+        pageKey="contacts"
+        overline="Контакты"
+        heading="Свяжитесь с нами"
+        headingClassName=""
+      />
 
       <div className="mt-12 grid lg:grid-cols-2 gap-10">
         <div className="space-y-6 text-neutral-800">

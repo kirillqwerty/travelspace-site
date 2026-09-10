@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { mediaUrl } from "@/lib/media";
 import { Star } from "lucide-react";
 import PageSeo from "@/components/PageSeo";
-import { RichInline } from "@/lib/richText";
+import StaticPageIntro from "@/components/StaticPageIntro";
+import ReviewText from "@/components/ReviewText";
 import { getInitialCollection } from "@/lib/pageBootstrap";
+import { reviewsStructuredData, sortReviewsByDate } from "@/lib/reviews";
 
 export default function Reviews() {
   const [items, setItems] = useState(() => getInitialCollection("reviews"));
@@ -14,25 +16,31 @@ export default function Reviews() {
     api.get("/reviews").then((r) => setItems(r.data || [])).catch(() => {});
   }, []);
 
+  const sortedItems = useMemo(() => sortReviewsByDate(items), [items]);
+  const structuredData = useMemo(
+    () => reviewsStructuredData(sortedItems),
+    [sortedItems],
+  );
+
   return (
     <div
       className="section-container pt-32 lg:pt-36 pb-16 lg:pb-24"
       data-testid="reviews-page"
     >
-      <PageSeo pageKey="reviews" path="/reviews" title="Отзывы туристов | TRAVELSPACE" description="Реальные отзывы туристов о поездках, маршрутах и работе TRAVELSPACE." />
-      <p className="overline text-[#C2410C]">Отзывы</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-        Что о нас говорят туристы
-      </h1>
-      <p className="mt-4 max-w-2xl text-neutral-600">
-        Здесь собраны реальные отзывы наших клиентов. Нажмите на скриншот, чтобы
-        открыть его крупнее.
-      </p>
+      <PageSeo pageKey="reviews" path="/reviews" title="Отзывы туристов | TRAVELSPACE" description="Реальные отзывы туристов о поездках, маршрутах и работе TRAVELSPACE." structuredData={structuredData} />
+      <StaticPageIntro
+        pageKey="reviews"
+        overline="Отзывы"
+        heading="Что о нас говорят туристы"
+        description="Здесь собраны реальные отзывы наших клиентов. Нажмите на скриншот, чтобы открыть его крупнее."
+      />
 
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((r) => (
+        {sortedItems.map((r, index) => {
+          const itemId = String(r.id || index);
+          return (
           <article
-            key={r.id}
+            key={itemId}
             className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
           >
             {r.photo && (
@@ -59,17 +67,25 @@ export default function Reviews() {
                 />
               ))}
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
-              <RichInline text={r.text} />
-            </p>
+            <ReviewText text={r.text} />
             <div className="mt-4 border-t border-neutral-100 pt-3">
-              <p className="font-medium text-sm">{r.name}</p>
-              <p className="text-xs text-neutral-500">
-                {r.tour_name || r.direction}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium text-sm">{r.name}</p>
+                  <p className="text-xs text-neutral-500">
+                    {r.tour_name || r.direction}
+                  </p>
+                </div>
+                {r.date && (
+                  <time className="shrink-0 text-xs text-neutral-400">
+                    {r.date}
+                  </time>
+                )}
+              </div>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
 
       {active && (

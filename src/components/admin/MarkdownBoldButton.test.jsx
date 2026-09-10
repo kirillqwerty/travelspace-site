@@ -21,6 +21,21 @@ test("empty selection creates selected placeholder text", () => {
   expect(next.value.slice(next.start, next.end)).toBe("жирный текст");
 });
 
+test.each([
+  ["[Тур](/tours/winter_(new))", 0, 24],
+  ["[Тур](/tours/winter_(new))", 1, 4],
+  ["[Тур](/tours/winter_(new))", 7, 12],
+])("bold around a link or its selected URL never edits the destination", (text, start, end) => {
+  const next = toggleBoldSelection(text, start, end);
+  expect(next.value).toContain("(/tours/winter_(new))");
+  expect(toggleBoldSelection(next.value, next.start, next.end).value).toBe(text);
+});
+
+test("making a mixed selection bold removes inner bold delimiters", () => {
+  const text = "До **тура** после";
+  expect(toggleBoldSelection(text, 0, text.length).value).toBe("**До тура после**");
+});
+
 test("toolbar and Ctrl+B change text without submitting its editor", async () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const save = jest.fn();

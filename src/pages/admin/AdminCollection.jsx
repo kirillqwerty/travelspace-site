@@ -44,9 +44,10 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadImage, usePendingUploads, hasPendingUploads, normalizeImageItems, normalizeRecordImages } from "@/lib/imageUpload";
 import { mediaUrl } from "@/lib/media";
 import { formatDate } from "@/lib/formatDate";
-import { RICH_TEXT_ICONS } from "@/lib/richText";
+import { RICH_TEXT_ICONS, richTextToPlain } from "@/lib/richText";
 import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
 import MarkdownBoldButton, { useMarkdownBold } from "@/components/admin/MarkdownBoldButton";
 import TourTitleField from "@/components/admin/TourTitleField";
@@ -315,8 +316,14 @@ const SCHEMAS = {
       { key: "photo", label: "Скрин/фото отзыва", type: "image" },
       { key: "external_link", label: "Ссылка на оригинал", type: "text" },
       { key: "rating", label: "Рейтинг", type: "number" },
-      { key: "date", label: "Дата", type: "text" },
-      { key: "order", label: "Порядок", type: "number" },
+      {
+        key: "date",
+        label: "Дата отзыва",
+        type: "date",
+        placeholder: "дд.мм.гггг",
+        hint: "Отзывы автоматически выводятся от новых к старым. Без даты — в конце списка.",
+      },
+      { key: "order", type: "hidden", defaultValue: "" },
       { key: "active", label: "Активен", type: "switch" },
     ],
   },
@@ -445,7 +452,7 @@ const SCHEMAS = {
 };
 
 const TOUR_JSON_HINT =
-  "Для тура можно добавить поля: highlights (массив строк) — главные впечатления; what_to_see (массив строк) — что посмотреть; gallery (массив URL) — галерея; program (массив дней) — программа по дням; included / excluded — что входит и что нет; important_info — важно знать; hotels — отели; dates — массив дат; faq — массив вопросов.";
+  "Для тура можно добавить поля: highlights (массив строк) — главные впечатления; what_to_see (массив строк) — что посмотреть; gallery (массив URL) — галерея; program (массив дней) — программа по дням; included / excluded — что входит и что нет; important_info — важно знать; hotels — отели; dates — массив дат; faq — массив вопросов; related_tour_slugs — связанные туры; videos — видео YouTube.";
 
 const TOUR_EXTRA_KEYS = [
   "badges",
@@ -463,6 +470,9 @@ const TOUR_EXTRA_KEYS = [
   "hotels",
   "faq",
   "map_embed",
+  "related_tour_slugs",
+  "related_tours_title",
+  "videos",
 ];
 
 const firstDefined = (...values) =>
@@ -777,6 +787,7 @@ const normalizeChains = (record = {}) => {
 };
 
 const normalizeRecord = (record = {}, collectionName) => {
+  record = normalizeRecordImages(record);
   if (collectionName !== "tours") return record;
 
   const isNew = !record.id;
@@ -792,6 +803,10 @@ const normalizeRecord = (record = {}, collectionName) => {
     ...(isNew ? {} : { id: record.id }),
 
     title: record.title || "",
+    title_highlighted:
+      typeof record.title_highlighted === "string"
+        ? record.title_highlighted
+        : "",
     transport_type: getTourTransportType(record),
     slug: record.slug || slugify(record.title || ""),
     tagline: record.tagline || "",
@@ -875,9 +890,7 @@ const normalizeRecord = (record = {}, collectionName) => {
             day: String(d.day || index + 1),
             title: d.title || "",
             description: d.description || "",
-            image: d.image || images[0] || "",
-            images,
-            image_alts: Array.isArray(d.image_alts) ? d.image_alts : [],
+            ...normalizeImageItems(Array.isArray(d.images) ? d.images : images, d.image_alts),
             notes: d.notes || "",
           };
         })
@@ -907,6 +920,24 @@ const normalizeRecord = (record = {}, collectionName) => {
       : [],
 
     map_embed: record.map_embed || "",
+    related_tour_slugs: Array.isArray(record.related_tour_slugs)
+      ? [...new Set(record.related_tour_slugs.map(String).filter(Boolean))]
+      : record.related_tour_slug
+        ? [String(record.related_tour_slug)]
+        : [],
+    related_tours_title:
+      record.related_tours_title ||
+      "Туры, которые вас также могут заинтересовать",
+    videos: Array.isArray(record.videos)
+      ? record.videos.map((video) => ({
+          id: video?.id || uid(),
+          title: video?.title || "",
+          url: video?.url || video?.video_url || "",
+          cover: video?.cover || video?.thumbnail || "",
+          cover_alt: video?.cover_alt || "",
+          description: video?.description || "",
+        }))
+      : [],
   };
 };
 
@@ -1081,7 +1112,7 @@ export default function AdminCollection({ name }) {
 
                 {schema.description?.(it) && (
                   <p className="text-xs text-neutral-500 mt-1 line-clamp-2">
-                    {schema.description(it)}
+                    {richTextToPlain(schema.description(it))}
                   </p>
                 )}
 
@@ -1163,6 +1194,7 @@ export default function AdminCollection({ name }) {
         record={editing}
         schema={schema}
         collectionName={name}
+        collectionItems={items}
         onClose={() => setEditing(null)}
         onSave={onSave}
       />
@@ -1209,7 +1241,16 @@ function TourSearchPreview({ form }) {
   );
 }
 
-function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
+function EditDialog({
+  open,
+  record,
+  schema,
+  collectionName,
+  collectionItems = [],
+  onClose,
+  onSave,
+}) {
+  const uploading = usePendingUploads();
   const [form, setForm] = useState({});
   const [extraJson, setExtraJson] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -1273,6 +1314,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
   const submit = async (e) => {
     e.preventDefault();
     if (e.target !== e.currentTarget) return;
+    if (hasPendingUploads()) { toast.error("Дождитесь загрузки фото"); return; }
 
     const payload = {
       ...form,
@@ -1309,27 +1351,48 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
 
       payload.program = Array.isArray(form.program)
         ? form.program.map((day, index) => {
-            const images = Array.isArray(day.images)
-              ? day.images.filter(Boolean)
-              : day.image
-                ? [day.image]
-                : [];
-
             return {
               ...day,
               day: String(day.day || index + 1),
-              images,
-              image: images[0] || "",
-              image_alts: images.map((_, imageIndex) =>
-                String(day.image_alts?.[imageIndex] || "").trim(),
-              ),
+              ...normalizeImageItems(Array.isArray(day.images) ? day.images : day.image ? [day.image] : [], day.image_alts),
             };
           })
+        : [];
+
+      payload.related_tour_slugs = Array.isArray(form.related_tour_slugs)
+        ? [
+            ...new Set(
+              form.related_tour_slugs
+                .map((slug) => String(slug || "").trim())
+                .filter((slug) => slug && slug !== payload.slug),
+            ),
+          ]
+        : [];
+      payload.videos = Array.isArray(form.videos)
+        ? form.videos
+            .map((video) => ({
+              id: video?.id || uid(),
+              title: String(video?.title || "").trim(),
+              url: String(video?.url || "").trim(),
+              cover: String(video?.cover || "").trim(),
+              cover_alt: String(video?.cover_alt || "").trim(),
+              description: String(video?.description || "").trim(),
+            }))
+            .filter((video) => video.url)
         : [];
     }
 
     if (collectionName === "articles") {
       payload.slug = form.slug?.trim() || slugify(form.title);
+    }
+
+    if (collectionName === "reviews") {
+      const normalizedDate = normalizeDateToDisplay(form.date);
+      if (form.date && !isValidDisplayDate(normalizedDate)) {
+        toast.error("Укажите дату отзыва в формате дд.мм.гггг");
+        return;
+      }
+      payload.date = normalizedDate;
     }
 
     if (collectionName === "promotions") {
@@ -1351,7 +1414,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
 
     try {
       setSaving(true);
-      await onSave(payload);
+      await onSave(normalizeRecordImages(payload));
     } catch (e) {
       console.error("Save error:", e);
       toast.error(e?.message || "Ошибка сохранения");
@@ -1361,7 +1424,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
   };
   if (!open) return null;
   return (
-    <Dialog open={open} onOpenChange={(v) => !saving && !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => !saving && !uploading && !v && onClose()}>
       <DialogContent
         className="max-w-2xl max-w-[1500px]
   h-[95vh]
@@ -1375,18 +1438,19 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
           </DialogTitle>
         </DialogHeader>
 
-        {saving && (
+        {(saving || uploading) && (
           <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="size-10 animate-spin text-[#C2410C]" />
               <span className="text-sm text-neutral-600">
-                Сохраняем изменения...
+                {uploading ? "Загружаем фото…" : "Сохраняем изменения..."}
               </span>
             </div>
           </div>
         )}
 
         <form onSubmit={submit} className="flex flex-col flex-1 min-h-0">
+          <fieldset disabled={saving || uploading} className="contents">
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {collectionName === "tours" && (
               <Tabs
@@ -1545,6 +1609,12 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
                     onChange={(v) => update(f.key, v)}
                     altValue={f.altKey && Array.isArray(form[f.altKey]) ? form[f.altKey] : []}
                     onAltChange={f.altKey ? (v) => update(f.altKey, v) : undefined}
+                    onItemsChange={f.altKey ? (images, imageAlts) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        [f.key]: images,
+                        [f.altKey]: imageAlts,
+                      })) : undefined}
                   />
                 ) : f.type === "image" ? (
                   <ImageInput
@@ -1597,7 +1667,11 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
           </details> */}
 
             {collectionName === "tours" && tourEditorTab === "content" && (
-              <MemoTourExtraFields form={form} setForm={setForm} />
+              <MemoTourExtraFields
+                form={form}
+                setForm={setForm}
+                tours={collectionItems}
+              />
             )}
           </div>
 
@@ -1606,7 +1680,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={saving}
+              disabled={saving || uploading}
               className="rounded-full"
             >
               Отмена
@@ -1614,7 +1688,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
 
             <Button
               type="submit"
-              disabled={saving}
+              disabled={saving || uploading}
               className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] min-w-[140px]"
             >
               {saving ? (
@@ -1627,6 +1701,7 @@ function EditDialog({ open, record, schema, collectionName, onClose, onSave }) {
               )}
             </Button>
           </div>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>
@@ -1990,7 +2065,7 @@ const copyToClipboard = (value) => {
   return Promise.resolve();
 };
 
-function TourExtraFields({ form, setForm }) {
+function TourExtraFields({ form, setForm, tours = [] }) {
   const update = useCallback(
     (key, value) => {
       setForm((prev) => {
@@ -2030,6 +2105,11 @@ function TourExtraFields({ form, setForm }) {
   const updateChains = useCallback((v) => update("chains", v), [update]);
   const updateDates = useCallback((v) => update("dates", v), [update]);
   const updateFaq = useCallback((v) => update("faq", v), [update]);
+  const updateRelatedTours = useCallback(
+    (v) => update("related_tour_slugs", v),
+    [update],
+  );
+  const updateVideos = useCallback((v) => update("videos", v), [update]);
 
   const handleUseHotelChainsChange = useCallback(
     (enabled) => {
@@ -2101,6 +2181,13 @@ function TourExtraFields({ form, setForm }) {
         onChange={updateGallery}
         altValue={form.gallery_alts || []}
         onAltChange={updateGalleryAlts}
+        onItemsChange={(gallery, galleryAlts) =>
+          setForm((previous) => ({
+            ...previous,
+            gallery,
+            gallery_alts: galleryAlts,
+          }))
+        }
       />
 
       <MemoStringListField
@@ -2144,6 +2231,8 @@ function TourExtraFields({ form, setForm }) {
       />
 
       <MemoProgramField value={form.program || []} onChange={updateProgram} />
+
+      <TourVideosField value={form.videos || []} onChange={updateVideos} />
 
       <div className="rounded-2xl border border-sky-200 bg-sky-50/50 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2201,6 +2290,17 @@ function TourExtraFields({ form, setForm }) {
         </div>
       )}
 
+      <RelatedToursField
+        value={form.related_tour_slugs || []}
+        onChange={updateRelatedTours}
+        tours={tours}
+        currentSlug={tourSlug}
+        title={form.related_tours_title || ""}
+        onTitleChange={(related_tours_title) =>
+          update("related_tours_title", related_tours_title)
+        }
+      />
+
       <MemoFaqField value={form.faq || []} onChange={updateFaq} />
 
       {/* <div>
@@ -2212,6 +2312,189 @@ function TourExtraFields({ form, setForm }) {
           rows={3}
         />
       </div> */}
+    </div>
+  );
+}
+
+function TourVideosField({ value = [], onChange }) {
+  const items = Array.isArray(value) ? value : [];
+
+  const updateItem = (index, patch) => {
+    const next = [...items];
+    next[index] = { ...next[index], ...patch };
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>Видео о туре</Label>
+        <p className="mt-1 text-xs text-neutral-500">
+          Добавьте ссылку YouTube. На странице сначала показывается только
+          обложка; видеоплеер загружается после нажатия посетителя.
+        </p>
+      </div>
+
+      {items.map((video, index) => (
+        <div
+          key={video.id || index}
+          className="space-y-3 rounded-xl border border-neutral-200 p-4"
+        >
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+            <Input
+              value={video.url || ""}
+              onChange={(event) => updateItem(index, { url: event.target.value })}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+          <Input
+            value={video.title || ""}
+            onChange={(event) => updateItem(index, { title: event.target.value })}
+            placeholder="Название видео"
+          />
+          <RichTextarea
+            value={video.description || ""}
+            onChange={(description) => updateItem(index, { description })}
+            rows={3}
+            placeholder="Короткое описание (необязательно)"
+          />
+          <ImageInput
+            value={video.cover || ""}
+            onChange={(cover) => updateItem(index, { cover })}
+          />
+          <Input
+            value={video.cover_alt || ""}
+            onChange={(event) =>
+              updateItem(index, { cover_alt: event.target.value })
+            }
+            placeholder="ALT обложки видео"
+          />
+        </div>
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() =>
+          onChange([
+            ...items,
+            {
+              id: uid(),
+              title: "",
+              url: "",
+              cover: "",
+              cover_alt: "",
+              description: "",
+            },
+          ])
+        }
+      >
+        <Plus className="mr-1 size-4" /> Добавить видео
+      </Button>
+    </div>
+  );
+}
+
+function RelatedToursField({
+  value = [],
+  onChange,
+  tours = [],
+  currentSlug = "",
+  title = "",
+  onTitleChange,
+}) {
+  const [draggedSlug, setDraggedSlug] = useState("");
+  const selected = Array.isArray(value) ? value.map(String) : [];
+  const available = tours.filter(
+    (tour) =>
+      tour?.slug &&
+      tour.slug !== currentSlug &&
+      tour.active !== false &&
+      !selected.includes(String(tour.slug)),
+  );
+  const toursBySlug = new Map(
+    tours.filter((tour) => tour?.slug).map((tour) => [String(tour.slug), tour]),
+  );
+
+  const move = (fromSlug, toSlug) => {
+    const fromIndex = selected.indexOf(fromSlug);
+    const toIndex = selected.indexOf(toSlug);
+    if (fromIndex < 0 || toIndex < 0) return;
+    onChange(reorderArray(selected, fromIndex, toIndex));
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-orange-200 bg-orange-50/30 p-4">
+      <div>
+        <Label>Рекомендуемые туры</Label>
+        <p className="mt-1 text-xs text-neutral-500">
+          Выберите туры вручную и перетащите выбранные карточки в нужном
+          порядке. Блок появится перед FAQ.
+        </p>
+      </div>
+      <Input
+        value={title}
+        onChange={(event) => onTitleChange(event.target.value)}
+        placeholder="Туры, которые вас также могут заинтересовать"
+      />
+      {selected.length > 0 && (
+        <div className="space-y-2">
+          {selected.map((slug) => {
+            const tour = toursBySlug.get(slug);
+            return (
+              <div
+                key={slug}
+                draggable
+                onDragStart={() => setDraggedSlug(slug)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  move(draggedSlug, slug);
+                  setDraggedSlug("");
+                }}
+                onDragEnd={() => setDraggedSlug("")}
+                className={`flex items-center gap-3 rounded-lg border bg-white p-3 ${
+                  draggedSlug === slug ? "opacity-50" : ""
+                }`}
+              >
+                <span className="cursor-grab text-neutral-400">☰</span>
+                <span className="min-w-0 flex-1 text-sm">
+                  {tour?.title || `${slug} (тур не найден)`}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onChange(selected.filter((item) => item !== slug))}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <select
+        value=""
+        onChange={(event) => {
+          if (event.target.value) onChange([...selected, event.target.value]);
+        }}
+        className="h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+      >
+        <option value="">Добавить тур…</option>
+        {available.map((tour) => (
+          <option key={tour.slug} value={tour.slug}>
+            {tour.title || tour.slug}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -2286,6 +2569,7 @@ function ImageListField({
   onChange,
   altValue = [],
   onAltChange,
+  onItemsChange,
 }) {
   const sourceItems = Array.isArray(value) ? value : [];
   const items = sourceItems.length ? sourceItems : [""];
@@ -2293,15 +2577,26 @@ function ImageListField({
   const editsAlt = typeof onAltChange === "function";
   const [draggedIndex, setDraggedIndex] = useState(null);
 
+  const commit = (nextImages, nextAlts) => {
+    if (typeof onItemsChange === "function") {
+      onItemsChange(nextImages, nextAlts);
+      return;
+    }
+    onChange(nextImages);
+    if (editsAlt) onAltChange(nextAlts);
+  };
+
   const updateItem = (index, text) => {
     const next = [...items];
     next[index] = text;
-    onChange(next);
+    commit(next, next.map((_, itemIndex) => alts[itemIndex] || ""));
   };
 
   const addItem = () => {
-    onChange([...items, ""]);
-    if (editsAlt) onAltChange([...items.map((_, index) => alts[index] || ""), ""]);
+    commit(
+      [...items, ""],
+      [...items.map((_, index) => alts[index] || ""), ""],
+    );
   };
 
   const removeItem = (index) => {
@@ -2309,17 +2604,21 @@ function ImageListField({
       .map((image, itemIndex) => ({ image, alt: alts[itemIndex] || "" }))
       .filter((_, itemIndex) => itemIndex !== index)
       .filter((item) => Boolean(item.image));
-    onChange(remaining.map((item) => item.image));
-    if (editsAlt) onAltChange(remaining.map((item) => item.alt));
+    commit(
+      remaining.map((item) => item.image),
+      remaining.map((item) => item.alt),
+    );
   };
 
   const moveItem = (fromIndex, toIndex) => {
     const filledItems = items
       .map((image, index) => ({ image, alt: alts[index] || "" }))
-      .filter((item) => Boolean(item.image));
+;
     const moved = reorderArray(filledItems, fromIndex, toIndex);
-    onChange(moved.map((item) => item.image));
-    if (editsAlt) onAltChange(moved.map((item) => item.alt));
+    commit(
+      moved.map((item) => item.image),
+      moved.map((item) => item.alt),
+    );
   };
 
   return (
@@ -2329,7 +2628,7 @@ function ImageListField({
       <div className="mt-2 space-y-3">
         {items.map((item, index) => (
           <div
-            key={`${item}-${index}`}
+            key={index}
             draggable={!!item}
             onDragStart={() => setDraggedIndex(index)}
             onDragOver={(e) => e.preventDefault()}
@@ -2370,7 +2669,7 @@ function ImageListField({
                   onChange={(event) => {
                     const next = items.map((_, itemIndex) => alts[itemIndex] || "");
                     next[index] = event.target.value;
-                    onAltChange(next);
+                    commit(items, next);
                   }}
                   placeholder="ALT: кратко опишите, что изображено"
                 />
@@ -2561,73 +2860,18 @@ function CityMultiSelect({ value = [], legacyValue, onChange }) {
   );
 }
 
-async function compressImage(file, maxWidth = 1200, quality = 0.72) {
-  if (!file?.type?.startsWith("image/")) {
-    throw new Error("Можно загружать только изображения");
-  }
-
-  const imageUrl = URL.createObjectURL(file);
-
-  const img = await new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
-    image.src = imageUrl;
-  });
-
-  const scale = Math.min(1, maxWidth / img.width);
-  const width = Math.round(img.width * scale);
-  const height = Math.round(img.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, width, height);
-
-  URL.revokeObjectURL(imageUrl);
-
-  return await new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => {
-        resolve(
-          new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
-            type: "image/jpeg",
-          }),
-        );
-      },
-      "image/jpeg",
-      quality,
-    );
-  });
-}
-
-async function uploadImage(file) {
-  const compressed = await compressImage(file);
-
-  const formData = new FormData();
-  formData.append("file", compressed);
-
-  const response = await api.post("/admin/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-
-  return response.data.url;
-}
-
 function ImageInput({ value, onChange }) {
+  const latestChange = useRef(onChange);
+  latestChange.current = onChange;
   const [uploading, setUploading] = useState(false);
 
   const handleFile = async (file) => {
-    if (!file) return;
+    if (!file || hasPendingUploads()) return;
 
     try {
       setUploading(true);
       const url = await uploadImage(file);
-      onChange(url);
+      latestChange.current(url);
       toast.success("Изображение загружено");
     } catch (e) {
       console.error(e);
@@ -2729,17 +2973,12 @@ function ProgramField({ value, onChange }) {
     onChange(next);
   };
 
-  const updateImages = (index, images) => {
+  const updateImages = (index, images, imageAlts = []) => {
     const nextImages = Array.isArray(images) ? images : [];
 
     updateItem(index, {
       images: nextImages,
       image: nextImages.find(Boolean) || "",
-    });
-  };
-
-  const updateImageAlts = (index, imageAlts) => {
-    updateItem(index, {
       image_alts: Array.isArray(imageAlts) ? imageAlts : [],
     });
   };
@@ -2807,7 +3046,12 @@ function ProgramField({ value, onChange }) {
               value={getProgramItemImages(item)}
               onChange={(images) => updateImages(index, images)}
               altValue={item.image_alts || []}
-              onAltChange={(imageAlts) => updateImageAlts(index, imageAlts)}
+              onAltChange={(imageAlts) =>
+                updateImages(index, getProgramItemImages(item), imageAlts)
+              }
+              onItemsChange={(images, imageAlts) =>
+                updateImages(index, images, imageAlts)
+              }
             />
 
             <Input
@@ -2952,6 +3196,10 @@ function DatesField({
               </div>
             </div>
 
+            <div>
+              <Label className="text-xs">Примечание к дате</Label>
+              <Input value={item.comment || ""} onChange={(event) => updateItem(index, { comment: event.target.value })} placeholder="Например: Рождество или закрытие фонтанов" className="mt-1" />
+            </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
               <div>
                 <Label className="text-xs">Цена</Label>
@@ -3453,6 +3701,13 @@ function ChainHotelsField({ value, dates, tourSlug, onChange }) {
               }
               altValue={item.image_alts || []}
               onAltChange={(image_alts) => updateItem(index, { image_alts })}
+              onItemsChange={(images, image_alts) =>
+                updateItem(index, {
+                  images,
+                  image: images.find(Boolean) || "",
+                  image_alts,
+                })
+              }
             />
 
             <div className="grid sm:grid-cols-2 gap-2">
@@ -3575,6 +3830,9 @@ function RoomsField({ value, dates, onChange }) {
               altValue={room.gallery_alts || []}
               onAltChange={(gallery_alts) =>
                 updateItem(index, { gallery_alts })
+              }
+              onItemsChange={(gallery, gallery_alts) =>
+                updateItem(index, { gallery, gallery_alts })
               }
             />
 
@@ -4269,6 +4527,7 @@ function areTourExtraFieldsEqual(prevProps, nextProps) {
     prev.price_from === next.price_from &&
     prev.additional_price === next.additional_price &&
     prev.additional_currency === next.additional_currency &&
+    prevProps.tours === nextProps.tours &&
     TOUR_EXTRA_KEYS.every((key) => prev[key] === next[key])
   );
 }

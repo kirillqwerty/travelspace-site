@@ -21,6 +21,8 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { uploadImage as uploadPreparedImage, usePendingUploads, hasPendingUploads } from "@/lib/imageUpload";
+import { invalidateSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import { formatMinskDateTime } from "@/lib/formatDate";
 import { DEFAULT_HOME_PAGE } from "@/lib/homeContent";
@@ -172,6 +174,7 @@ export default function AdminSettings() {
   const [data, setData] = useState(null);
   const [tours, setTours] = useState([]);
   const [saving, setSaving] = useState(false);
+  const uploading = usePendingUploads();
 
   useEffect(() => {
     Promise.all([
@@ -227,14 +230,22 @@ export default function AdminSettings() {
         },
       },
     }));
+  const deleteSeoHub = (slug) =>
+    setData((previous) => {
+      const seoHubs = { ...(previous.seo_hubs || {}) };
+      delete seoHubs[slug];
+      return { ...previous, seo_hubs: seoHubs };
+    });
 
   const save = async (e) => {
     e.preventDefault();
+    if (hasPendingUploads()) { toast.error("Дождитесь загрузки фото"); return; }
     if (e.target !== e.currentTarget) return;
 
     try {
       setSaving(true);
       await api.put("/admin/settings", data);
+      invalidateSiteData();
       toast.success("Настройки сохранены");
     } catch (error) {
       console.error(error);
@@ -260,13 +271,16 @@ export default function AdminSettings() {
         onSubmit={save}
         className="mt-8 rounded-2xl bg-white border border-neutral-200 p-6 pb-28 sm:p-8 sm:pb-28 max-w-6xl space-y-5"
       >
+        <fieldset disabled={uploading} className="min-w-0">
+        {uploading && <p role="status" className="mb-3 text-sm">Загружаем фото…</p>}
         <Tabs defaultValue="home" className="w-full">
-          <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
-            <TabsList className="h-auto min-w-max justify-start gap-1 rounded-none bg-transparent p-0">
+          <div className="min-w-0 border-b border-neutral-200 pb-2">
+            <TabsList className="h-auto w-full flex-wrap justify-start gap-1 gap-1 rounded-none bg-transparent p-0">
               {[
                 ["home", "Главная"],
                 ["pages", "Статичные страницы"],
                 ["hubs", "SEO-хабы"],
+                ["links", "Туры для соцсетей"],
                 ["company", "Компания и контакты"],
                 ["social", "Связь и соцсети"],
                 ["analytics", "Аналитика"],
@@ -321,10 +335,14 @@ export default function AdminSettings() {
             <SeoHubsField
               value={data.seo_hubs || {}}
               onChange={updateSeoHub}
+              onDelete={deleteSeoHub}
               tours={tours}
             />
           </TabsContent>
 
+          <TabsContent value="links" className="mt-7">
+            <TravelLinksSettings value={data.links_page || {}} tours={tours} onChange={(patch) => setData((previous) => ({ ...previous, links_page: { ...previous.links_page, ...patch } }))} />
+          </TabsContent>
           <TabsContent value="company" className="mt-7 space-y-8">
             <Group title="Основное">
               <Field label="Название компании" value={data.company_name} onChange={(v) => update("company_name", v)} />
@@ -377,6 +395,7 @@ export default function AdminSettings() {
             </Group>
           </TabsContent>
         </Tabs>
+        </fieldset>
       </form>
       <div className="pointer-events-none fixed bottom-4 left-4 right-4 z-50 flex justify-end md:left-[280px]">
         <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur">
@@ -387,7 +406,7 @@ export default function AdminSettings() {
           <Button
             type="submit"
             form="admin-settings-form"
-            disabled={saving}
+            disabled={saving || uploading}
             className="rounded-full bg-[#C2410C] px-6 hover:bg-[#9A3412]"
             data-testid="admin-settings-save"
           >
@@ -506,6 +525,32 @@ function HomePageContentField({ value = DEFAULT_HOME_PAGE, onChange }) {
         value={content.tours_title}
         onChange={(tours_title) => onChange({ tours_title })}
       />
+
+      <div className="grid gap-3 rounded-xl border border-neutral-200 p-4 sm:grid-cols-2">
+        <Field
+          label="H2 блока отзывов"
+          value={content.reviews_title}
+          onChange={(reviews_title) => onChange({ reviews_title })}
+        />
+        <Field
+          label="Подпись блока отзывов"
+          value={content.reviews_subtitle}
+          onChange={(reviews_subtitle) => onChange({ reviews_subtitle })}
+        />
+      </div>
+
+      <div className="grid gap-3 rounded-xl border border-neutral-200 p-4 sm:grid-cols-2">
+        <Field
+          label="Маленький заголовок блока акций"
+          value={content.promotions_overline}
+          onChange={(promotions_overline) => onChange({ promotions_overline })}
+        />
+        <Field
+          label="H2 блока акций"
+          value={content.promotions_title}
+          onChange={(promotions_title) => onChange({ promotions_title })}
+        />
+      </div>
 
       <div className="space-y-4 rounded-xl border border-neutral-200 p-4">
         <Field
@@ -923,13 +968,13 @@ function SeoPagesField({ value = {}, onChange }) {
       </div>
 
       <Tabs defaultValue={STATIC_SEO_PAGES[0].key}>
-        <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
-          <TabsList className="h-auto min-w-max justify-start rounded-none bg-transparent p-0">
+        <div className="min-w-0 border-b border-neutral-200 pb-2">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-none bg-transparent p-0">
             {STATIC_SEO_PAGES.map((page) => (
               <TabsTrigger
                 key={page.key}
                 value={page.key}
-                className="rounded-b-none px-3 py-2.5 data-[state=active]:bg-neutral-100"
+                className="max-w-full whitespace-normal break-words text-left px-3 py-2.5 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-800"
               >
                 {page.label}
               </TabsTrigger>
@@ -947,6 +992,40 @@ function SeoPagesField({ value = {}, onChange }) {
                   <p className="text-xs text-neutral-500">{page.path}</p>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
+                  <Field
+                    label="Маленький заголовок на странице"
+                    value={item.visible_overline}
+                    onChange={(v) =>
+                      onChange(page.key, {
+                        visible_overline: v,
+                        path: page.path,
+                      })
+                    }
+                  />
+                  <Field
+                    label="Главный заголовок H1 на странице"
+                    value={item.visible_heading}
+                    onChange={(v) =>
+                      onChange(page.key, {
+                        visible_heading: v,
+                        path: page.path,
+                      })
+                    }
+                  />
+                  <div className="lg:col-span-2">
+                    <RichTextareaField
+                      label="Описание под H1"
+                      value={item.visible_description}
+                      onChange={(v) =>
+                        onChange(page.key, {
+                          visible_description: v,
+                          path: page.path,
+                        })
+                      }
+                      rows={4}
+                      hint="Оставьте пустым, если вводный текст на этой странице не нужен."
+                    />
+                  </div>
                   <Field
                     label="SEO Title"
                     value={item.title}
@@ -974,6 +1053,18 @@ function SeoPagesField({ value = {}, onChange }) {
                     />
                   </div>
                 </div>
+                <div className="mt-6 space-y-3 border-t pt-4">
+                  <Field label="Заголовок FAQ" value={item.faq_title || ""} placeholder="Частые вопросы" onChange={(faq_title) => onChange(page.key, { faq_title, path: page.path })} />
+                  {(item.faq_items || []).map((faq, index) => {
+                    const change = (patch) => onChange(page.key, { path: page.path, faq_items: item.faq_items.map((entry, i) => i === index ? { ...entry, ...patch } : entry) });
+                    return <div key={index} className="space-y-2 rounded-xl border p-3">
+                      <Field label={`Вопрос ${index + 1}`} value={faq.question} onChange={(question) => change({ question })} />
+                      <RichTextareaField label="Ответ" value={faq.answer} onChange={(answer) => change({ answer })} rows={3} />
+                      <Button type="button" variant="outline" onClick={() => onChange(page.key, { path: page.path, faq_items: item.faq_items.filter((_, i) => i !== index) })}>Удалить вопрос</Button>
+                    </div>;
+                  })}
+                  <Button type="button" variant="outline" onClick={() => onChange(page.key, { path: page.path, faq_items: [...(item.faq_items || []), { question: "", answer: "" }] })}>Добавить вопрос</Button>
+                </div>
               </div>
             </TabsContent>
           );
@@ -983,7 +1074,77 @@ function SeoPagesField({ value = {}, onChange }) {
   );
 }
 
-function SeoHubsField({ value = {}, onChange, tours = [] }) {
+function SeoHubsField({ value = {}, onChange, onDelete, tours = [] }) {
+  const [activeHub, setActiveHub] = useState(SEO_HUBS[0].slug);
+  const [hubSearch, setHubSearch] = useState("");
+  const [newHubLabel, setNewHubLabel] = useState("");
+  const [newHubSlug, setNewHubSlug] = useState("");
+  const fixedSlugs = new Set(SEO_HUBS.map((hub) => hub.slug));
+  const customHubs = Object.entries(value)
+    .filter(([slug, item]) => !fixedSlugs.has(slug) && item?.custom === true)
+    .map(([slug, item]) => ({
+      slug,
+      label: item.label || item.heading || slug,
+      path: `/tours/${slug}`,
+      custom: true,
+      defaults: {
+        title: item.title || `${item.label || item.heading || slug} | TRAVELSPACE`,
+        description: item.description || "",
+        heading: item.heading || item.label || slug,
+        intro: item.intro || "",
+        catalog_title: "Выберите подходящий тур",
+        content_title: "",
+        content_body: "",
+        content_sections: [],
+        how_to_title: "Как выбрать тур",
+        faq_title: "",
+        faq_items: [],
+      },
+    }));
+  const hubs = [...SEO_HUBS, ...customHubs];
+  const normalizedNewSlug = newHubSlug
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+
+  const addHub = () => {
+    const label = newHubLabel.trim();
+    if (!label || !normalizedNewSlug) {
+      toast.error("Укажите название и URL нового SEO-хаба латиницей");
+      return;
+    }
+    if (hubs.some((hub) => hub.slug === normalizedNewSlug)) {
+      toast.error("SEO-хаб с таким URL уже существует");
+      return;
+    }
+    if (tours.some((tour) => tour?.slug === normalizedNewSlug)) {
+      toast.error("Этот URL уже занят отдельной страницей тура");
+      return;
+    }
+    onChange(normalizedNewSlug, {
+      custom: true,
+      label,
+      path: `/tours/${normalizedNewSlug}`,
+      title: `${label} | TRAVELSPACE`,
+      description: "",
+      heading: label,
+      intro: "",
+      catalog_title: "Выберите подходящий тур",
+      content_title: "",
+      content_body: "",
+      content_sections: [],
+      how_to_title: "Как выбрать тур",
+      faq_title: "",
+      faq_items: [],
+      tour_ids: [],
+    });
+    setActiveHub(normalizedNewSlug);
+    setNewHubLabel("");
+    setNewHubSlug("");
+  };
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
@@ -995,14 +1156,43 @@ function SeoHubsField({ value = {}, onChange, tours = [] }) {
         </p>
       </div>
 
-      <Tabs defaultValue={SEO_HUBS[0].slug}>
-        <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
-          <TabsList className="h-auto min-w-max justify-start rounded-none bg-transparent p-0">
-            {SEO_HUBS.map((hub) => (
+      <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
+        <div>
+          <p className="font-medium">Новый сезонный или тематический хаб</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            Например: «Рождественские туры» с URL christmas-tours. После
+            создания выберите и расставьте туры во вкладке «Туры в хабе».
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <Field
+            label="Название хаба"
+            value={newHubLabel}
+            onChange={setNewHubLabel}
+            placeholder="Рождественские туры"
+          />
+          <Field
+            label="URL после /tours/"
+            value={newHubSlug}
+            onChange={setNewHubSlug}
+            placeholder="christmas-tours"
+          />
+          <Button type="button" onClick={addHub}>
+            <Plus className="mr-1 size-4" /> Создать хаб
+          </Button>
+        </div>
+      </div>
+
+      <Tabs value={activeHub} onValueChange={setActiveHub} className="min-w-0">
+        <Input aria-label="Найти хаб" placeholder="Найти хаб по названию или URL" value={hubSearch} onChange={(event) => setHubSearch(event.target.value)} className="mb-3 max-w-md" />
+        <p className="mb-2 text-xs text-neutral-500">Всего хабов: {hubs.length}. Выберите хаб ниже или найдите по названию.</p>
+        <div className="max-h-64 overflow-y-auto min-w-0 border-b border-neutral-200 pb-2 pr-1">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-none bg-transparent p-0">
+            {hubs.filter((hub) => hub.slug === activeHub || `${hub.label} ${hub.slug}`.toLocaleLowerCase().includes(hubSearch.trim().toLocaleLowerCase())).map((hub) => (
               <TabsTrigger
                 key={hub.slug}
                 value={hub.slug}
-                className="rounded-b-none px-3 py-2.5 data-[state=active]:bg-neutral-100"
+                className="max-w-full whitespace-normal break-words text-left px-3 py-2.5 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-800"
               >
                 {hub.label}
               </TabsTrigger>
@@ -1010,7 +1200,7 @@ function SeoHubsField({ value = {}, onChange, tours = [] }) {
           </TabsList>
         </div>
 
-        {SEO_HUBS.map((hub) => {
+        {hubs.map((hub) => {
           const stored = value[hub.slug] || {};
           const item = {
             ...hub.defaults,
@@ -1052,37 +1242,51 @@ function SeoHubsField({ value = {}, onChange, tours = [] }) {
                     <p className="font-heading text-xl">{hub.label}</p>
                     <p className="mt-1 text-sm text-neutral-500">{hub.path}</p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      onChange(hub.slug, {
-                        path: hub.path,
-                        title: hub.defaults.title,
-                        description: hub.defaults.description,
-                        heading: hub.defaults.heading,
-                        intro: hub.defaults.intro,
-                        catalog_title: hub.defaults.catalog_title,
-                        content_title: hub.defaults.content_title,
-                        content_body: hub.defaults.content_body,
-                        content_sections: hub.defaults.content_sections.map(
-                          (section) => ({ ...section }),
-                        ),
-                        how_to_title: hub.defaults.how_to_title,
-                        faq_title: hub.defaults.faq_title,
-                        faq_items: hub.defaults.faq_items.map((faqItem) => ({
-                          ...faqItem,
-                        })),
-                      })
-                    }
-                  >
-                    Вернуть стандартные тексты
-                  </Button>
+                  {hub.custom ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (!confirm(`Удалить SEO-хаб «${hub.label}»?`)) return;
+                        onDelete(hub.slug);
+                        setActiveHub(SEO_HUBS[0].slug);
+                      }}
+                    >
+                      Удалить хаб
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        onChange(hub.slug, {
+                          path: hub.path,
+                          title: hub.defaults.title,
+                          description: hub.defaults.description,
+                          heading: hub.defaults.heading,
+                          intro: hub.defaults.intro,
+                          catalog_title: hub.defaults.catalog_title,
+                          content_title: hub.defaults.content_title,
+                          content_body: hub.defaults.content_body,
+                          content_sections: hub.defaults.content_sections.map(
+                            (section) => ({ ...section }),
+                          ),
+                          how_to_title: hub.defaults.how_to_title,
+                          faq_title: hub.defaults.faq_title,
+                          faq_items: hub.defaults.faq_items.map((faqItem) => ({
+                            ...faqItem,
+                          })),
+                        })
+                      }
+                    >
+                      Вернуть стандартные тексты
+                    </Button>
+                  )}
                 </div>
 
                 <Tabs defaultValue="main">
-                  <div className="overflow-x-auto border-b border-neutral-200 no-scrollbar">
-                    <TabsList className="h-auto min-w-max justify-start rounded-none bg-transparent p-0">
+                  <div className="min-w-0 border-b border-neutral-200 pb-2">
+                    <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-none bg-transparent p-0">
                       <TabsTrigger value="main">Основное</TabsTrigger>
                       <TabsTrigger value="content">
                         Текст после каталога
@@ -1098,6 +1302,19 @@ function SeoHubsField({ value = {}, onChange, tours = [] }) {
 
                   <TabsContent value="main" className="mt-5">
                     <div className="grid gap-4 lg:grid-cols-2">
+                      {hub.custom && (
+                        <Field
+                          label="Название хаба в списках"
+                          value={stored.label || hub.label}
+                          onChange={(label) =>
+                            onChange(hub.slug, {
+                              custom: true,
+                              label,
+                              path: hub.path,
+                            })
+                          }
+                        />
+                      )}
                       <Field
                         label="SEO Title"
                         value={item.title}
@@ -1653,19 +1870,17 @@ function SeoHubToursField({ hub, stored = {}, tours = [], onChange }) {
 }
 
 function ImageUploadField({ label, value, onChange }) {
+  const latestChange = useRef(onChange);
+  latestChange.current = onChange;
   const [uploading, setUploading] = useState(false);
 
   const uploadImage = async (file) => {
-    if (!file) return;
+    if (!file || hasPendingUploads()) return;
 
     try {
       setUploading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await api.post("/admin/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      onChange(response.data.url);
+      const url = await uploadPreparedImage(file);
+      latestChange.current(url);
       toast.success("Изображение загружено");
     } catch (e) {
       console.error(e);
@@ -1761,4 +1976,34 @@ function Field({ label, value, onChange, placeholder }) {
       />
     </div>
   );
+}
+
+function TravelLinksSettings({ value, tours, onChange }) {
+  const [search, setSearch] = useState("");
+  const manual = Array.isArray(value.tour_slugs);
+  const selected = value.tour_slugs || [];
+  const move = (index, delta) => {
+    const next = [...selected];
+    [next[index], next[index + delta]] = [next[index + delta], next[index]];
+    onChange({ tour_slugs: next });
+  };
+  return <div className="space-y-4">
+    <p className="text-sm text-neutral-600">Страница /links для соцсетей. По умолчанию показывает туры с предстоящими датами, ближайшие первыми. В ручном режиме вы выбираете состав и порядок.</p>
+    <Field label="Заголовок" value={value.title || ""} placeholder="Актуальные туры" onChange={(title) => onChange({ title })} />
+    <TextareaField label="Описание" value={value.description || ""} onChange={(description) => onChange({ description })} />
+    <label className="flex gap-2 items-center"><input type="checkbox" checked={manual} onChange={(event) => onChange({ tour_slugs: event.target.checked ? [] : null })} /> Выбирать туры и порядок вручную</label>
+    {manual && <>
+      <div className="space-y-2">{selected.map((slug, index) => <div key={slug} className="flex items-center gap-2 rounded-xl border p-3">
+        <span className="min-w-0 flex-1 break-words">{tours.find((tour) => tour.slug === slug)?.title || slug}</span>
+        <Button type="button" variant="outline" disabled={!index} aria-label="Выше" onClick={() => move(index, -1)}>↑</Button>
+        <Button type="button" variant="outline" disabled={index === selected.length - 1} aria-label="Ниже" onClick={() => move(index, 1)}>↓</Button>
+        <Button type="button" variant="outline" aria-label="Убрать тур" onClick={() => onChange({ tour_slugs: selected.filter((item) => item !== slug) })}>×</Button>
+      </div>)}</div>
+      <Input placeholder="Найти тур" aria-label="Найти тур для соцсетей" value={search} onChange={(event) => setSearch(event.target.value)} />
+      <div className="max-h-96 space-y-2 overflow-y-auto">{tours.filter((tour) => !selected.includes(tour.slug) && `${tour.title} ${tour.slug}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((tour) => <div key={tour.slug} className="flex items-center gap-2 rounded-xl border p-3">
+        <span className="min-w-0 flex-1 break-words">{tour.title}{(tour.active === false || tour.hidden) && " (скрыт на сайте)"}</span>
+        <Button type="button" variant="outline" onClick={() => onChange({ tour_slugs: [...selected, tour.slug] })}>Добавить</Button>
+      </div>)}</div>
+    </>}
+  </div>;
 }

@@ -7,6 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { RichInline } from "@/lib/richText";
 import { Loader2, Phone } from "lucide-react";
 
 const MESSENGER_META = {
@@ -325,7 +326,9 @@ export default function MessengerModal({
                   <>
                     <p className="font-medium text-sm">{direction.name}</p>
                     <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">
-                      {directionPhone?.phone || direction.short}
+                      {directionPhone?.phone || (
+                        <RichInline text={direction.short} links={false} />
+                      )}
                     </p>
                     {isMissing && (
                       <p className="mt-2 text-[11px] text-red-600">

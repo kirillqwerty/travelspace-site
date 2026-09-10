@@ -28,11 +28,12 @@ test("server content remains visible until the actual page commits", () => {
   expect(snapshot.parentElement).toBe(document.body);
   expect(snapshot.hidden).toBe(false);
   expect(snapshot.textContent).toContain("Полная программа");
-  expect(document.getElementById("initial-load-cover")).toBeNull();
+  expect(document.getElementById("initial-load-cover")).not.toBeNull();
   root.innerHTML = "<h1>Тур в Грузию</h1><p>Полная программа</p>";
   completePageMount();
   expect(root.hidden).toBe(false);
   expect(document.querySelector("[data-seo-prerender]")).toBeNull();
+  expect(document.getElementById("initial-load-cover")).toBeNull();
   expect(document.querySelectorAll("h1")).toHaveLength(1);
 });
 

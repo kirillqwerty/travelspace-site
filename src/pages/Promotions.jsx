@@ -14,6 +14,7 @@ import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 import { RichText } from "@/lib/richText";
 import { formatDate } from "@/lib/formatDate";
 
@@ -48,10 +49,11 @@ export default function Promotions() {
         title="Акции и спецпредложения на туры | TRAVELSPACE"
         description="Актуальные акции, скидки и спецпредложения на автобусные туры из Минска."
       />
-      <p className="overline text-[#C2410C]">Акции</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-        Спецпредложения сезона
-      </h1>
+      <StaticPageIntro
+        pageKey="promotions"
+        overline="Акции"
+        heading="Спецпредложения сезона"
+      />
 
       <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {items.map((p) => (

@@ -16,11 +16,18 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import StickyMobileBar from "@/components/StickyMobileBar";
 import CookieBanner from "@/components/CookieBanner";
+import StaticPageFaq from "@/components/StaticPageFaq";
+import CrmChat from "@/components/CrmChat";
 import MarketingScripts from "@/components/MarketingScripts";
 import IntroScreen from "@/components/IntroScreen";
 import { initAttribution, trackPageView } from "@/lib/analytics";
 import { isTourLandingSlug } from "@/lib/seoLandings";
-import { completePageMount, getPageBootstrap } from "@/lib/pageBootstrap";
+import {
+  completePageMount,
+  getInitialSiteData,
+  getPageBootstrap,
+} from "@/lib/pageBootstrap";
+import { useSiteData } from "@/lib/useSiteData";
 
 const Home = lazy(() => import("@/pages/Home"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
@@ -83,10 +90,11 @@ function PublicLayout({ children }) {
   return (
     <div className="flex min-h-screen flex-col pb-16 lg:pb-0">
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">{children}<StaticPageFaq /></main>
       <Footer />
       <StickyMobileBar />
       <CookieBanner />
+      <CrmChat />
     </div>
   );
 }
@@ -97,7 +105,12 @@ function PublicPage({ children }) {
     const tour = pathname.match(/^\/tours\/([^/]+)\/?$/);
     const article = /^\/blog\/[^/]+\/?$/.test(pathname);
     // Detail pages release the server document only after their data is ready.
-    if (!article && (!tour || isTourLandingSlug(tour[1]))) completePageMount();
+    if (
+      !article &&
+      (!tour || isTourLandingSlug(tour[1], getInitialSiteData()?.settings))
+    ) {
+      completePageMount();
+    }
   }, [pathname]);
   return <PublicLayout>{children}</PublicLayout>;
 }
@@ -124,7 +137,12 @@ function DirectionRedirect() {
 
 function TourSlugRoute() {
   const { slug = "" } = useParams();
-  return isTourLandingSlug(slug) ? <TourLanding slug={slug} /> : <TourPage />;
+  const { settings } = useSiteData();
+  return isTourLandingSlug(slug, settings) ? (
+    <TourLanding slug={slug} />
+  ) : (
+    <TourPage />
+  );
 }
 
 export default function App() {

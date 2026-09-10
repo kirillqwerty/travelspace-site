@@ -1,4 +1,5 @@
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 
 export default function Legal() {
   return (
@@ -12,10 +13,12 @@ export default function Legal() {
         title="Юридическая информация | TRAVELSPACE"
         description="Политика конфиденциальности, согласие на обработку персональных данных, публичный договор и реквизиты TRAVELSPACE."
       />
-      <p className="overline text-[#C2410C]">Документы</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3">
-        Юридическая информация
-      </h1>
+      <StaticPageIntro
+        pageKey="legal"
+        overline="Документы"
+        heading="Юридическая информация"
+        headingClassName=""
+      />
 
       <section className="mt-12 prose prose-neutral max-w-none">
         <h2 className="font-heading text-2xl">Политика конфиденциальности</h2>

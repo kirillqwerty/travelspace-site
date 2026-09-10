@@ -1,16 +1,18 @@
 import { BadgeCheck, Bus, MapPin, Users, Heart, Globe } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 
 export default function About() {
   return (
     <div data-testid="about-page">
       <PageSeo pageKey="about" path="/about" title="О компании TRAVELSPACE — туроператор из Минска" description="TRAVELSPACE разрабатывает автобусные туры из Минска, сопровождает группы и помогает туристам путешествовать спокойно и понятно." />
       <section className="section-container pt-32 lg:pt-36 pb-10 lg:pb-14">
-        <p className="overline text-[#C2410C]">О компании</p>
-        <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-          Делаем путешествия простыми
-        </h1>
+        <StaticPageIntro
+          pageKey="about"
+          overline="О компании"
+          heading="Делаем путешествия простыми"
+        />
       </section>
 
       <section className="section-container py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-start">

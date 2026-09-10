@@ -7,6 +7,10 @@ export const DEFAULT_HOME_PAGE = {
     "TRAVELSPACE организует автобусные туры из Минска и других городов Беларуси. В программах заранее указаны маршрут, даты, проживание, экскурсии и состав стоимости.\n\nВыберите подходящее направление в каталоге [автобусных туров из Минска](/tours/avtobusnye-iz-minska) — менеджер поможет сравнить программы и оформить поездку.",
   tours_title: "Популярные автобусные туры из Минска",
   directions_title: "Куда можно поехать из Минска на автобусе",
+  reviews_title: "Отзывы туристов",
+  reviews_subtitle: "Что о нас говорят",
+  promotions_overline: "Сейчас выгодно",
+  promotions_title: "Актуальные акции",
   directions_sections: [
     {
       title: "Экскурсионные туры",
@@ -51,6 +55,10 @@ export function getHomePageContent(settings) {
     "intro_text",
     "tours_title",
     "directions_title",
+    "reviews_title",
+    "reviews_subtitle",
+    "promotions_overline",
+    "promotions_title",
     "faq_title",
   ].forEach((key) => {
     const value = configured[key];

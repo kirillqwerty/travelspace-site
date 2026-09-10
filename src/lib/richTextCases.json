@@ -1,0 +1,835 @@
+[
+  {
+    "text": "**Тур**",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "strong"
+    ]
+  },
+  {
+    "text": "_Тур_",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "em"
+    ]
+  },
+  {
+    "text": "__Тур__",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "u"
+    ]
+  },
+  {
+    "text": "[Тур](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a"
+    ]
+  },
+  {
+    "text": "**_Тур_**",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "strong",
+      "em"
+    ]
+  },
+  {
+    "text": "**__Тур__**",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "strong",
+      "u"
+    ]
+  },
+  {
+    "text": "**[Тур](/tours/new_year_(winter)?a=1&b=2)**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "a"
+    ]
+  },
+  {
+    "text": "_**Тур**_",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "em",
+      "strong"
+    ]
+  },
+  {
+    "text": "___Тур___",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "em",
+      "u"
+    ]
+  },
+  {
+    "text": "_[Тур](/tours/new_year_(winter)?a=1&b=2)_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "a"
+    ]
+  },
+  {
+    "text": "__**Тур**__",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "u",
+      "strong"
+    ]
+  },
+  {
+    "text": "___Тур___",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "u",
+      "em"
+    ]
+  },
+  {
+    "text": "__[Тур](/tours/new_year_(winter)?a=1&b=2)__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "a"
+    ]
+  },
+  {
+    "text": "[**Тур**](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "strong"
+    ]
+  },
+  {
+    "text": "[_Тур_](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "em"
+    ]
+  },
+  {
+    "text": "[__Тур__](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "u"
+    ]
+  },
+  {
+    "text": "**___Тур___**",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "strong",
+      "em",
+      "u"
+    ]
+  },
+  {
+    "text": "**_[Тур](/tours/new_year_(winter)?a=1&b=2)_**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "em",
+      "a"
+    ]
+  },
+  {
+    "text": "**___Тур___**",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "strong",
+      "u",
+      "em"
+    ]
+  },
+  {
+    "text": "**__[Тур](/tours/new_year_(winter)?a=1&b=2)__**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "u",
+      "a"
+    ]
+  },
+  {
+    "text": "**[_Тур_](/tours/new_year_(winter)?a=1&b=2)**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "a",
+      "em"
+    ]
+  },
+  {
+    "text": "**[__Тур__](/tours/new_year_(winter)?a=1&b=2)**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "a",
+      "u"
+    ]
+  },
+  {
+    "text": "_**__Тур__**_",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "em",
+      "strong",
+      "u"
+    ]
+  },
+  {
+    "text": "_**[Тур](/tours/new_year_(winter)?a=1&b=2)**_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "strong",
+      "a"
+    ]
+  },
+  {
+    "text": "___**Тур**___",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "em",
+      "u",
+      "strong"
+    ]
+  },
+  {
+    "text": "___[Тур](/tours/new_year_(winter)?a=1&b=2)___",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "u",
+      "a"
+    ]
+  },
+  {
+    "text": "_[**Тур**](/tours/new_year_(winter)?a=1&b=2)_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "a",
+      "strong"
+    ]
+  },
+  {
+    "text": "_[__Тур__](/tours/new_year_(winter)?a=1&b=2)_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "a",
+      "u"
+    ]
+  },
+  {
+    "text": "__**_Тур_**__",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "u",
+      "strong",
+      "em"
+    ]
+  },
+  {
+    "text": "__**[Тур](/tours/new_year_(winter)?a=1&b=2)**__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "strong",
+      "a"
+    ]
+  },
+  {
+    "text": "___**Тур**___",
+    "plain": "Тур",
+    "hrefs": [],
+    "tags": [
+      "u",
+      "em",
+      "strong"
+    ]
+  },
+  {
+    "text": "___[Тур](/tours/new_year_(winter)?a=1&b=2)___",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "em",
+      "a"
+    ]
+  },
+  {
+    "text": "__[**Тур**](/tours/new_year_(winter)?a=1&b=2)__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "a",
+      "strong"
+    ]
+  },
+  {
+    "text": "__[_Тур_](/tours/new_year_(winter)?a=1&b=2)__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "a",
+      "em"
+    ]
+  },
+  {
+    "text": "[**_Тур_**](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "strong",
+      "em"
+    ]
+  },
+  {
+    "text": "[**__Тур__**](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "strong",
+      "u"
+    ]
+  },
+  {
+    "text": "[_**Тур**_](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "em",
+      "strong"
+    ]
+  },
+  {
+    "text": "[___Тур___](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "em",
+      "u"
+    ]
+  },
+  {
+    "text": "[__**Тур**__](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "u",
+      "strong"
+    ]
+  },
+  {
+    "text": "[___Тур___](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "u",
+      "em"
+    ]
+  },
+  {
+    "text": "**___[Тур](/tours/new_year_(winter)?a=1&b=2)___**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "em",
+      "u",
+      "a"
+    ]
+  },
+  {
+    "text": "**_[__Тур__](/tours/new_year_(winter)?a=1&b=2)_**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "em",
+      "a",
+      "u"
+    ]
+  },
+  {
+    "text": "**___[Тур](/tours/new_year_(winter)?a=1&b=2)___**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "u",
+      "em",
+      "a"
+    ]
+  },
+  {
+    "text": "**__[_Тур_](/tours/new_year_(winter)?a=1&b=2)__**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "u",
+      "a",
+      "em"
+    ]
+  },
+  {
+    "text": "**[___Тур___](/tours/new_year_(winter)?a=1&b=2)**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "a",
+      "em",
+      "u"
+    ]
+  },
+  {
+    "text": "**[___Тур___](/tours/new_year_(winter)?a=1&b=2)**",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "strong",
+      "a",
+      "u",
+      "em"
+    ]
+  },
+  {
+    "text": "_**__[Тур](/tours/new_year_(winter)?a=1&b=2)__**_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "strong",
+      "u",
+      "a"
+    ]
+  },
+  {
+    "text": "_**[__Тур__](/tours/new_year_(winter)?a=1&b=2)**_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "strong",
+      "a",
+      "u"
+    ]
+  },
+  {
+    "text": "___**[Тур](/tours/new_year_(winter)?a=1&b=2)**___",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "u",
+      "strong",
+      "a"
+    ]
+  },
+  {
+    "text": "___[**Тур**](/tours/new_year_(winter)?a=1&b=2)___",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "u",
+      "a",
+      "strong"
+    ]
+  },
+  {
+    "text": "_[**__Тур__**](/tours/new_year_(winter)?a=1&b=2)_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "a",
+      "strong",
+      "u"
+    ]
+  },
+  {
+    "text": "_[__**Тур**__](/tours/new_year_(winter)?a=1&b=2)_",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "em",
+      "a",
+      "u",
+      "strong"
+    ]
+  },
+  {
+    "text": "__**_[Тур](/tours/new_year_(winter)?a=1&b=2)_**__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "strong",
+      "em",
+      "a"
+    ]
+  },
+  {
+    "text": "__**[_Тур_](/tours/new_year_(winter)?a=1&b=2)**__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "strong",
+      "a",
+      "em"
+    ]
+  },
+  {
+    "text": "___**[Тур](/tours/new_year_(winter)?a=1&b=2)**___",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "em",
+      "strong",
+      "a"
+    ]
+  },
+  {
+    "text": "___[**Тур**](/tours/new_year_(winter)?a=1&b=2)___",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "em",
+      "a",
+      "strong"
+    ]
+  },
+  {
+    "text": "__[**_Тур_**](/tours/new_year_(winter)?a=1&b=2)__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "a",
+      "strong",
+      "em"
+    ]
+  },
+  {
+    "text": "__[_**Тур**_](/tours/new_year_(winter)?a=1&b=2)__",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "u",
+      "a",
+      "em",
+      "strong"
+    ]
+  },
+  {
+    "text": "[**___Тур___**](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "strong",
+      "em",
+      "u"
+    ]
+  },
+  {
+    "text": "[**___Тур___**](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "strong",
+      "u",
+      "em"
+    ]
+  },
+  {
+    "text": "[_**__Тур__**_](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "em",
+      "strong",
+      "u"
+    ]
+  },
+  {
+    "text": "[___**Тур**___](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "em",
+      "u",
+      "strong"
+    ]
+  },
+  {
+    "text": "[__**_Тур_**__](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "u",
+      "strong",
+      "em"
+    ]
+  },
+  {
+    "text": "[___**Тур**___](/tours/new_year_(winter)?a=1&b=2)",
+    "plain": "Тур",
+    "hrefs": [
+      "/tours/new_year_(winter)?a=1&b=2"
+    ],
+    "tags": [
+      "a",
+      "u",
+      "em",
+      "strong"
+    ]
+  },
+  {
+    "text": "**До [**тура**](/tours/test) после**",
+    "plain": "До тура после",
+    "hrefs": [
+      "/tours/test"
+    ],
+    "tags": [
+      "strong",
+      "a"
+    ]
+  },
+  {
+    "text": "[Тур [зима]](/tours/winter_(new))",
+    "plain": "Тур [зима]",
+    "hrefs": [
+      "/tours/winter_(new)"
+    ],
+    "tags": [
+      "a"
+    ]
+  },
+  {
+    "text": "[Тур] ​(https://example.com/a_(b))",
+    "plain": "Тур",
+    "hrefs": [
+      "https://example.com/a_(b)"
+    ],
+    "tags": [
+      "a"
+    ]
+  },
+  {
+    "text": "https://example.com/path_(winter).",
+    "plain": "https://example.com/path_(winter).",
+    "hrefs": [
+      "https://example.com/path_(winter)"
+    ],
+    "tags": [
+      "a"
+    ]
+  },
+  {
+    "text": "[**Нет**](javascript:alert(1))",
+    "plain": "Нет",
+    "hrefs": [],
+    "tags": [
+      "strong"
+    ]
+  },
+  {
+    "text": "[Нет](/\\evil.example)",
+    "plain": "Нет",
+    "hrefs": [],
+    "tags": []
+  },
+  {
+    "text": "[Нет](https://)",
+    "plain": "Нет",
+    "hrefs": [],
+    "tags": []
+  },
+  {
+    "text": "[https://example.com](/tours/a)",
+    "plain": "https://example.com",
+    "hrefs": [
+      "/tours/a"
+    ],
+    "tags": [
+      "a"
+    ]
+  },
+  {
+    "text": "**Первый** и **второй**",
+    "plain": "Первый и второй",
+    "hrefs": [],
+    "tags": [
+      "strong"
+    ]
+  },
+  {
+    "text": "**Незакрытый",
+    "plain": "**Незакрытый",
+    "hrefs": [],
+    "tags": []
+  },
+  {
+    "text": "имя_файла_test",
+    "plain": "имя_файла_test",
+    "hrefs": [],
+    "tags": []
+  }
+]

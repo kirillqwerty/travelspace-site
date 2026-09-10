@@ -33,8 +33,9 @@ import TourCard from "@/components/TourCard";
 import LeadDialog from "@/components/LeadDialog";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
-import { RichText, RichInline } from "@/lib/richText";
+import { RichText, RichInline, richTextToPlain } from "@/lib/richText";
 import { getHomePageContent } from "@/lib/homeContent";
+import { sortReviewsByDate } from "@/lib/reviews";
 import {
   getTourSectionAnchor,
   getTourSectionPath,
@@ -124,6 +125,7 @@ export default function Home({ startVideo = false }) {
   const benefitsSection = getBenefitsSection(settings);
   const homePage = getHomePageContent(settings);
   const activeTransport = getTransportFromHash(location.hash);
+  const sortedReviews = useMemo(() => sortReviewsByDate(reviews), [reviews]);
 
   useEffect(() => {
     api.get("/reviews").then((r) => setReviews(r.data)).catch(() => {});
@@ -145,10 +147,10 @@ export default function Home({ startVideo = false }) {
       "@type": "FAQPage",
       mainEntity: faqItems.map((item) => ({
         "@type": "Question",
-        name: item.question,
+        name: richTextToPlain(item.question),
         acceptedAnswer: {
           "@type": "Answer",
-          text: item.answer,
+          text: richTextToPlain(item.answer),
         },
       })),
     };
@@ -442,7 +444,7 @@ export default function Home({ startVideo = false }) {
         </div>
       </section>
       {/* ======================= REVIEWS ======================= */}
-      {reviews.length > 0 && (
+      {sortedReviews.length > 0 && (
         <section
           className="py-8 bg-neutral-50 lg:py-10"
           data-testid="reviews-section"
@@ -451,9 +453,11 @@ export default function Home({ startVideo = false }) {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="font-heading text-4xl sm:text-5xl max-w-2xl">
-                  Отзывы туристов
+                  {homePage.reviews_title}
                 </h2>
-                <p className="mt-2 text-neutral-600">Что о нас говорят</p>
+                <p className="mt-2 text-neutral-600">
+                  {homePage.reviews_subtitle}
+                </p>
               </div>
               <Link
                 to="/reviews"
@@ -464,7 +468,7 @@ export default function Home({ startVideo = false }) {
             </div>
 
             <div className="mt-8 flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
-              {reviews.slice(0, 4).map((r) => (
+              {sortedReviews.slice(0, 4).map((r) => (
                 <Link
                   key={r.id}
                   to="/reviews"
@@ -481,8 +485,8 @@ export default function Home({ startVideo = false }) {
                   ) : (
                     <Quote className="size-7 text-[#C2410C] mb-3" />
                   )}
-                  <p className="line-clamp-4 text-sm leading-relaxed text-neutral-700">
-                    <RichInline text={r.text} />
+                  <p className="line-clamp-4 text-base leading-7 text-neutral-700">
+                    <RichInline text={r.text} links={false} />
                   </p>
                   <div className="mt-4 border-t border-neutral-100 pt-3">
                     <h3 className="font-medium text-sm">{r.name}</h3>
@@ -502,9 +506,11 @@ export default function Home({ startVideo = false }) {
           <div className="section-container">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 mb-7">
               <div>
-                <p className="overline text-[#C2410C]">Сейчас выгодно</p>
+                <p className="overline text-[#C2410C]">
+                  {homePage.promotions_overline}
+                </p>
                 <h2 className="font-heading text-4xl sm:text-5xl mt-2 max-w-xl">
-                  Актуальные акции
+                  {homePage.promotions_title}
                 </h2>
               </div>
               <Link
@@ -603,12 +609,12 @@ export default function Home({ startVideo = false }) {
                   value={String(item.id || index)}
                   className="px-1"
                 >
-                  <AccordionTrigger className="py-5 text-left text-base font-medium hover:no-underline sm:text-lg">
+                  <AccordionTrigger className="py-2.5 text-left text-base font-medium hover:no-underline sm:text-lg">
                     {item.question}
                   </AccordionTrigger>
                   <AccordionContent
                     forceMount
-                    className="pb-5 text-neutral-700 leading-relaxed"
+                    className="pb-2.5 text-neutral-700 leading-relaxed"
                   >
                     <RichText text={item.answer} className="leading-7" />
                   </AccordionContent>

@@ -4,6 +4,8 @@ import { ArrowRight, Calendar, MapPin, Sparkles } from "lucide-react";
 import PageSeo from "@/components/PageSeo";
 import { mediaUrl } from "@/lib/media";
 import { useSiteData } from "@/lib/useSiteData";
+import { selectTravelLinksTours, upcomingTourDates } from "@/lib/travelLinks";
+import { RichInline } from "@/lib/richText";
 
 function getTourImage(tour) {
   return (
@@ -34,19 +36,6 @@ function getPriceLabel(tour) {
   return `${priceType} ${tour.price_from} ${currency}${additional}`;
 }
 
-function hasTourDates(tour) {
-  const legacyDates = Array.isArray(tour?.dates) ? tour.dates : [];
-  const chainDates = Array.isArray(tour?.chains)
-    ? tour.chains
-        .filter((chain) => chain?.active !== false)
-        .flatMap((chain) => (Array.isArray(chain?.dates) ? chain.dates : []))
-    : [];
-
-  return [...legacyDates, ...chainDates].some(
-    (date) => date?.status !== "hidden",
-  );
-}
-
 function getDepartureLabel(tour) {
   const cities = Array.isArray(tour?.departure_cities)
     ? tour.departure_cities
@@ -60,15 +49,9 @@ function getDepartureLabel(tour) {
 }
 
 export default function TravelLinks() {
-  const { tours, ready } = useSiteData();
-
-  const actualTours = useMemo(() => {
-    return [...(Array.isArray(tours) ? tours : [])].sort((a, b) => {
-      const aOrder = Number(a?.sort_order ?? a?.order ?? 9999);
-      const bOrder = Number(b?.sort_order ?? b?.order ?? 9999);
-      return aOrder - bOrder;
-    });
-  }, [tours]);
+  const { tours, ready, settings } = useSiteData();
+  const config = settings?.links_page || {};
+  const actualTours = useMemo(() => selectTravelLinksTours(tours, settings?.links_page), [tours, settings]);
 
   return (
     <div
@@ -94,11 +77,10 @@ export default function TravelLinks() {
               TRAVELSPACE
             </p>
             <h1 className="relative mt-2 font-heading text-3xl leading-tight sm:text-4xl">
-              Актуальные туры
+              {config.title || "Актуальные туры"}
             </h1>
             <p className="relative mt-3 text-sm leading-relaxed text-white/75">
-              Выберите тур из списка — мы сразу откроем подробную страницу с
-              программой, датами и стоимостью.
+              {config.description || "Выберите тур из списка — мы сразу откроем подробную страницу с программой, датами и стоимостью."}
             </p>
           </div>
         </div>
@@ -117,7 +99,7 @@ export default function TravelLinks() {
             actualTours.map((tour) => {
               const image = getTourImage(tour);
               const description = getDescription(tour);
-              const hasDates = hasTourDates(tour);
+              const hasDates = upcomingTourDates(tour).length > 0;
 
               return (
                 <Link
@@ -153,7 +135,7 @@ export default function TravelLinks() {
 
                     {description && (
                       <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-neutral-600">
-                        {description}
+                        <RichInline text={description} links={false} />
                       </p>
                     )}
 

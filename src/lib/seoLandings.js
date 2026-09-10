@@ -210,10 +210,34 @@ export const TOUR_LANDING_LINKS = [
   ["arktika", "Арктика"],
 ].map(([slug, label]) => ({ slug, label, path: `/tours/${slug}` }));
 
+export function getTourLandingLinks(settings) {
+  const known = new Set(TOUR_LANDING_LINKS.map((item) => item.slug));
+  const custom = Object.entries(settings?.seo_hubs || {})
+    .filter(
+      ([slug, item]) =>
+        !known.has(slug) && item?.custom === true && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug),
+    )
+    .map(([slug, item]) => ({
+      slug,
+      label: item.label || item.heading || slug,
+      path: `/tours/${slug}`,
+    }));
+  return [...TOUR_LANDING_LINKS, ...custom];
+}
+
 export function getTourLanding(settings, slug = "") {
-  const fallback = getTourLandingDefaults(slug);
-  if (!fallback) return null;
   const configured = settings?.seo_hubs?.[slug] || {};
+  const fallback = getTourLandingDefaults(slug);
+  const isCustom = !fallback && configured?.custom === true;
+  if (!fallback && !isCustom) return null;
+  const defaults = fallback || {
+    ...EMPTY_LANDING_CONTENT,
+    title: configured.title || `${configured.heading || configured.label || slug} | TRAVELSPACE`,
+    description: configured.description || "",
+    heading: configured.heading || configured.label || slug,
+    intro: configured.intro || "",
+    custom: true,
+  };
   const editable = {};
 
   ["title", "description", "heading", "intro"].forEach((field) => {
@@ -246,7 +270,12 @@ export function getTourLanding(settings, slug = "") {
     editable.tour_ids = [...new Set(configured.tour_ids.map(String))];
   }
 
-  return { ...fallback, ...editable };
+  return {
+    ...defaults,
+    ...editable,
+    custom: isCustom || configured.custom === true,
+    label: configured.label || defaults.heading,
+  };
 }
 
 function tourSearchText(tour) {
@@ -263,13 +292,14 @@ function tourSearchText(tour) {
     .toLowerCase();
 }
 
-export function isTourLandingSlug(slug = "") {
-  return Boolean(TOUR_LANDINGS[slug]);
+export function isTourLandingSlug(slug = "", settings) {
+  return Boolean(
+    TOUR_LANDINGS[slug] || settings?.seo_hubs?.[slug]?.custom === true,
+  );
 }
 
 export function filterToursForLanding(tours = [], slug = "", tourIds) {
   const landing = TOUR_LANDINGS[slug];
-  if (!landing) return [];
 
   if (Array.isArray(tourIds)) {
     const byReference = new Map();
@@ -281,6 +311,8 @@ export function filterToursForLanding(tours = [], slug = "", tourIds) {
       .map((tourId) => byReference.get(String(tourId)))
       .filter(Boolean);
   }
+
+  if (!landing) return [];
 
   if (landing.transportType) {
     return tours.filter(

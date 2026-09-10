@@ -1,8 +1,19 @@
 import { Bold } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { readMarkdownLink } from "@/lib/richTextTokens";
 
 export function toggleBoldSelection(value, start, end) {
   const current = String(value ?? "");
+  for (let i = 0; i < current.length; i++) {
+    const link = readMarkdownLink(current, i);
+    if (!link) continue;
+    if (start >= link.labelEnd && start < link.end && end <= link.end) {
+      start = i + 1; end = link.labelEnd;
+    } else if (start < link.end && end > i && !(start > i && end <= link.labelEnd)) {
+      start = Math.min(start, i); end = Math.max(end, link.end);
+    }
+    i = link.end - 1;
+  }
   const selected = current.slice(start, end);
   // Preserve selection so a second click removes the formatting.
   if (start >= 2 && current.slice(start - 2, start) === "**" && current.slice(end, end + 2) === "**") {
@@ -15,7 +26,7 @@ export function toggleBoldSelection(value, start, end) {
     if (!line.trim()) return line;
     return remove
       ? line.replace(/^(\s*)\*\*(.+)\*\*(\s*)$/, "$1$2$3")
-      : line.replace(/^(\s*)(.*?)(\s*)$/, "$1**$2**$3");
+      : line.replace(/^(\s*)(.*?)(\s*)$/, (_, before, content, after) => `${before}**${content.replace(/\*\*/g, "")}**${after}`);
   }).join("\n");
   const next = current.slice(0, start) + formatted + current.slice(end);
   const innerSelection = !remove && lines.length === 1;

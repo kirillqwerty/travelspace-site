@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 
 const STEPS = [
   {
@@ -40,15 +41,12 @@ export default function Payment() {
   return (
     <div className="section-container section-pad" data-testid="payment-page">
       <PageSeo pageKey="payment" path="/payment" title="Оплата тура через ЕРИП | TRAVELSPACE" description="Как оплатить тур TRAVELSPACE через ЕРИП после бронирования и заключения договора." />
-      <p className="overline text-[#C2410C]">Оплата</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-        Оплата тура через ЕРИП
-      </h1>
-      <p className="text-neutral-700 mt-4 max-w-2xl leading-relaxed">
-        Бронирование и оплата происходят после общения с менеджером и подписания
-        договора. Сам платёж проводится через систему ЕРИП — самым удобным для
-        вас способом.
-      </p>
+      <StaticPageIntro
+        pageKey="payment"
+        overline="Оплата"
+        heading="Оплата тура через ЕРИП"
+        description="Бронирование и оплата происходят после общения с менеджером и подписания договора. Сам платёж проводится через систему ЕРИП — самым удобным для вас способом."
+      />
 
       <div className="mt-12 grid md:grid-cols-2 gap-6">
         {STEPS.map((s, i) => (

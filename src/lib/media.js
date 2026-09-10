@@ -6,9 +6,10 @@ function getOriginFallback() {
 }
 
 export function mediaUrl(url) {
+  url = typeof url === "string" ? url.trim() : "";
   if (!url) return "";
 
-  if (url.startsWith("http://") || url.startsWith("https://")) {
+  if (/^https?:\/\//i.test(url)) {
     return url;
   }
 

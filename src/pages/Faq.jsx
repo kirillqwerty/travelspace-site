@@ -7,6 +7,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import PageSeo from "@/components/PageSeo";
+import StaticPageIntro from "@/components/StaticPageIntro";
 import { RichText } from "@/lib/richText";
 import { getInitialCollection } from "@/lib/pageBootstrap";
 
@@ -29,16 +30,14 @@ export default function Faq() {
         title="Частые вопросы о турах | TRAVELSPACE"
         description="Ответы на частые вопросы о бронировании, оплате, поездках, документах и автобусных турах TRAVELSPACE."
       />
-      <p className="overline text-[#C2410C]">FAQ</p>
-      <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl mt-3 max-w-3xl">
-        Частые вопросы
-      </h1>
-      <p className="text-neutral-600 mt-3 max-w-2xl">
-        Собрали то, о чём спрашивают чаще всего. Если вашего вопроса нет —
-        напишите менеджеру.
-      </p>
+      <StaticPageIntro
+        pageKey="faq"
+        overline="FAQ"
+        heading="Частые вопросы"
+        description="Собрали то, о чём спрашивают чаще всего. Если вашего вопроса нет — напишите менеджеру."
+      />
 
-      <div className="mt-12 space-y-10">
+      <div className="mt-8 space-y-6">
         {Object.entries(grouped).map(([cat, list]) => (
           <div key={cat}>
             <p className="overline text-neutral-500">{cat}</p>
@@ -49,12 +48,12 @@ export default function Faq() {
             >
               {list.map((q) => (
                 <AccordionItem key={q.id} value={q.id} className="px-1">
-                  <AccordionTrigger className="text-left text-base font-medium py-5">
+                  <AccordionTrigger className="py-2.5 text-left text-base font-medium">
                     {q.question}
                   </AccordionTrigger>
                   <AccordionContent
                     forceMount
-                    className="text-neutral-700 leading-relaxed"
+                    className="pb-2.5 text-neutral-700 leading-relaxed"
                   >
                     <RichText text={q.answer} className="text-sm leading-6" />
                   </AccordionContent>
