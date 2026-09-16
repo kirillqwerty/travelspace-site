@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { api } from "@/lib/api";
+import { useSiteData } from "@/lib/useSiteData";
+import {
+  runAfterInteractionOrLoadDelay,
+  runAfterInteractionOrTimeout,
+} from "@/lib/deferredLoad";
 
 function analyticsId(settings, key, pattern) {
   const value = String(settings?.[key] || settings?.analytics?.[key] || "").trim();
@@ -8,13 +12,16 @@ function analyticsId(settings, key, pattern) {
 }
 
 export default function MarketingScripts() {
-  const [settings, setSettings] = useState(null);
+  const { settings } = useSiteData();
+  const [loadCoreAnalytics, setLoadCoreAnalytics] = useState(false);
+  const [loadDeferredPixels, setLoadDeferredPixels] = useState(false);
 
   useEffect(() => {
-    api
-      .get("/settings")
-      .then((r) => setSettings(r.data || {}))
-      .catch(() => setSettings({}));
+    return runAfterInteractionOrLoadDelay(() => setLoadCoreAnalytics(true));
+  }, []);
+
+  useEffect(() => {
+    return runAfterInteractionOrTimeout(() => setLoadDeferredPixels(true));
   }, []);
 
   if (!settings) return null;
@@ -47,10 +54,14 @@ export default function MarketingScripts() {
         window.dispatchEvent(new Event('marketing-scripts-ready'));
       `}</script>
 
-      {gtmId && (
+      {loadCoreAnalytics && gtmId && (
         <script>{`
           (function(w,d,s,l,i){
             w[l]=w[l]||[];
+            if (w.__TRAVELSPACE_LOAD_GTM) {
+              w.__TRAVELSPACE_LOAD_GTM();
+              return;
+            }
             if (w.__TRAVELSPACE_GTM_INITIALIZED) return;
             w.__TRAVELSPACE_GTM_INITIALIZED = true;
             w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
@@ -64,13 +75,13 @@ export default function MarketingScripts() {
         `}</script>
       )}
 
-      {!gtmId && gaId && (
+      {loadCoreAnalytics && !gtmId && gaId && (
         <script
           async
           src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
         />
       )}
-      {!gtmId && gaId && (
+      {loadCoreAnalytics && !gtmId && gaId && (
         <script>{`
           (function(w) {
             w.dataLayer = w.dataLayer || [];
@@ -84,7 +95,7 @@ export default function MarketingScripts() {
         `}</script>
       )}
 
-      {metrikaId && (
+      {loadCoreAnalytics && metrikaId && (
         <script>{`
           (function() {
             window.__YANDEX_METRIKA_ID = ${JSON.stringify(Number(metrikaId) || metrikaId)};
@@ -96,12 +107,15 @@ export default function MarketingScripts() {
             k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
             (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
             ym(window.__YANDEX_METRIKA_ID, "init", { clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true });
+            (window.__TRAVELSPACE_PENDING_YANDEX_EVENTS || []).splice(0).forEach(function(item) {
+              ym(window.__YANDEX_METRIKA_ID, "reachGoal", item.eventName, item.payload || {});
+            });
             window.dispatchEvent(new Event('yandex-metrika-ready'));
           })();
         `}</script>
       )}
 
-      {facebookPixelId && (
+      {loadDeferredPixels && facebookPixelId && (
         <script>{`
           (function() {
             !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -125,7 +139,7 @@ export default function MarketingScripts() {
         `}</script>
       )}
 
-      {tiktokPixelId && (
+      {loadDeferredPixels && tiktokPixelId && (
         <script>{`
           (function() {
             if (!window.__TRAVELSPACE_TIKTOK_PIXEL_INITIALIZED) {

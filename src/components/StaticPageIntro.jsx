@@ -18,7 +18,7 @@ export default function StaticPageIntro({
   overline,
   heading,
   description = "",
-  headingClassName = "max-w-3xl",
+  headingClassName = "",
 }) {
   const { settings } = useSiteData();
   const content = getStaticPageIntro(settings, pageKey, {
@@ -33,14 +33,14 @@ export default function StaticPageIntro({
         <p className="overline text-[#C2410C]">{content.overline}</p>
       )}
       <h1
-        className={`font-heading mt-3 text-4xl sm:text-5xl lg:text-6xl ${headingClassName}`.trim()}
+        className={`font-heading mt-3 w-full break-words text-4xl sm:text-5xl lg:text-6xl ${headingClassName}`.trim()}
       >
         {content.heading}
       </h1>
       {content.description && (
         <RichText
           text={content.description}
-          className="mt-4 max-w-2xl leading-relaxed text-neutral-600"
+          className="mt-4 w-full break-words leading-relaxed text-neutral-600"
           paragraphClassName="leading-relaxed"
         />
       )}

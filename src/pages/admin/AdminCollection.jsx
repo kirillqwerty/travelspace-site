@@ -1,3 +1,5 @@
+import ArticleContentEditor from "@/components/admin/ArticleContentEditor";
+import { getArticleBlocks, articleBlockText } from "@/lib/articleContent";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -62,7 +64,7 @@ const TITLES = {
   reviews: "Отзывы",
   articles: "Статьи блога",
   promotions: "Акции",
-  faq: "FAQ",
+  faq: "FAQ — главная и страница вопросов",
 };
 
 const TOUR_SEO_FIELD_KEYS = new Set([
@@ -345,19 +347,20 @@ const SCHEMAS = {
       {
         key: "gallery",
         label: "Дополнительные фото внутри статьи",
-        type: "image-list",
+        type: "hidden",
         altKey: "gallery_alts",
       },
       { key: "excerpt", label: "Краткое описание", type: "textarea" },
       {
         key: "content",
         label: "Содержание",
-        type: "textarea",
+        type: "hidden",
         rows: 14,
         placeholder:
           "Разбивайте текст на короткие абзацы. Ссылки добавляйте через кнопку над полем.",
-        hint: "Дополнительные фото будут автоматически вставляться между абзацами.",
+
       },
+      { key: "content_blocks", label: "Содержание статьи: текст и фотографии", type: "article-body" },
       { key: "seo_title", label: "SEO Title", type: "text" },
       { key: "seo_description", label: "SEO Description", type: "textarea" },
       { key: "seo_h1", label: "SEO H1", type: "text" },
@@ -433,7 +436,7 @@ const SCHEMAS = {
   },
   faq: {
     label: (f) => f.question,
-    description: (f) => f.category,
+    description: (f) => `${f.category || "Общее"} · ${f.show_on_home === false ? "Только страница FAQ" : "Главная и страница FAQ"} · порядок ${f.order || 0}`,
     fields: [
       { key: "category", label: "Категория", type: "text" },
       { key: "question", label: "Вопрос", type: "text" },
@@ -1023,6 +1026,7 @@ export default function AdminCollection({ name }) {
   const onDelete = async (id) => {
     if (!confirm("Удалить запись?")) return;
     await api.delete(`/admin/${name}/${id}`);
+    invalidateSiteData();
     setItems((p) => p.filter((x) => x.id !== id));
     toast.success("Удалено");
   };
@@ -1288,6 +1292,7 @@ function EditDialog({
       }
     });
 
+    if (collectionName === "articles") known.content_blocks = getArticleBlocks(record);
     setForm(known);
     setExtraJson(
       Object.keys(extra).length ? JSON.stringify(extra, null, 2) : "",
@@ -1384,6 +1389,7 @@ function EditDialog({
 
     if (collectionName === "articles") {
       payload.slug = form.slug?.trim() || slugify(form.title);
+      payload.content = articleBlockText(payload.content_blocks);
     }
 
     if (collectionName === "reviews") {
@@ -1510,7 +1516,9 @@ function EditDialog({
               .map((f) => (
               <div key={f.key}>
                 <Label className="text-xs">{f.label}</Label>
-                {f.type === "tour-title" ? (
+                {f.type === "article-body" ? (
+                  <ArticleContentEditor value={form.content_blocks} onChange={(content_blocks) => setForm((previous) => ({ ...previous, content_blocks, content: articleBlockText(content_blocks) }))} TextEditor={RichTextarea} ImageEditor={ImageInput} />
+                ) : f.type === "tour-title" ? (
                   <TourTitleField tour={form} onChange={updateTourTitle} placeholder={f.placeholder} />
                 ) : f.type === "switch" ? (
                   <div className="mt-1 flex items-center gap-2">

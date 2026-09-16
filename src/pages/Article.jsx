@@ -7,7 +7,8 @@ import { useSiteData } from "@/lib/useSiteData";
 import PageSeo from "@/components/PageSeo";
 import { canonicalUrl, firstSeoText } from "@/components/Seo";
 import { mediaUrl } from "@/lib/media";
-import { RichText, splitRichTextBlocks } from "@/lib/richText";
+import ArticleBody from "@/components/ArticleBody";
+import { RichText } from "@/lib/richText";
 import {
   getDirectionLandingForTour,
   TOUR_LANDINGS,
@@ -22,70 +23,6 @@ function articleImages(article) {
       : [];
 
   return gallery.filter(Boolean).filter((image) => image !== article?.cover);
-}
-
-function ArticleBody({ article }) {
-  const blocks = splitRichTextBlocks(article.content);
-  const images = articleImages(article);
-  const usedImageIndexes = new Set();
-
-  if (!blocks.length) return null;
-
-  return (
-    <div className="mt-10 space-y-7 text-base leading-relaxed text-neutral-800">
-      {blocks.map((block, index) => {
-        const imageIndex = Math.floor(index / 2);
-        const shouldShowImage = index % 2 === 1 && images[imageIndex];
-
-        if (shouldShowImage) usedImageIndexes.add(imageIndex);
-
-        return (
-          <div key={`article-block-${index}`} className="space-y-7">
-            <RichText
-              text={block}
-              paragraphClassName="text-[17px] leading-8 text-neutral-800"
-              semanticHeadings
-            />
-
-            {shouldShowImage && (
-              <figure className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100 shadow-sm">
-                <img
-                  src={mediaUrl(images[imageIndex])}
-                  alt={article.gallery_alts?.[imageIndex] || article.seo_h1 || article.title}
-                  width="1200"
-                  height="750"
-                  className="h-auto w-full object-cover"
-                  loading="lazy"
-                />
-              </figure>
-            )}
-          </div>
-        );
-      })}
-
-      {images.filter((_, index) => !usedImageIndexes.has(index)).length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {images
-            .filter((_, index) => !usedImageIndexes.has(index))
-            .map((image, index) => (
-              <figure
-                key={`${image}-${index}`}
-                className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-100"
-              >
-                <img
-                  src={mediaUrl(image)}
-                  alt={article.gallery_alts?.[index] || article.seo_h1 || article.title}
-                  width="800"
-                  height="600"
-                  className="aspect-[4/3] h-full w-full object-cover"
-                  loading="lazy"
-                />
-              </figure>
-            ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function Article() {

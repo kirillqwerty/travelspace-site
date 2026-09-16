@@ -1,14 +1,15 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Phone } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
+import {
+  getCurrentTourFromPath,
+  getPhoneForTour,
+} from "@/lib/tourContact";
+
+const LeadDialog = lazy(() => import("@/components/LeadDialog"));
+const MobileCallDialog = lazy(() => import("@/components/MobileCallDialog"));
 
 const DEFAULT_CALL_DIRECTIONS = [
   {
@@ -21,15 +22,11 @@ const DEFAULT_CALL_DIRECTIONS = [
   },
 ];
 
-const phoneTel = (phone) => {
-  return String(phone || "").replace(/[^\d]/g, "");
-};
-
 export default function StickyMobileBar() {
   const { settings, tours } = useSiteData();
+  const { pathname } = useLocation();
   const [leadOpen, setLeadOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
-  const [selectedDirection, setSelectedDirection] = useState(null);
 
   const callDirections = useMemo(() => {
     if (settings?.call_directions?.length) return settings.call_directions;
@@ -46,6 +43,15 @@ export default function StickyMobileBar() {
     return DEFAULT_CALL_DIRECTIONS;
   }, [settings]);
 
+  const currentTour = useMemo(
+    () => getCurrentTourFromPath(tours, pathname),
+    [pathname, tours],
+  );
+  const currentTourPhone = useMemo(
+    () => getPhoneForTour(currentTour, settings?.header_phones),
+    [currentTour, settings?.header_phones],
+  );
+
   if (!settings) return null;
 
   return (
@@ -54,17 +60,28 @@ export default function StickyMobileBar() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-3 py-2.5 grid grid-cols-2 gap-2"
         data-testid="sticky-mobile-bar"
       >
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedDirection(null);
-            setCallOpen(true);
-          }}
-          className="rounded-full bg-neutral-900 text-white text-xs font-semibold py-3 flex items-center justify-center gap-1.5"
-          data-testid="sticky-call-btn"
-        >
-          <Phone className="size-3.5" /> Звонок
-        </button>
+        {currentTourPhone ? (
+          <a
+            href={`tel:${currentTourPhone.tel}`}
+            aria-label={`Позвонить по туру «${currentTour.title}»`}
+            data-analytics-placement="sticky-tour-call"
+            className="flex items-center justify-center gap-1.5 rounded-full bg-neutral-900 py-3 text-xs font-semibold text-white"
+            data-testid="sticky-call-btn"
+          >
+            <Phone className="size-3.5" /> Звонок
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setCallOpen(true);
+            }}
+            className="rounded-full bg-neutral-900 text-white text-xs font-semibold py-3 flex items-center justify-center gap-1.5"
+            data-testid="sticky-call-btn"
+          >
+            <Phone className="size-3.5" /> Звонок
+          </button>
+        )}
 
         <Button
           onClick={() => setLeadOpen(true)}
@@ -75,76 +92,29 @@ export default function StickyMobileBar() {
         </Button>
       </div>
 
-      <Dialog open={callOpen} onOpenChange={setCallOpen}>
-        <DialogContent className="max-w-sm rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDirection
-                ? selectedDirection.label
-                : "Выберите направление"}
-            </DialogTitle>
-          </DialogHeader>
+      {callOpen && (
+        <Suspense fallback={null}>
+          <MobileCallDialog
+            open={callOpen}
+            onOpenChange={setCallOpen}
+            directions={callDirections}
+          />
+        </Suspense>
+      )}
 
-          {!selectedDirection ? (
-            <div className="grid gap-2">
-              {callDirections.map((direction) => (
-                <button
-                  key={direction.label}
-                  type="button"
-                  onClick={() => setSelectedDirection(direction)}
-                  className="rounded-2xl border border-neutral-200 px-4 py-3 text-left font-medium hover:border-[#C2410C] hover:bg-orange-50"
-                >
-                  {direction.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => setSelectedDirection(null)}
-                className="text-sm font-medium text-[#C2410C]"
-              >
-                ← выбрать другое направление
-              </button>
-
-              <div className="grid gap-2">
-                {(selectedDirection.phones || []).map((item, index) => {
-                  const phone = item.link || item.phone;
-
-                  return (
-                    <a
-                      key={`${selectedDirection.label}-${phone}-${index}`}
-                      href={`tel:${phoneTel(phone)}`}
-                      className="rounded-2xl border border-neutral-200 px-4 py-3 hover:border-[#C2410C]"
-                    >
-                      <div className="mb-1 flex items-center gap-1.5">
-                        <span className="rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
-                          МТС
-                        </span>
-                        <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-red-600">
-                          A1
-                        </span>
-                      </div>
-
-                      <span className="block text-lg font-bold text-neutral-900">
-                        {item.phone}
-                      </span>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <LeadDialog
-        open={leadOpen}
-        onOpenChange={setLeadOpen}
-        tours={tours}
-        title="Подобрать тур"
-      />
+      {leadOpen && (
+        <Suspense fallback={null}>
+          <LeadDialog
+            open={leadOpen}
+            onOpenChange={setLeadOpen}
+            tours={tours}
+            tour={currentTour?.title}
+            tour_slug={currentTour?.slug}
+            region={currentTour?.region_slug}
+            title={currentTour ? "Заявка на тур" : "Подобрать тур"}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

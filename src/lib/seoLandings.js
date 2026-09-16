@@ -173,6 +173,10 @@ export const TOUR_LANDINGS = {
 
 const EMPTY_LANDING_CONTENT = {
   catalog_title: "Выберите подходящий тур",
+  cover_image: "",
+  cover_alt: "",
+  youtube_title: "",
+  youtube_url: "",
   content_title: "",
   content_body: "",
   content_sections: [],
@@ -245,7 +249,18 @@ export function getTourLanding(settings, slug = "") {
     if (typeof value === "string" && value.trim()) editable[field] = value.trim();
   });
 
-  ["catalog_title", "content_title", "content_body", "how_to_title", "faq_title", "seo_image"].forEach(
+  [
+    "catalog_title",
+    "cover_image",
+    "cover_alt",
+    "youtube_title",
+    "youtube_url",
+    "content_title",
+    "content_body",
+    "how_to_title",
+    "faq_title",
+    "seo_image",
+  ].forEach(
     (field) => {
       const value = configured[field];
       if (typeof value === "string") editable[field] = value.trim();

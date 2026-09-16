@@ -5,13 +5,21 @@ export function getYoutubeVideoId(value = "") {
   if (!input) return "";
   if (YOUTUBE_ID_RE.test(input)) return input;
 
+  const iframeSrc = input.match(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1];
+  const source = (iframeSrc || input).replaceAll("&amp;", "&");
+
   try {
-    const url = new URL(input);
+    const url = new URL(source);
     const host = url.hostname.toLowerCase().replace(/^www\./, "");
     let candidate = "";
 
     if (host === "youtu.be") candidate = url.pathname.split("/").filter(Boolean)[0];
-    if (host === "youtube.com" || host.endsWith(".youtube.com")) {
+    if (
+      host === "youtube.com" ||
+      host.endsWith(".youtube.com") ||
+      host === "youtube-nocookie.com" ||
+      host.endsWith(".youtube-nocookie.com")
+    ) {
       candidate =
         url.searchParams.get("v") ||
         url.pathname.match(/^\/(?:embed|shorts|live)\/([^/?#]+)/)?.[1] ||

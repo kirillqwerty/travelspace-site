@@ -12,19 +12,22 @@ import { useSiteData } from "@/lib/useSiteData";
 import {
   filterToursForLanding,
   getTourLanding,
-  getTourLandingLinks,
 } from "@/lib/seoLandings";
 import { RichText, richTextToPlain } from "@/lib/richText";
+import { optimizedMediaUrl } from "@/lib/media";
+import { getYoutubeVideoId } from "@/lib/youtube";
+import LazyYoutubeEmbed from "@/components/LazyYoutubeEmbed";
 
 export default function TourLanding({ slug }) {
   const { tours, ready, settings } = useSiteData();
   const landing = getTourLanding(settings, slug);
   const matchingTours = filterToursForLanding(tours, slug, landing?.tour_ids);
-  const relatedLinks = getTourLandingLinks(settings).filter(
-    (item) => item.slug !== slug,
-  );
-
   if (!landing) return null;
+
+  const coverImage = String(landing.cover_image || "").trim();
+  const youtubeVideoId = getYoutubeVideoId(landing.youtube_url);
+  const youtubeTitle =
+    String(landing.youtube_title || "").trim() || `Видео: ${landing.heading}`;
 
   const contentSections = Array.isArray(landing.content_sections)
     ? landing.content_sections.filter(
@@ -76,6 +79,25 @@ export default function TourLanding({ slug }) {
           <h1 className="font-heading text-4xl font-bold leading-tight text-neutral-950 sm:text-5xl lg:text-6xl">
             {landing.heading}
           </h1>
+          {coverImage && (
+            <figure className="mt-7 aspect-[8/5] overflow-hidden rounded-2xl bg-neutral-200 shadow-sm sm:rounded-3xl">
+              <img
+                src={optimizedMediaUrl(coverImage, 1600)}
+                srcSet={[
+                  `${optimizedMediaUrl(coverImage, 640)} 640w`,
+                  `${optimizedMediaUrl(coverImage, 960)} 960w`,
+                  `${optimizedMediaUrl(coverImage, 1600)} 1600w`,
+                ].join(", ")}
+                sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 1024px) calc(100vw - 48px), 1280px"
+                alt={landing.cover_alt || landing.heading}
+                width="1600"
+                height="1000"
+                className="h-full w-full object-cover object-center"
+                loading="eager"
+                decoding="async"
+              />
+            </figure>
+          )}
           <RichText
             text={landing.intro}
             className="mt-5 w-full text-lg leading-relaxed text-neutral-600"
@@ -109,6 +131,23 @@ export default function TourLanding({ slug }) {
           </div>
         )}
       </section>
+
+      {youtubeVideoId && (
+        <section
+          className="section-container pb-14 lg:pb-20"
+          data-testid="hub-youtube"
+        >
+          <div className="mx-auto max-w-5xl">
+            <h2 className="font-heading mb-6 text-3xl font-bold leading-tight text-neutral-950 sm:text-4xl">
+              {youtubeTitle}
+            </h2>
+            <LazyYoutubeEmbed
+              value={youtubeVideoId}
+              title={youtubeTitle}
+            />
+          </div>
+        </section>
+      )}
 
       {hasContentBlock && (
         <section className="border-t border-neutral-200 bg-neutral-50 py-10 lg:py-12">
@@ -164,17 +203,6 @@ export default function TourLanding({ slug }) {
             ))}
           </ul>
         </div>
-      </section>
-
-      <section className="section-container py-14 lg:py-20">
-        <h2 className="font-heading text-3xl font-bold text-neutral-950">Другие направления</h2>
-        <nav aria-label="Другие направления" className="mt-6 flex flex-wrap gap-3">
-          {relatedLinks.map((item) => (
-            <Link key={item.slug} to={item.path} className="rounded-full border border-neutral-300 px-4 py-2 text-sm font-semibold transition hover:border-orange-500 hover:text-orange-600">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
       </section>
 
       {faqItems.length > 0 && (

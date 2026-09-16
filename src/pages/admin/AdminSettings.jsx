@@ -1,3 +1,4 @@
+import HomeFaqEditor from "@/components/admin/HomeFaqEditor";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,9 @@ import { uploadImage as uploadPreparedImage, usePendingUploads, hasPendingUpload
 import { invalidateSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import { formatMinskDateTime } from "@/lib/formatDate";
+import { getYoutubeVideoId } from "@/lib/youtube";
 import { DEFAULT_HOME_PAGE } from "@/lib/homeContent";
+import LazyYoutubeEmbed from "@/components/LazyYoutubeEmbed";
 import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
 import MarkdownBoldButton, { useMarkdownBold } from "@/components/admin/MarkdownBoldButton";
 import {
@@ -624,10 +627,11 @@ function HomePageContentField({ value = DEFAULT_HOME_PAGE, onChange }) {
           onChange={(faq_title) => onChange({ faq_title })}
         />
         <p className="text-xs text-neutral-500">
-          Сами вопросы редактируются в разделе «FAQ». Для каждого вопроса есть
-          переключатель «Показывать на главной странице».
+          Ниже — текущие вопросы главной страницы.
         </p>
       </div>
+
+      <HomeFaqEditor />
 
       <Button
         type="button"
@@ -1053,8 +1057,14 @@ function SeoPagesField({ value = {}, onChange }) {
                     />
                   </div>
                 </div>
-                <div className="mt-6 space-y-3 border-t pt-4">
-                  <Field label="Заголовок FAQ" value={item.faq_title || ""} placeholder="Частые вопросы" onChange={(faq_title) => onChange(page.key, { faq_title, path: page.path })} />
+                {page.key === "home" && (
+                  <p className="mt-6 border-t pt-4 text-sm text-neutral-600">
+                    FAQ главной редактируется во вкладке «Главная». Источник вопросов — общая коллекция FAQ с включённым показом на главной; дополнительный FAQ статической страницы здесь не используется.
+                  </p>
+                )}
+                {page.key !== "home" && <div className="mt-6 space-y-3 border-t pt-4">
+                  <p className="text-sm text-neutral-600">Дополнительный блок FAQ этой страницы. Он не изменяет общую коллекцию вопросов.</p>
+                  <Field label="Заголовок дополнительного FAQ" value={item.faq_title || ""} placeholder="Частые вопросы" onChange={(faq_title) => onChange(page.key, { faq_title, path: page.path })} />
                   {(item.faq_items || []).map((faq, index) => {
                     const change = (patch) => onChange(page.key, { path: page.path, faq_items: item.faq_items.map((entry, i) => i === index ? { ...entry, ...patch } : entry) });
                     return <div key={index} className="space-y-2 rounded-xl border p-3">
@@ -1064,7 +1074,7 @@ function SeoPagesField({ value = {}, onChange }) {
                     </div>;
                   })}
                   <Button type="button" variant="outline" onClick={() => onChange(page.key, { path: page.path, faq_items: [...(item.faq_items || []), { question: "", answer: "" }] })}>Добавить вопрос</Button>
-                </div>
+                </div>}
               </div>
             </TabsContent>
           );
@@ -1096,6 +1106,10 @@ function SeoHubsField({ value = {}, onChange, onDelete, tours = [] }) {
         content_title: "",
         content_body: "",
         content_sections: [],
+        cover_image: "",
+        cover_alt: "",
+        youtube_title: "",
+        youtube_url: "",
         how_to_title: "Как выбрать тур",
         faq_title: "",
         faq_items: [],
@@ -1135,6 +1149,10 @@ function SeoHubsField({ value = {}, onChange, onDelete, tours = [] }) {
       content_title: "",
       content_body: "",
       content_sections: [],
+      cover_image: "",
+      cover_alt: "",
+      youtube_title: "",
+      youtube_url: "",
       how_to_title: "Как выбрать тур",
       faq_title: "",
       faq_items: [],
@@ -1218,6 +1236,7 @@ function SeoHubsField({ value = {}, onChange, onDelete, tours = [] }) {
               (total, section) => total + String(section?.text || "").length,
               0,
             );
+          const youtubeVideoId = getYoutubeVideoId(item.youtube_url);
 
           const updateContentSection = (index, patch) => {
             const next = [...item.content_sections];
@@ -1339,6 +1358,31 @@ function SeoHubsField({ value = {}, onChange, onDelete, tours = [] }) {
                           }
                         />
                       </div>
+                      <div className="lg:col-span-2 space-y-3 rounded-xl border border-neutral-200 p-4">
+                        <ImageUploadField
+                          label="Компактная обложка под H1"
+                          value={item.cover_image || ""}
+                          onChange={(cover_image) =>
+                            onChange(hub.slug, {
+                              cover_image,
+                              path: hub.path,
+                            })
+                          }
+                          previewAspectRatio="8 / 5"
+                          hint="Рекомендуемый размер: 1600×1000 px (соотношение 8:5). На мобильном и компьютере сохраняется одна область кадра; важные детали размещайте ближе к центру."
+                        />
+                        <Field
+                          label="ALT компактной обложки"
+                          value={item.cover_alt || ""}
+                          onChange={(cover_alt) =>
+                            onChange(hub.slug, {
+                              cover_alt,
+                              path: hub.path,
+                            })
+                          }
+                          placeholder={item.heading}
+                        />
+                      </div>
                       <div className="lg:col-span-2">
                         <RichTextareaField
                           label="Короткий вводный текст под H1"
@@ -1371,6 +1415,53 @@ function SeoHubsField({ value = {}, onChange, onDelete, tours = [] }) {
                       выбрать тур». Рекомендуемый общий объём — 1500–2500
                       знаков полезного уникального текста. Сейчас: {contentLength}
                       {" "}знаков.
+                    </div>
+
+                    <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
+                      <Field
+                        label="Заголовок блока с YouTube-видео"
+                        value={item.youtube_title || ""}
+                        onChange={(youtube_title) =>
+                          onChange(hub.slug, {
+                            youtube_title,
+                            path: hub.path,
+                          })
+                        }
+                        placeholder={`Видео: ${item.heading}`}
+                      />
+                      <TextareaField
+                        label="Ссылка или код YouTube-видео"
+                        value={item.youtube_url || ""}
+                        onChange={(youtube_url) =>
+                          onChange(hub.slug, {
+                            youtube_url,
+                            path: hub.path,
+                          })
+                        }
+                        rows={3}
+                        placeholder="Ссылка YouTube, ID видео или стандартный <iframe> код"
+                      />
+                      <p className="text-xs leading-5 text-neutral-500">
+                        Видео загружается только после нажатия посетителя и не
+                        блокирует первоначальную загрузку страницы.
+                      </p>
+                      {item.youtube_url?.trim() && !youtubeVideoId && (
+                        <p className="text-sm text-red-600">
+                          Не удалось определить YouTube-видео. Проверьте ссылку
+                          или embed-код.
+                        </p>
+                      )}
+                      {youtubeVideoId && (
+                        <div className="max-w-2xl">
+                          <LazyYoutubeEmbed
+                            value={youtubeVideoId}
+                            title={
+                              item.youtube_title?.trim() ||
+                              `Видео: ${item.heading}`
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <Field
@@ -1869,7 +1960,13 @@ function SeoHubToursField({ hub, stored = {}, tours = [], onChange }) {
   );
 }
 
-function ImageUploadField({ label, value, onChange }) {
+function ImageUploadField({
+  label,
+  value,
+  onChange,
+  previewAspectRatio,
+  hint = "Рекомендуемый размер для превью ссылки: 1200×630 px.",
+}) {
   const latestChange = useRef(onChange);
   latestChange.current = onChange;
   const [uploading, setUploading] = useState(false);
@@ -1908,10 +2005,14 @@ function ImageUploadField({ label, value, onChange }) {
             <img
               src={adminImagePreviewUrl(value)}
               alt=""
-              className="h-24 w-36 rounded-lg object-cover bg-neutral-100"
+              className={`${previewAspectRatio ? "w-36" : "h-24 w-36"} rounded-lg object-cover bg-neutral-100`}
+              style={previewAspectRatio ? { aspectRatio: previewAspectRatio } : undefined}
             />
           ) : (
-            <div className="h-24 w-36 rounded-lg bg-neutral-100 flex items-center justify-center">
+            <div
+              className={`${previewAspectRatio ? "w-36" : "h-24 w-36"} rounded-lg bg-neutral-100 flex items-center justify-center`}
+              style={previewAspectRatio ? { aspectRatio: previewAspectRatio } : undefined}
+            >
               {uploading ? (
                 <Loader2 className="size-5 animate-spin text-neutral-400" />
               ) : (
@@ -1955,7 +2056,7 @@ function ImageUploadField({ label, value, onChange }) {
             </div>
 
             <p className="text-xs text-neutral-500">
-              Рекомендуемый размер для превью ссылки: 1200×630 px.
+              {hint}
             </p>
           </div>
         </div>

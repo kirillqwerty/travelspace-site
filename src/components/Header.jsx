@@ -1,14 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Plus, Minus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import MessengerModal from "@/components/MessengerModal";
-import LeadDialog from "@/components/LeadDialog";
 import { useSiteData } from "@/lib/useSiteData";
 import { TourMenuTitle } from "@/lib/tourTitle";
-import logoBlack from "../assets/logo-travelspace-black.png";
-import logoWhite from "../assets/logo-travelspace-white.png";
+import logoBlack from "../assets/logo-travelspace-black.webp";
+import logoWhite from "../assets/logo-travelspace-white.webp";
 import socialTelegram from "../assets/social-telegram.png";
 import socialViber from "../assets/social-viber.png";
 import socialWhatsapp from "../assets/social-whatsapp.png";
@@ -18,6 +15,9 @@ import {
   getTransportFromHash,
   TOUR_TRANSPORT_TYPES,
 } from "@/lib/tourTransport";
+
+const MessengerModal = lazy(() => import("@/components/MessengerModal"));
+const LeadDialog = lazy(() => import("@/components/LeadDialog"));
 
 const TOUR_NAV = [
   {
@@ -182,7 +182,7 @@ export default function Header() {
 
   const articleLinks = useMemo(() => {
     return (articles || [])
-      .filter((item) => item.slug)
+      .filter((item) => item.slug && item.active !== false && !item.hidden && !item.hidden_from_list && !item.hide_from_list)
       .map((item) => ({
         slug: item.slug,
         label: item.title,
@@ -231,14 +231,9 @@ export default function Header() {
         }`}
       >
         {/* TOP INFO BAR */}
-        <AnimatePresence>
-          {!scrolled && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.35 }}
-              className="hidden lg:block border-b border-white/10 overflow-hidden"
+        {!scrolled && (
+            <div
+              className="hidden overflow-hidden border-b border-white/10 lg:block lg:animate-in lg:fade-in lg:duration-300"
               data-testid="header-top-bar"
             >
               <div className="mx-auto flex h-9 w-full max-w-[1440px] items-center justify-between px-4 text-[11px] text-white/90 xl:px-6 xl:text-[12px]">
@@ -261,9 +256,8 @@ export default function Header() {
                   </div>
                 </a>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+        )}
 
         {/* MAIN HEADER */}
         <div
@@ -279,6 +273,8 @@ export default function Header() {
             <img
               src={scrolled ? logoBlack : logoWhite}
               alt="TRAVELSPACE"
+              width="400"
+              height="41"
               className={`object-contain object-left transition-all duration-500 ${
                 scrolled
                   ? "h-6 w-[145px] xl:w-[158px]"
@@ -426,14 +422,14 @@ export default function Header() {
 
                   {articlesOpen && articleLinks.length > 0 && (
                     <div className="absolute left-0 top-full pt-4">
-                      <div className="w-72 rounded-2xl border border-white/50 bg-white/95 backdrop-blur-xl shadow-2xl p-2">
+                      <div data-testid="desktop-article-list" className="max-h-[calc(100dvh-8rem)] overflow-y-auto overscroll-contain w-72 rounded-2xl border border-white/50 bg-white/95 backdrop-blur-xl shadow-2xl p-2">
                         <NavLink
                           to="/blog"
                           className="block rounded-xl px-4 py-2.5 text-sm font-semibold text-[#C2410C] hover:bg-orange-50"
                         >
                           Все статьи
                         </NavLink>
-                        {articleLinks.slice(0, 8).map((item) => (
+                        {articleLinks.map((item) => (
                           <NavLink
                             key={item.slug}
                             to={`/blog/${item.slug}`}
@@ -541,29 +537,18 @@ export default function Header() {
         </div>
       </header>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="fixed inset-0 z-[60] lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+      {open && (
+          <div
+            className="fixed inset-0 z-[60] animate-in fade-in duration-200 lg:hidden"
             data-testid="mobile-menu"
           >
-            <motion.div
+            <div
               className="absolute inset-0 bg-black/55 backdrop-blur-sm"
               onClick={closeMenu}
             />
 
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{
-                duration: 0.35,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="absolute right-0 top-0 h-full w-[88%] max-w-[360px] bg-white p-4 overflow-y-auto shadow-2xl sm:max-w-[420px]"
+            <div
+              className="absolute right-0 top-0 h-full w-[88%] max-w-[360px] animate-in slide-in-from-right bg-white p-4 overflow-y-auto shadow-2xl duration-300 sm:max-w-[420px]"
             >
               <div className="flex items-center justify-between">
                 <Link to="/" onClick={closeMenu} className="block">
@@ -616,17 +601,12 @@ export default function Header() {
                           )}
                         </button>
                       </div>
-                      <AnimatePresence initial={false}>
-                        {mobileToursOpen === n.transportType && (
-                          <motion.div
+                      {mobileToursOpen === n.transportType && (
+                          <div
                             id={`mobile-tours-${n.transportType}`}
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
+                            className="animate-in fade-in slide-in-from-top-1 overflow-hidden duration-200"
                           >
-                            <div className="flex flex-col gap-0.5 pl-3 py-1">
+                            <div data-testid="mobile-article-list" className="max-h-[60dvh] overflow-y-auto overscroll-contain flex flex-col gap-0.5 pl-3 py-1">
                               {tourLinksByTransport[n.transportType]?.length ? (
                                 tourLinksByTransport[n.transportType].map(
                                   (item) => (
@@ -646,9 +626,8 @@ export default function Header() {
                                 </p>
                               )}
                             </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          </div>
+                      )}
                     </div>
                   ) : n.blogDropdown ? (
                     <div key={n.to}>
@@ -672,17 +651,13 @@ export default function Header() {
                           )}
                         </button>
                       </div>
-                      <AnimatePresence initial={false}>
-                        {mobileArticlesOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
+                      {mobileArticlesOpen && (
+                          <div
+                            className="animate-in fade-in slide-in-from-top-1 overflow-hidden duration-200"
                           >
-                            <div className="flex flex-col gap-0.5 pl-3 py-1">
-                              {articleLinks.slice(0, 8).map((item) => (
+                            <div data-testid="mobile-article-list" className="max-h-[60dvh] overflow-y-auto overscroll-contain flex flex-col gap-0.5 pl-3 py-1">
+                              <NavLink to="/blog" onClick={closeMenu} className="rounded-lg px-2 py-2 text-sm font-semibold text-[#C2410C]">Все статьи</NavLink>
+                              {articleLinks.map((item) => (
                                 <NavLink
                                   key={item.slug}
                                   to={`/blog/${item.slug}`}
@@ -693,9 +668,8 @@ export default function Header() {
                                 </NavLink>
                               ))}
                             </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          </div>
+                      )}
                     </div>
                   ) : (
                     <NavLink
@@ -783,24 +757,31 @@ export default function Header() {
                   ))}
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          </div>
+      )}
 
-      <MessengerModal
-        open={messenger.open}
-        onOpenChange={(v) => setMessenger((m) => ({ ...m, open: v }))}
-        defaultType={messenger.type}
-      />
+      {messenger.open && (
+        <Suspense fallback={null}>
+          <MessengerModal
+            open={messenger.open}
+            onOpenChange={(v) => setMessenger((m) => ({ ...m, open: v }))}
+            defaultType={messenger.type}
+          />
+        </Suspense>
+      )}
 
-      <LeadDialog
-        open={leadOpen}
-        onOpenChange={setLeadOpen}
-        tours={tours}
-        title="Подобрать тур"
-        description="Расскажите, что вам интересно — менеджер поможет с подбором и расскажет о ближайших датах."
-      />
+      {leadOpen && (
+        <Suspense fallback={null}>
+          <LeadDialog
+            open={leadOpen}
+            onOpenChange={setLeadOpen}
+            tours={tours}
+            title="Подобрать тур"
+            description="Расскажите, что вам интересно — менеджер поможет с подбором и расскажет о ближайших датах."
+          />
+        </Suspense>
+      )}
     </>
   );
 }

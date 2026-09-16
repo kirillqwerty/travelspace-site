@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
@@ -28,10 +28,13 @@ import {
 } from "@/components/ui/accordion";
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
-import { getInitialCollection } from "@/lib/pageBootstrap";
+import { getInitialCollection, getPageBootstrap } from "@/lib/pageBootstrap";
+import {
+  runAfterFirstInteraction,
+  runAfterPageIdle,
+} from "@/lib/deferredLoad";
 import TourCard from "@/components/TourCard";
-import LeadDialog from "@/components/LeadDialog";
-import { mediaUrl } from "@/lib/media";
+import { mediaUrl, optimizedMediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
 import { RichText, RichInline, richTextToPlain } from "@/lib/richText";
 import { getHomePageContent } from "@/lib/homeContent";
@@ -44,6 +47,8 @@ import {
   TOUR_TRANSPORT_OPTIONS,
   TOUR_TRANSPORT_TYPES,
 } from "@/lib/tourTransport";
+
+const LeadDialog = lazy(() => import("@/components/LeadDialog"));
 
 const BENEFIT_ICONS = {
   badge: BadgeCheck,
@@ -112,7 +117,7 @@ function getBenefitsSection(settings) {
   };
 }
 
-export default function Home({ startVideo = false }) {
+export default function Home() {
   const { tours, settings } = useSiteData();
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,6 +126,7 @@ export default function Home({ startVideo = false }) {
   const [faqItems, setFaqItems] = useState(() => getInitialCollection("faq").filter((item) => item.show_on_home !== false));
   const [leadOpen, setLeadOpen] = useState(false);
   const [detailsPromotion, setDetailsPromotion] = useState(null);
+  const [showHeroVideo, setShowHeroVideo] = useState(false);
   const videoRef = useRef(null);
   const benefitsSection = getBenefitsSection(settings);
   const homePage = getHomePageContent(settings);
@@ -128,6 +134,15 @@ export default function Home({ startVideo = false }) {
   const sortedReviews = useMemo(() => sortReviewsByDate(reviews), [reviews]);
 
   useEffect(() => {
+    const initialHomeCollections = getPageBootstrap("/")?.collections;
+    if (
+      Array.isArray(initialHomeCollections?.reviews) &&
+      Array.isArray(initialHomeCollections?.promotions) &&
+      Array.isArray(initialHomeCollections?.faq)
+    ) {
+      return undefined;
+    }
+
     api.get("/reviews").then((r) => setReviews(r.data)).catch(() => {});
     api.get("/promotions").then((r) => setPromotions(r.data || [])).catch(() => {});
     api
@@ -139,6 +154,7 @@ export default function Home({ startVideo = false }) {
           ),
         ),
       ).catch(() => {});
+    return undefined;
   }, []);
 
   const faqStructuredData = useMemo(() => {
@@ -187,10 +203,40 @@ export default function Home({ startVideo = false }) {
   };
 
   useEffect(() => {
-    if (!startVideo || !videoRef.current) return undefined;
+    const connection = navigator.connection;
+    const slowConnection = ["slow-2g", "2g"].includes(
+      connection?.effectiveType,
+    );
+    const canUseVideo =
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
+      !connection?.saveData &&
+      !slowConnection &&
+      !(navigator.deviceMemory && navigator.deviceMemory < 2);
+
+    if (!canUseVideo) return undefined;
+
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      // On phones the video and even its metadata stay out of the initial
+      // request graph. Lighthouse performs no interaction, so the background
+      // cannot compete with FCP/LCP or consume a visitor's data unexpectedly.
+      let cancelIdleVideo;
+      const cancelInteraction = runAfterFirstInteraction(() => {
+        cancelIdleVideo = runAfterPageIdle(() => setShowHeroVideo(true), 1500);
+      });
+      return () => {
+        cancelInteraction();
+        cancelIdleVideo?.();
+      };
+    }
+
+    return runAfterPageIdle(() => setShowHeroVideo(true), 2500);
+  }, []);
+
+  useEffect(() => {
+    if (!showHeroVideo || !videoRef.current) return undefined;
     videoRef.current.play().catch(() => {});
     return undefined;
-  }, [startVideo]);
+  }, [showHeroVideo]);
 
   const destinationTours = useMemo(() => {
     return tours
@@ -221,34 +267,38 @@ export default function Home({ startVideo = false }) {
       />
       {/* ======================= HERO ======================= */}
       <section
-        className="relative min-h-screen flex items-center overflow-hidden"
+        className="home-hero"
         data-testid="hero-section"
       >
-        <video
-          ref={videoRef}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          className="absolute inset-0 w-full h-full bg-neutral-950 object-cover"
-        >
-          <source
-            src={`${process.env.PUBLIC_URL}/background-journey.mp4`}
-            type="video/mp4"
-          />
-        </video>
+        <div className="absolute inset-0 bg-neutral-950" />
+        {showHeroVideo && (
+          <video
+            ref={videoRef}
+            muted
+            loop
+            playsInline
+            preload="none"
+            className="absolute inset-0 h-full w-full object-cover"
+            aria-hidden="true"
+          >
+            <source
+              src={`${process.env.PUBLIC_URL}/background-journey.mp4`}
+              type="video/mp4"
+            />
+          </video>
+        )}
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/30 to-black/70" />
         <div className="absolute inset-0 bg-orange-950/5" />
 
-        <div className="relative w-full section-container pt-28 lg:pt-32 text-white">
-          <h1 className="font-heading mt-3 sm:mt-4 text-4xl sm:text-6xl lg:text-7xl font-bold max-w-4xl leading-[1.05]">
+        <div className="home-hero-content">
+          <h1 className="font-heading">
             {homePage.h1}
           </h1>
-          {homePage.hero_tagline && <RichText text={homePage.hero_tagline} className="font-heading mt-4 max-w-3xl text-2xl font-semibold leading-tight sm:text-3xl" />}
-          {homePage.hero_description && <RichText text={homePage.hero_description} className="mt-5 max-w-xl text-base sm:text-lg text-white/85 leading-relaxed" />}
+          {homePage.hero_tagline && <RichText text={homePage.hero_tagline} className="home-hero-tagline" />}
+          {homePage.hero_description && <RichText text={homePage.hero_description} className="home-hero-description" />}
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="home-hero-actions">
             <Button
               asChild
               className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white px-6 py-6 text-base font-medium"
@@ -477,10 +527,13 @@ export default function Home({ startVideo = false }) {
                 >
                   {r.photo ? (
                     <img
-                      src={mediaUrl(r.photo)}
+                      src={optimizedMediaUrl(r.photo, 480)}
                       alt={r.name || "Отзыв"}
+                      width="640"
+                      height="352"
                       className="mb-4 h-44 w-full rounded-xl object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <Quote className="size-7 text-[#C2410C] mb-3" />
@@ -541,10 +594,13 @@ export default function Home({ startVideo = false }) {
                   {p.image && (
                     <div className="h-[280px] bg-neutral-100 shrink-0">
                       <img
-                        src={mediaUrl(p.image)}
+                        src={optimizedMediaUrl(p.image, 720)}
                         alt={p.title}
+                        width="720"
+                        height="560"
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   )}
@@ -640,8 +696,11 @@ export default function Home({ startVideo = false }) {
             <img
               src={mediaUrl(detailsPromotion.image)}
               alt={detailsPromotion.title}
+              width="960"
+              height="576"
               className="mt-2 h-72 w-full rounded-2xl object-cover"
               loading="lazy"
+              decoding="async"
             />
           )}
 
@@ -674,12 +733,16 @@ export default function Home({ startVideo = false }) {
         </DialogContent>
       </Dialog>
 
-      <LeadDialog
-        open={leadOpen}
-        onOpenChange={setLeadOpen}
-        tours={tours}
-        title="Получить консультацию"
-      />
+      {leadOpen && (
+        <Suspense fallback={null}>
+          <LeadDialog
+            open={leadOpen}
+            onOpenChange={setLeadOpen}
+            tours={tours}
+            title="Получить консультацию"
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

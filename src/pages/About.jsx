@@ -7,7 +7,7 @@ export default function About() {
   return (
     <div data-testid="about-page">
       <PageSeo pageKey="about" path="/about" title="О компании TRAVELSPACE — туроператор из Минска" description="TRAVELSPACE разрабатывает автобусные туры из Минска, сопровождает группы и помогает туристам путешествовать спокойно и понятно." />
-      <section className="section-container pt-32 lg:pt-36 pb-10 lg:pb-14">
+      <section className="section-container pb-4 pt-32 lg:pb-4 lg:pt-36">
         <StaticPageIntro
           pageKey="about"
           overline="О компании"
@@ -15,7 +15,7 @@ export default function About() {
         />
       </section>
 
-      <section className="section-container py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-start">
+      <section className="section-container grid items-start gap-8 py-4 lg:grid-cols-2 lg:gap-10 lg:py-6">
         <div className="space-y-5 text-neutral-700 leading-relaxed text-lg">
           <p>
             TRAVELSPACE — туроператор автобусных туров из Минска. Мы сами
@@ -52,10 +52,10 @@ export default function About() {
         </div>
       </section>
 
-      <section className="bg-neutral-50 section-pad">
+      <section className="bg-neutral-50 py-8 lg:py-10">
         <div className="section-container">
           <p className="overline text-[#C2410C]">Принципы</p>
-          <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-10 max-w-2xl">
+          <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6 max-w-2xl">
             Во что мы верим
           </h2>
           <div className="grid md:grid-cols-3 gap-6">

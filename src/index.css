@@ -2,6 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shared by the server-rendered home hero and React's first screen. */
+.home-hero { position: relative; min-height: 100vh; display: flex; align-items: center; overflow: hidden; background: #0a0906; color: white; line-height: 1.5; }
+.home-hero-content { position: relative; width: 100%; max-width: 1280px; margin: 0 auto; padding: 112px 16px 0; }
+.home-hero h1 { margin: 12px 0 0; max-width: 896px; font-size: 36px; line-height: 1.05; font-weight: 700; letter-spacing: -.01em; }
+.home-hero-tagline { margin-top: 16px; max-width: 768px; font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
+.home-hero-description { margin-top: 20px; max-width: 576px; font-size: 16px; line-height: 1.625; color: rgb(255 255 255 / .85); }
+.home-hero p { margin: 0; }
+.home-hero p + p { margin-top: 8px; }
+.home-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.home-hero-actions > a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border-radius: 9999px; background: #c2410c; color: white; font-size: 16px; font-weight: 500; text-decoration: none; }
+.home-hero-actions > a + a { border: 1px solid rgb(255 255 255 / .4); background: rgb(255 255 255 / .1); }
+.server-home-header { position: absolute; top: 0; left: 0; right: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 16px; background: rgb(0 0 0 / .25); }
+.server-home-header img { width: 165px; height: 28px; object-fit: contain; }
+.server-home-header > a:last-child { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgb(255 255 255 / .2); color: white; background: rgb(255 255 255 / .1); }
+.server-home-copy { max-width: 1280px; margin: auto; padding: 48px 16px; }
+@supports (content-visibility: auto) {
+  .server-home-copy,
+  .home-hero ~ section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 800px;
+  }
+  .server-home-copy {
+    contain-intrinsic-size: auto 5000px;
+  }
+}
+@media (min-width: 640px) {
+  .home-hero-content { padding-left: 24px; padding-right: 24px; }
+  .home-hero h1 { margin-top: 16px; font-size: 60px; }
+  .home-hero-tagline { font-size: 30px; }
+  .home-hero-description { font-size: 18px; }
+}
+@media (min-width: 1024px) {
+  .home-hero-content { padding: 128px 32px 0; }
+  .home-hero h1 { font-size: 72px; }
+  .server-home-header { height: 100px; }
+}
+
 :root {
   /* --font-heading: "Playfair Display", "Georgia", serif; */
   --font-heading: "Manrope", system-ui, -apple-system, sans-serif;

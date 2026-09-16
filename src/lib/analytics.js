@@ -2,6 +2,8 @@ export const COOKIE_CONSENT_KEY = "tury_cookie_accepted_v1";
 export const PENDING_LEAD_CONVERSION_KEY = "tury_pending_lead_conversion_v1";
 export const SENT_LEAD_CONVERSION_CHANNELS_KEY =
   "tury_sent_lead_conversion_channels_v1";
+export const GOOGLE_ADS_PHONE_CONVERSION_DESTINATION =
+  "AW-17966527099/w5DECJS7yyYcEPvkjfdC";
 
 const PENDING_LEAD_TTL_MS = 30 * 60 * 1000;
 const SENT_LEAD_TTL_MS = 24 * 60 * 60 * 1000;
@@ -348,7 +350,39 @@ export function trackEvent(eventName, payload = {}) {
 
   if (window.ym && window.__YANDEX_METRIKA_ID) {
     window.ym(window.__YANDEX_METRIKA_ID, "reachGoal", eventName, payload);
+  } else if (window.__TRAVELSPACE_YANDEX_METRIKA_CONFIGURED) {
+    window.__TRAVELSPACE_PENDING_YANDEX_EVENTS =
+      window.__TRAVELSPACE_PENDING_YANDEX_EVENTS || [];
+    window.__TRAVELSPACE_PENDING_YANDEX_EVENTS.push({ eventName, payload });
   }
+}
+
+export function trackPhoneClick({ phone, linkText, placement } = {}) {
+  if (typeof window === "undefined") return;
+
+  const payload = {
+    phone_number: phone || null,
+    link_text: linkText || null,
+    placement: placement || null,
+    page_path: window.location.pathname + window.location.search,
+    page_location: window.location.href,
+  };
+
+  // Sends the phone_click event to dataLayer and the same-named goal to
+  // Yandex Metrika. The goal identifier in Metrika must be "phone_click".
+  trackEvent("phone_click", payload);
+
+  // The site already owns the Google tag. Only send its Ads event snippet;
+  // do not install another global tag for the AW destination.
+  window.dataLayer = window.dataLayer || [];
+  window.gtag =
+    window.gtag ||
+    function queueGoogleTagCommand() {
+      window.dataLayer.push(arguments);
+    };
+  window.gtag("event", "conversion", {
+    send_to: GOOGLE_ADS_PHONE_CONVERSION_DESTINATION,
+  });
 }
 
 export function trackPageView({ path, title }) {

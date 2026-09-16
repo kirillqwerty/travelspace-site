@@ -12,7 +12,6 @@ import socialVk from "../assets/social-vk.png";
 import socialPinterest from "../assets/social-pinterest.png";
 import socialYoutube from "../assets/social-youtube.png";
 import socialTiktok from "../assets/social-tiktok.png";
-import { TOUR_LANDING_LINKS } from "@/lib/seoLandings";
 
 const phoneTel = (phone) => String(phone || "").replace(/[^\d]/g, "");
 
@@ -317,11 +316,6 @@ export default function Footer() {
           className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-white/10 pt-6 text-sm text-white/75"
         >
           <Link to="/tours" className="hover:text-[#F97316]">Все туры</Link>
-          {TOUR_LANDING_LINKS.map((item) => (
-            <Link key={item.slug} to={item.path} className="hover:text-[#F97316]">
-              {item.label}
-            </Link>
-          ))}
           <Link to="/blog" className="hover:text-[#F97316]">Блог</Link>
           <Link to="/contacts" className="hover:text-[#F97316]">Контакты</Link>
         </nav>

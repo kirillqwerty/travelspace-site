@@ -1,7 +1,6 @@
 import "@/App.css";
 import "@/index.css";
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   BrowserRouter,
   Navigate,
@@ -10,7 +9,6 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
-import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth.jsx";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -19,17 +17,23 @@ import CookieBanner from "@/components/CookieBanner";
 import StaticPageFaq from "@/components/StaticPageFaq";
 import CrmChat from "@/components/CrmChat";
 import MarketingScripts from "@/components/MarketingScripts";
-import IntroScreen from "@/components/IntroScreen";
+import PhoneClickAnalytics from "@/components/PhoneClickAnalytics";
 import { initAttribution, trackPageView } from "@/lib/analytics";
 import { isTourLandingSlug } from "@/lib/seoLandings";
 import {
   completePageMount,
   getInitialSiteData,
-  getPageBootstrap,
 } from "@/lib/pageBootstrap";
 import { useSiteData } from "@/lib/useSiteData";
+import { runAfterInteractionOrTimeout } from "@/lib/deferredLoad";
 
-const Home = lazy(() => import("@/pages/Home"));
+const Toaster = lazy(() =>
+  import("@/components/ui/sonner").then((module) => ({
+    default: module.Toaster,
+  })),
+);
+
+const Home = lazy(() => import(/* webpackChunkName: "home" */ "@/pages/Home"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
 const TourPage = lazy(() => import("@/pages/TourPage"));
 const TourLanding = lazy(() => import("@/pages/TourLanding"));
@@ -84,6 +88,22 @@ function RouteAnalytics() {
   }, [location.pathname, location.search]);
 
   return null;
+}
+
+function DeferredToaster() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(
+    () => runAfterInteractionOrTimeout(() => setVisible(true)),
+    [],
+  );
+
+  if (!visible) return null;
+  return (
+    <Suspense fallback={null}>
+      <Toaster richColors position="top-right" />
+    </Suspense>
+  );
 }
 
 function PublicLayout({ children }) {
@@ -146,44 +166,22 @@ function TourSlugRoute() {
 }
 
 export default function App() {
-  const INTRO_DURATION = 1700;
-  const initialHomePage =
-    !getPageBootstrap() && (typeof window === "undefined" || window.location.pathname === "/");
-  const [showIntro, setShowIntro] = useState(initialHomePage);
-  const [startHeroVideo, setStartHeroVideo] = useState(!initialHomePage);
-
   useLayoutEffect(() => {
     document.getElementById("initial-load-cover")?.remove();
   }, []);
 
-  useEffect(() => {
-    if (!showIntro) return undefined;
-
-    const timerId = window.setTimeout(() => {
-      setShowIntro(false);
-      setStartHeroVideo(true);
-    }, INTRO_DURATION);
-
-    return () => window.clearTimeout(timerId);
-  }, [showIntro]);
-
   return (
-    <>
-      <IntroScreen visible={showIntro} />
-      <motion.div
-        initial={getPageBootstrap() ? false : { opacity: 0 }}
-        animate={{ opacity: showIntro ? 0 : 1 }}
-        transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-      >
+    <div>
         <BrowserRouter>
           <AuthProvider>
             <ScrollToTop />
             <RouteAnalytics />
             <MarketingScripts />
+            <PhoneClickAnalytics />
 
             <Suspense fallback={<RouteFallback />}>
               <Routes>
-            <Route path="/" element={<PublicPage><Home startVideo={startHeroVideo} /></PublicPage>} />
+            <Route path="/" element={<PublicPage><Home /></PublicPage>} />
             <Route path="/tours" element={<PublicPage><Catalog /></PublicPage>} />
             <Route path="/tours/:slug" element={<PublicPage><TourSlugRoute /></PublicPage>} />
             <Route path="/thanks" element={<PublicPage><Thanks /></PublicPage>} />
@@ -219,10 +217,9 @@ export default function App() {
             <Route path="*" element={<PublicPage><NotFound /></PublicPage>} />
               </Routes>
             </Suspense>
-            <Toaster richColors position="top-right" />
+            <DeferredToaster />
           </AuthProvider>
         </BrowserRouter>
-      </motion.div>
-    </>
+    </div>
   );
 }

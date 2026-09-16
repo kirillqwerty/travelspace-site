@@ -1,6 +1,8 @@
 import { useEffect } from "react";
+import { runAfterInteractionOrTimeout } from "@/lib/deferredLoad";
 
 export function initializeCrmChat() {
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) return;
   if (document.getElementById("amo_social_button_script")) return;
   window.amo_social_button = {
     id: "450115",
@@ -22,6 +24,9 @@ export function initializeCrmChat() {
 }
 
 export default function CrmChat() {
-  useEffect(() => { initializeCrmChat(); }, []);
+  useEffect(
+    () => runAfterInteractionOrTimeout(initializeCrmChat),
+    [],
+  );
   return null;
 }

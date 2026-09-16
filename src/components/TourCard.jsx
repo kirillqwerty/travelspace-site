@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Bus, Plane, Calendar, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { mediaUrl } from "@/lib/media";
+import { optimizedMediaUrl } from "@/lib/media";
 import { RichInline } from "@/lib/richText";
 import {
   getTourTransportType,
@@ -349,12 +349,15 @@ export default function TourCard({ tour, size = "default" }) {
         <picture className="absolute inset-0">
           <source
             media="(max-width: 767px)"
-            srcSet={mediaUrl(getCardImage(tour, "mobile"))}
+            srcSet={optimizedMediaUrl(getCardImage(tour, "mobile"), 480)}
           />
           <img
-            src={mediaUrl(getCardImage(tour))}
+            src={optimizedMediaUrl(getCardImage(tour), 800)}
             alt={tour.title}
+            width="800"
+            height="600"
             loading="lazy"
+            decoding="async"
             className="
               absolute inset-0 h-full w-full object-cover card-img-zoom
               group-hover:scale-[1.05]
