@@ -36,6 +36,8 @@ import {
   Percent,
   Download,
   Play,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
@@ -46,7 +48,7 @@ import PageSeo from "@/components/PageSeo";
 import PageLoadState from "@/components/PageLoadState";
 import { usePublicRecord } from "@/lib/usePublicRecord";
 import { canonicalUrl, firstSeoText } from "@/components/Seo";
-import { trackTourView } from "@/lib/analytics";
+import { trackEvent, trackTourView } from "@/lib/analytics";
 import { RichText, RichInline } from "@/lib/richText";
 import {
   getTourTransportType,
@@ -58,6 +60,16 @@ import {
   getYoutubeThumbnail,
   getYoutubeVideoId,
 } from "@/lib/youtube";
+import {
+  getTourSectionAnchor,
+  normalizeTourAnchor,
+} from "@/lib/tourAnchors";
+import {
+  getSpecialDateCtaLabel,
+  getSpecialDateLabel,
+  getSpecialDateTourSlug,
+  isSpecialTourDate,
+} from "@/lib/tourSpecialDates";
 
 const BADGE_STYLES = {
   "Хит продаж": "bg-rose-500 text-white border-rose-500",
@@ -780,6 +792,50 @@ function fmtDateRangeCompact(d) {
   return `${formatDate(d.start)}–${formatDate(d.end)}`;
 }
 
+function SpecialDateBadge({ date, className = "" }) {
+  const label = getSpecialDateLabel(date);
+  if (!label) return null;
+
+  return (
+    <span
+      className={`inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-900 ${className}`}
+      title={label}
+      data-testid="special-date-badge"
+    >
+      <Sparkles className="size-3 shrink-0" aria-hidden="true" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
+function SpecialDateProgramLink({ date, tour, placement = "dates-list" }) {
+  const targetSlug = getSpecialDateTourSlug(date);
+  const label = getSpecialDateCtaLabel(date);
+  if (!targetSlug || !label || targetSlug === tour?.slug) return null;
+
+  return (
+    <Link
+      to={`/tours/${encodeURIComponent(targetSlug)}`}
+      onClick={() =>
+        trackEvent("special_date_program_click", {
+          source_tour_slug: tour?.slug || "",
+          source_tour_title: tour?.title || "",
+          target_tour_slug: targetSlug,
+          special_date_label: getSpecialDateLabel(date),
+          date_start: date?.start || "",
+          date_end: date?.end || "",
+          placement,
+        })
+      }
+      className="mt-3 inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-950 shadow-sm transition hover:border-amber-400 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 sm:w-fit"
+      data-testid="special-date-program-link"
+    >
+      <span>{label}</span>
+      <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+    </Link>
+  );
+}
+
 function PromotionDateHint({
   promotionDate,
   label = "Акция только на даты",
@@ -1099,6 +1155,20 @@ function scrollToAnchorTarget(target, behavior = "smooth") {
     top: Math.max(0, top),
     behavior,
   });
+}
+
+function TourAnchorMarker({ anchor }) {
+  const id = normalizeTourAnchor(anchor);
+  if (!id) return null;
+
+  return (
+    <span
+      id={id}
+      className="block h-0 scroll-mt-36"
+      aria-hidden="true"
+      data-tour-custom-anchor="true"
+    />
+  );
 }
 
 function resolveChainTitle(chain, chainIndex, fallback = "") {
@@ -1905,6 +1975,7 @@ export default function TourPage() {
         {/* <div className="lg:col-span-8 space-y-14"> */}
         <div className="min-w-0 space-y-14">
           <div id="about-tour" className="scroll-mt-32">
+            <TourAnchorMarker anchor={getTourSectionAnchor(tour, "about")} />
             <p className="overline text-[#C2410C]">О туре</p>
 
             <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-4">
@@ -1929,6 +2000,7 @@ export default function TourPage() {
               className="scroll-mt-32"
               data-testid="tour-gallery"
             >
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "gallery")} />
               <p className="overline text-[#C2410C]">Фотографии</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
@@ -2025,6 +2097,7 @@ export default function TourPage() {
               className="scroll-mt-32"
               data-testid="tour-highlights"
             >
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "highlights")} />
               <p className="overline text-[#C2410C]">Чем понравится</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
@@ -2044,6 +2117,7 @@ export default function TourPage() {
 
           {tour.what_to_see?.length > 0 && (
             <div data-testid="tour-what-to-see">
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "what_to_see")} />
               <h2 className="font-heading text-2xl mb-4">Что посмотреть</h2>
 
               <ul className="grid sm:grid-cols-2 gap-2 text-sm text-neutral-700">
@@ -2063,6 +2137,7 @@ export default function TourPage() {
               className="scroll-mt-32"
               data-testid="tour-program"
             >
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "program")} />
               <p className="overline text-[#C2410C]">Программа тура</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
@@ -2098,6 +2173,7 @@ export default function TourPage() {
                       value={`day-${programKey}`}
                       className="border-0 px-1"
                     >
+                      <TourAnchorMarker anchor={d.anchor} />
                       <AccordionTrigger className="text-left py-5 hover:no-underline">
                         <div className="flex items-baseline gap-4 sm:gap-5">
                           <span className="font-heading text-xl sm:text-2xl text-[#C2410C] font-bold tabular-nums w-28 shrink-0 whitespace-nowrap">
@@ -2238,37 +2314,41 @@ export default function TourPage() {
             </div>
           )}
 
-          <div id="price" className="scroll-mt-32 grid sm:grid-cols-2 gap-6">
-            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-6">
-              <h2 className="font-heading text-2xl">Входит в стоимость</h2>
+          <div>
+            <TourAnchorMarker anchor={getTourSectionAnchor(tour, "price")} />
+            <div id="price" className="scroll-mt-32 grid sm:grid-cols-2 gap-6">
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-6">
+                <h2 className="font-heading text-2xl">Входит в стоимость</h2>
 
-              <ul className="mt-4 space-y-2.5">
-                {(tour.included || []).map((x) => (
-                  <li key={x} className="flex items-start gap-2.5 text-sm">
-                    <BadgeCheck className="size-4 mt-0.5 text-emerald-600 shrink-0" />
-                    <RichInline text={x} />
-                  </li>
-                ))}
-              </ul>
-            </div>
+                <ul className="mt-4 space-y-2.5">
+                  {(tour.included || []).map((x) => (
+                    <li key={x} className="flex items-start gap-2.5 text-sm">
+                      <BadgeCheck className="size-4 mt-0.5 text-emerald-600 shrink-0" />
+                      <RichInline text={x} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-            <div className="rounded-2xl bg-rose-50 border border-rose-100 p-6">
-              <h2 className="font-heading text-2xl">Не входит в стоимость</h2>
+              <div className="rounded-2xl bg-rose-50 border border-rose-100 p-6">
+                <h2 className="font-heading text-2xl">Не входит в стоимость</h2>
 
-              <ul className="mt-4 space-y-2.5">
-                {(tour.excluded || []).map((x) => (
-                  <li key={x} className="flex items-start gap-2.5 text-sm">
-                    <XIcon className="size-4 mt-0.5 text-rose-500 shrink-0" />
-                    <RichInline text={x} />
-                  </li>
-                ))}
-              </ul>
+                <ul className="mt-4 space-y-2.5">
+                  {(tour.excluded || []).map((x) => (
+                    <li key={x} className="flex items-start gap-2.5 text-sm">
+                      <XIcon className="size-4 mt-0.5 text-rose-500 shrink-0" />
+                      <RichInline text={x} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
 
           {Array.isArray(tour.videos) &&
             tour.videos.some((video) => getYoutubeVideoId(video?.url)) && (
               <section data-testid="tour-videos">
+                <TourAnchorMarker anchor={getTourSectionAnchor(tour, "videos")} />
                 <p className="overline text-[#C2410C]">Видео</p>
                 <h2 className="font-heading mt-2 mb-6 text-3xl sm:text-4xl">
                   Посмотрите, как проходит тур
@@ -2291,6 +2371,7 @@ export default function TourPage() {
               className="scroll-mt-32"
               data-testid="tour-dates-prices"
             >
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "dates")} />
               <p className="overline text-[#C2410C]">Расписание</p>
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
                 Даты и стоимость
@@ -2299,16 +2380,39 @@ export default function TourPage() {
                 {dates.map((date) => (
                   <div
                     key={date._dateListKey || date.id || fmtDateRange(date)}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3"
+                    className={`relative overflow-hidden rounded-2xl border px-4 py-3 transition sm:px-5 sm:py-4 ${
+                      isSpecialTourDate(date)
+                        ? "border-amber-300 bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-sm"
+                        : "border-neutral-200 bg-white"
+                    }`}
+                    data-testid={
+                      isSpecialTourDate(date)
+                        ? "special-date-card"
+                        : undefined
+                    }
                   >
-                    <span className="text-sm font-medium text-neutral-800">
-                      {fmtDateRange(date)}{date.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{date.comment}</span>}
-                    </span>
-                    <DatePriceInline
-                      item={date}
-                      fallbackTour={tour}
-                      className="shrink-0 text-right font-semibold text-[#C2410C]"
-                    />
+                    {isSpecialTourDate(date) && (
+                      <span className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-400 to-orange-500" />
+                    )}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+                      <div className="min-w-0">
+                        <SpecialDateBadge date={date} className="mb-2" />
+                        <p className="text-sm font-semibold text-neutral-900 sm:text-base">
+                          {fmtDateRange(date)}
+                        </p>
+                        {date.comment && (
+                          <p className="mt-1 whitespace-normal text-xs font-normal leading-relaxed text-neutral-600 sm:text-sm">
+                            {date.comment}
+                          </p>
+                        )}
+                        <SpecialDateProgramLink date={date} tour={tour} />
+                      </div>
+                      <DatePriceInline
+                        item={date}
+                        fallbackTour={tour}
+                        className="shrink-0 text-left font-semibold text-[#C2410C] sm:text-right"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2317,6 +2421,7 @@ export default function TourPage() {
 
           {chains.some((chain) => chain.hotels?.length > 0) && (
             <div data-testid="tour-hotels">
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "hotels")} />
               <p className="overline text-[#C2410C]">Где живём</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
@@ -2386,7 +2491,7 @@ export default function TourPage() {
                                             }
                                             aria-label={
                                               promotion
-                                                ? `${fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}. Показать акционную цену`
+                                                ? `${fmtDateRangeCompact(d)}${d.comment ? `. ${d.comment}` : ""}. Показать акционную цену`
                                                 : undefined
                                             }
                                             data-promo-date-key={dateDomKey(d)}
@@ -2416,7 +2521,9 @@ export default function TourPage() {
                                               );
                                             }}
                                             className={`w-full min-w-0 rounded-2xl px-2.5 py-1.5 text-center text-[11px] font-medium shadow-sm ring-1 transition sm:hidden ${
-                                              promotion
+                                              isSpecialTourDate(d)
+                                                ? "cursor-default bg-amber-50 text-amber-950 ring-amber-300"
+                                                : promotion
                                                 ? `cursor-pointer text-rose-700 active:scale-[0.98] ${
                                                     previewOpen
                                                       ? "bg-rose-100 ring-2 ring-rose-400"
@@ -2425,6 +2532,7 @@ export default function TourPage() {
                                                 : "cursor-default bg-white text-[#C2410C] ring-orange-100"
                                             }`}
                                           >
+                                            <SpecialDateBadge date={d} className="mb-1" />
                                             <span className="block whitespace-nowrap">
                                               {fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                             </span>
@@ -2445,11 +2553,14 @@ export default function TourPage() {
                                               promotion ? "true" : undefined
                                             }
                                             className={`hidden min-w-0 rounded-full px-3 py-1.5 text-center text-xs font-medium shadow-sm ring-1 transition sm:inline-flex sm:items-center ${
-                                              promotion
+                                              isSpecialTourDate(d)
+                                                ? "rounded-2xl bg-amber-50 text-amber-950 ring-amber-300"
+                                                : promotion
                                                 ? "bg-rose-50 text-rose-700 ring-rose-200"
                                                 : "bg-white text-[#C2410C] ring-orange-100"
                                             }`}
                                           >
+                                            <SpecialDateBadge date={d} className="mr-1" />
                                             {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                             {promotion && (
                                               <span className="ml-1 inline-flex rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-700">
@@ -2897,6 +3008,7 @@ export default function TourPage() {
 
           {tour.important_info?.length > 0 && (
             <div className="rounded-2xl bg-neutral-950 text-white p-6 sm:p-8">
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "important")} />
               <div className="flex items-center gap-3 mb-5">
                 <span className="size-9 rounded-full grid place-items-center bg-[#C2410C]">
                   <Info className="size-4" />
@@ -2917,6 +3029,7 @@ export default function TourPage() {
 
           {relatedTours.length > 0 && (
             <section data-testid="tour-related-tours">
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "related")} />
               <p className="overline text-[#C2410C]">Другие программы</p>
               <h2 className="font-heading mt-2 mb-6 text-3xl sm:text-4xl">
                 {tour.related_tours_title ||
@@ -2935,6 +3048,7 @@ export default function TourPage() {
 
           {tour.faq?.length > 0 && (
             <div id="faq" className="scroll-mt-32" data-testid="tour-faq">
+              <TourAnchorMarker anchor={getTourSectionAnchor(tour, "faq")} />
               <p className="overline text-[#C2410C]">FAQ</p>
 
               <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
@@ -3028,13 +3142,18 @@ export default function TourPage() {
                               isPromotionDate(d) ? "true" : undefined
                             }
                             className={`grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition ${
-                              isPromotionDate(d)
+                              isSpecialTourDate(d)
+                                ? "bg-amber-50 ring-1 ring-amber-200"
+                                : isPromotionDate(d)
                                 ? "bg-rose-50 ring-1 ring-rose-100"
                                 : "bg-neutral-50"
                             }`}
                           >
-                            <span className="min-w-0 whitespace-nowrap">
+                            <span className="min-w-0">
+                              <SpecialDateBadge date={d} className="mb-1" />
+                              <span className="block whitespace-nowrap">
                               {fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
+                              </span>
                             </span>
 
                             <DatePriceInline
@@ -3143,13 +3262,16 @@ export default function TourPage() {
                                 setLeadOpen(true);
                               }}
                               className={`w-full rounded-xl border px-4 py-3 text-left transition ${
-                                isPromotionDate(d)
+                                isSpecialTourDate(d)
+                                  ? "border-amber-300 bg-amber-50/70 hover:border-amber-400 hover:bg-amber-50"
+                                  : isPromotionDate(d)
                                   ? "border-rose-200 bg-rose-50/60 hover:border-rose-400 hover:bg-rose-50"
                                   : "border-neutral-200 bg-white hover:border-[#C2410C] hover:bg-orange-50/40"
                               }`}
                             >
                               <div className="flex min-w-0 flex-col gap-1 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
                                 <span className="min-w-0 break-words text-sm font-medium sm:whitespace-nowrap sm:text-base">
+                                  <SpecialDateBadge date={d} className="mb-1 sm:mr-2 sm:mb-0" />
                                   {fmtDateRangeCompact(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                   {isPromotionDate(d) && (
                                     <span className="ml-2 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
@@ -3417,6 +3539,7 @@ export default function TourPage() {
                               className="odd:bg-white even:bg-neutral-50/60"
                             >
                               <td className="border-r px-3 py-2 font-medium text-neutral-800">
+                                <SpecialDateBadge date={d} className="mb-1" />
                                 {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                               </td>
                               {ROOM_MEAL_PLANS.map((plan) => {
@@ -3468,9 +3591,14 @@ export default function TourPage() {
                             {group.items.map((d) => (
                               <div
                                 key={dateKey(d)}
-                                className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm"
+                                className={`rounded-2xl border p-3 shadow-sm ${
+                                  isSpecialTourDate(d)
+                                    ? "border-amber-300 bg-amber-50/60"
+                                    : "border-neutral-200 bg-white"
+                                }`}
                               >
                                 <p className="mb-2 text-sm font-semibold text-neutral-900">
+                                  <SpecialDateBadge date={d} className="mb-1" />
                                   {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                 </p>
 
@@ -3611,7 +3739,9 @@ export default function TourPage() {
                                           ? "cursor-not-allowed border-red-100 bg-red-50/70 text-red-500 opacity-70"
                                           : active
                                             ? "scale-[1.01] border-[#C2410C] bg-white shadow-lg shadow-orange-200/60"
-                                            : isPromotionDate(d)
+                                            : isSpecialTourDate(d)
+                                              ? "border-amber-300 bg-amber-50/70 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md"
+                                              : isPromotionDate(d)
                                               ? "border-rose-200 bg-rose-50/60 hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-md"
                                               : "border-neutral-200 bg-white hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md"
                                       }`}
@@ -3620,12 +3750,15 @@ export default function TourPage() {
                                         className={`absolute inset-y-0 left-0 w-1 transition-all duration-300 ${
                                           active
                                             ? "bg-[#C2410C]"
-                                            : "bg-transparent"
+                                            : isSpecialTourDate(d)
+                                              ? "bg-amber-400"
+                                              : "bg-transparent"
                                         }`}
                                       />
                                       <div className="flex items-start justify-between gap-3">
                                         <div>
                                           <p className="font-medium text-neutral-900">
+                                            <SpecialDateBadge date={d} className="mb-1" />
                                             {fmtDateRange(d)}{d.comment && <span className="block whitespace-normal text-xs font-normal leading-snug text-neutral-600 mt-1">{d.comment}</span>}
                                             {isPromotionDate(d) && (
                                               <span className="ml-2 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">

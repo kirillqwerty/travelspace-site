@@ -58,6 +58,16 @@ import {
   getTourTransportType,
   TOUR_TRANSPORT_TYPES,
 } from "@/lib/tourTransport";
+import {
+  getTourAnchorIssues,
+  getTourAnchorPath,
+  getTourAnchorUrl,
+  normalizeTourAnchor,
+  normalizeTourSectionAnchors,
+  RESERVED_TOUR_ANCHORS,
+  TOUR_SECTION_ANCHORS,
+} from "@/lib/tourAnchors";
+import { normalizeSpecialDateFields } from "@/lib/tourSpecialDates";
 
 const TITLES = {
   tours: "Туры",
@@ -466,6 +476,7 @@ const TOUR_EXTRA_KEYS = [
   "included",
   "excluded",
   "important_info",
+  "section_anchors",
   "program",
   "use_hotel_chains",
   "chains",
@@ -490,6 +501,7 @@ const normalizeDateRecord = (d = {}, record = {}) => ({
   price_type: d.price_type || d.priceType || "from",
   status: d.status || "active",
   comment: d.comment || "",
+  ...normalizeSpecialDateFields(d),
   promotion_active:
     d.promotion_active === true ||
     d.promotionActive === true ||
@@ -542,6 +554,11 @@ const normalizeDateRecord = (d = {}, record = {}) => ({
     d.currency ||
     record.currency ||
     "BYN",
+});
+
+const normalizeDateForSave = (date = {}) => ({
+  ...date,
+  ...normalizeSpecialDateFields(date),
 });
 
 const ROOM_MEAL_PLANS = [
@@ -880,6 +897,7 @@ const normalizeRecord = (record = {}, collectionName) => {
     important_info: Array.isArray(record.important_info)
       ? record.important_info.filter(Boolean)
       : [],
+    section_anchors: normalizeTourSectionAnchors(record.section_anchors),
 
     program: Array.isArray(record.program)
       ? record.program.map((d, index) => {
@@ -893,6 +911,7 @@ const normalizeRecord = (record = {}, collectionName) => {
             day: String(d.day || index + 1),
             title: d.title || "",
             description: d.description || "",
+            anchor: normalizeTourAnchor(d.anchor),
             ...normalizeImageItems(Array.isArray(d.images) ? d.images : images, d.image_alts),
             notes: d.notes || "",
           };
@@ -1345,13 +1364,46 @@ function EditDialog({
         // In chain mode all actual dates live inside their chain.
         payload.dates = [];
         payload.hotels = [];
+        payload.chains = (Array.isArray(form.chains) ? form.chains : []).map(
+          (chain) => ({
+            ...chain,
+            dates: (Array.isArray(chain?.dates) ? chain.dates : []).map(
+              normalizeDateForSave,
+            ),
+          }),
+        );
       } else {
         // In simple mode the public page reads the common date list directly.
         // Remove the hidden chain data so dates are not duplicated in booking
         // forms and in the automatic stale-date cleanup.
-        payload.dates = Array.isArray(form.dates) ? form.dates : [];
+        payload.dates = (Array.isArray(form.dates) ? form.dates : []).map(
+          normalizeDateForSave,
+        );
         payload.chains = [];
         payload.hotels = [];
+      }
+
+      const allPayloadDates = payload.use_hotel_chains
+        ? payload.chains.flatMap((chain) => chain.dates || [])
+        : payload.dates;
+      const linkedSpecialTourSlugs = allPayloadDates
+        .filter((date) => date.special_active && date.special_tour_slug)
+        .map((date) => date.special_tour_slug);
+      if (linkedSpecialTourSlugs.includes(payload.slug)) {
+        toast.error("Особая дата не может вести на этот же тур.");
+        return;
+      }
+      const knownTourSlugs = new Set(
+        collectionItems.map((tour) => String(tour?.slug || "")).filter(Boolean),
+      );
+      const missingSpecialTourSlug = linkedSpecialTourSlugs.find(
+        (linkedSlug) => !knownTourSlugs.has(linkedSlug),
+      );
+      if (missingSpecialTourSlug) {
+        toast.error(
+          `Связанный тур «${missingSpecialTourSlug}» не найден. Выберите существующую программу или уберите переход.`,
+        );
+        return;
       }
 
       payload.program = Array.isArray(form.program)
@@ -1359,10 +1411,28 @@ function EditDialog({
             return {
               ...day,
               day: String(day.day || index + 1),
+              anchor: normalizeTourAnchor(day.anchor),
               ...normalizeImageItems(Array.isArray(day.images) ? day.images : day.image ? [day.image] : [], day.image_alts),
             };
           })
         : [];
+      payload.section_anchors = normalizeTourSectionAnchors(
+        form.section_anchors,
+      );
+
+      const anchorIssues = getTourAnchorIssues(payload);
+      if (anchorIssues.reserved.length) {
+        toast.error(
+          `Якорь #${anchorIssues.reserved[0]} уже используется сайтом. Оставьте поле пустым и скопируйте системную ссылку или задайте другое название.`,
+        );
+        return;
+      }
+      if (anchorIssues.duplicates.length) {
+        toast.error(
+          `Якорь #${anchorIssues.duplicates[0]} указан несколько раз. Каждый якорь внутри тура должен быть уникальным.`,
+        );
+        return;
+      }
 
       payload.related_tour_slugs = Array.isArray(form.related_tour_slugs)
         ? [
@@ -2073,6 +2143,128 @@ const copyToClipboard = (value) => {
   return Promise.resolve();
 };
 
+function AnchorAdminField({
+  label,
+  value = "",
+  onChange,
+  tourSlug,
+  defaultAnchor = "",
+  placeholder = "Например: dates-sale",
+}) {
+  const [copied, setCopied] = useState(false);
+  const normalizedValue = normalizeTourAnchor(value);
+  const activeAnchor = normalizedValue || defaultAnchor;
+  const path = getTourAnchorPath(tourSlug, activeAnchor);
+  const usesReservedAnchor =
+    Boolean(normalizedValue) && RESERVED_TOUR_ANCHORS.has(normalizedValue);
+
+  const copyLink = async () => {
+    const link = getTourAnchorUrl(tourSlug, activeAnchor);
+    if (!link) return;
+
+    try {
+      await copyToClipboard(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error("Не удалось скопировать ссылку");
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-3">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        value={value || ""}
+        onChange={(event) => onChange(normalizeTourAnchor(event.target.value))}
+        placeholder={placeholder}
+        className="mt-1"
+      />
+      {usesReservedAnchor && (
+        <p className="mt-1 text-xs text-red-600">
+          #{normalizedValue} уже является системным якорем. Очистите поле и
+          используйте готовую ссылку ниже либо задайте другое значение.
+        </p>
+      )}
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 text-xs text-neutral-500">
+          {normalizedValue ? "Пользовательская ссылка" : defaultAnchor ? "Системная ссылка" : "Ссылка появится после заполнения"}:{" "}
+          {path && (
+            <span className="break-all font-mono text-[#C2410C]">{path}</span>
+          )}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={copyLink}
+          disabled={!activeAnchor || usesReservedAnchor}
+          className="h-9 shrink-0 rounded-full px-3 text-xs"
+        >
+          {copied ? (
+            <Check className="mr-1 size-3.5" />
+          ) : (
+            <Copy className="mr-1 size-3.5" />
+          )}
+          {copied ? "Скопировано" : "Копировать"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TourSectionAnchorsField({ value = {}, onChange, tourSlug, tour }) {
+  const anchors = normalizeTourSectionAnchors(value);
+  const issues = getTourAnchorIssues({ ...tour, section_anchors: anchors });
+
+  const updateAnchor = (key, anchor) => {
+    const next = { ...anchors };
+    if (anchor) next[key] = anchor;
+    else delete next[key];
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-orange-200 bg-orange-50/40 p-4">
+      <div>
+        <Label className="text-base font-semibold text-neutral-900">
+          Рекламные якоря разделов
+        </Label>
+        <p className="mt-1 text-xs leading-5 text-neutral-600">
+          Поля необязательные. Введите короткое уникальное название, чтобы
+          получить прямую ссылку на раздел. Старые системные ссылки продолжают
+          работать и доступны для копирования без заполнения поля. Ссылка будет
+          вести на страницу, если соответствующий раздел тура заполнен и виден.
+        </p>
+      </div>
+
+      {(issues.duplicates.length > 0 || issues.reserved.length > 0) && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {issues.duplicates.length > 0 && (
+            <p>Повторяются якоря: {issues.duplicates.map((item) => `#${item}`).join(", ")}.</p>
+          )}
+          {issues.reserved.length > 0 && (
+            <p>Заняты системные имена: {issues.reserved.map((item) => `#${item}`).join(", ")}.</p>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        {TOUR_SECTION_ANCHORS.map((section) => (
+          <AnchorAdminField
+            key={section.key}
+            label={section.label}
+            value={anchors[section.key] || ""}
+            onChange={(anchor) => updateAnchor(section.key, anchor)}
+            tourSlug={tourSlug}
+            defaultAnchor={section.defaultAnchor || ""}
+            placeholder={`Например: ${section.key.replaceAll("_", "-")}-details`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TourExtraFields({ form, setForm, tours = [] }) {
   const update = useCallback(
     (key, value) => {
@@ -2107,6 +2299,10 @@ function TourExtraFields({ form, setForm, tours = [] }) {
   const updateExcluded = useCallback((v) => update("excluded", v), [update]);
   const updateImportantInfo = useCallback(
     (v) => update("important_info", v),
+    [update],
+  );
+  const updateSectionAnchors = useCallback(
+    (v) => update("section_anchors", v),
     [update],
   );
   const updateProgram = useCallback((v) => update("program", v), [update]);
@@ -2181,6 +2377,13 @@ function TourExtraFields({ form, setForm, tours = [] }) {
     <div className="space-y-6 rounded-xl border border-neutral-200 p-4">
       <h3 className="font-medium">Дополнительная информация</h3>
 
+      <TourSectionAnchorsField
+        value={form.section_anchors || {}}
+        onChange={updateSectionAnchors}
+        tourSlug={tourSlug}
+        tour={form}
+      />
+
       <MemoBadgesField value={form.badges || []} onChange={updateBadges} />
 
       <MemoImageListField
@@ -2238,7 +2441,11 @@ function TourExtraFields({ form, setForm, tours = [] }) {
         placeholder="Документ: внутренний или загранпаспорт"
       />
 
-      <MemoProgramField value={form.program || []} onChange={updateProgram} />
+      <MemoProgramField
+        value={form.program || []}
+        onChange={updateProgram}
+        tourSlug={tourSlug}
+      />
 
       <TourVideosField value={form.videos || []} onChange={updateVideos} />
 
@@ -2272,6 +2479,7 @@ function TourExtraFields({ form, setForm, tours = [] }) {
           value={form.chains || []}
           onChange={updateChains}
           tourSlug={tourSlug}
+          tours={tours}
           tourCurrency={form.currency || "BYN"}
           tourPrice={form.price_from || ""}
           tourAdditionalPrice={form.additional_price || ""}
@@ -2288,6 +2496,8 @@ function TourExtraFields({ form, setForm, tours = [] }) {
           <MemoDatesField
             value={form.dates || []}
             onChange={updateDates}
+            tours={tours}
+            currentTourSlug={tourSlug}
             defaultCurrency={form.currency || "BYN"}
             defaultPrice={form.price_from || ""}
             defaultAdditionalPrice={form.additional_price || ""}
@@ -2960,7 +3170,7 @@ function getProgramItemImages(item) {
   return item?.image ? [item.image] : [];
 }
 
-function ProgramField({ value, onChange }) {
+function ProgramField({ value, onChange, tourSlug }) {
   const items = value.length
     ? value
     : [
@@ -2968,6 +3178,7 @@ function ProgramField({ value, onChange }) {
           day: "1",
           title: "",
           description: "",
+          anchor: "",
           image: "",
           images: [],
           image_alts: [],
@@ -2998,6 +3209,7 @@ function ProgramField({ value, onChange }) {
         day: String(items.length + 1),
         title: "",
         description: "",
+        anchor: "",
         image: "",
         images: [],
         image_alts: [],
@@ -3049,6 +3261,14 @@ function ProgramField({ value, onChange }) {
               />
             </div>
 
+            <AnchorAdminField
+              label="Рекламный якорь этого дня программы"
+              value={item.anchor || ""}
+              onChange={(anchor) => updateItem(index, { anchor })}
+              tourSlug={tourSlug}
+              placeholder={`Например: den-${item.day || index + 1}`}
+            />
+
             <ImageListField
               label="Фото дня"
               value={getProgramItemImages(item)}
@@ -3086,6 +3306,8 @@ function ProgramField({ value, onChange }) {
 function DatesField({
   value,
   onChange,
+  tours = [],
+  currentTourSlug = "",
   defaultCurrency = "BYN",
   defaultPrice = "",
   defaultAdditionalPrice = "",
@@ -3104,6 +3326,10 @@ function DatesField({
           price_type: "from",
           status: "active",
           comment: "",
+          special_active: false,
+          special_label: "",
+          special_tour_slug: "",
+          special_cta_label: "",
           promotion_active: false,
           promotion_price: "",
           promotion_currency: defaultCurrency,
@@ -3112,6 +3338,12 @@ function DatesField({
             defaultAdditionalCurrency || defaultCurrency,
         },
       ];
+  const specialTourOptions = (Array.isArray(tours) ? tours : []).filter(
+    (tour) =>
+      tour?.slug &&
+      String(tour.slug) !== String(currentTourSlug) &&
+      tour.active !== false,
+  );
 
   const updateItem = (index, patch) => {
     const next = [...items];
@@ -3131,6 +3363,10 @@ function DatesField({
         price_type: "from",
         status: "active",
         comment: "",
+        special_active: false,
+        special_label: "",
+        special_tour_slug: "",
+        special_cta_label: "",
         promotion_active: false,
         promotion_price: "",
         promotion_currency: defaultCurrency,
@@ -3151,7 +3387,9 @@ function DatesField({
           <div
             key={item.id || index}
             className={`rounded-xl border p-3 space-y-3 transition ${
-              item.promotion_active
+              item.special_active
+                ? "border-amber-300 bg-amber-50/50"
+                : item.promotion_active
                 ? "border-rose-200 bg-rose-50/40"
                 : "border-neutral-200 bg-white"
             }`}
@@ -3164,6 +3402,11 @@ function DatesField({
                 {item.promotion_active && (
                   <p className="mt-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rose-700">
                     Акционная дата
+                  </p>
+                )}
+                {item.special_active && (
+                  <p className="mt-1 ml-1 inline-flex rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900">
+                    {item.special_label || "Особая дата"}
                   </p>
                 )}
               </div>
@@ -3208,6 +3451,92 @@ function DatesField({
               <Label className="text-xs">Примечание к дате</Label>
               <Input value={item.comment || ""} onChange={(event) => updateItem(index, { comment: event.target.value })} placeholder="Например: Рождество или закрытие фонтанов" className="mt-1" />
             </div>
+
+            <div className="rounded-xl border border-amber-200 bg-white p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <Label className="text-sm font-semibold text-neutral-900">
+                    Особая дата
+                  </Label>
+                  <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+                    Выделяет этот выезд и при необходимости добавляет переход
+                    на отдельную программу.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-2">
+                  <span className="text-xs font-medium text-neutral-600">
+                    {item.special_active ? "Включена" : "Выключена"}
+                  </span>
+                  <Switch
+                    checked={item.special_active === true}
+                    onCheckedChange={(special_active) =>
+                      updateItem(index, { special_active })
+                    }
+                  />
+                </div>
+              </div>
+
+              {item.special_active && (
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  <div>
+                    <Label className="text-xs">Короткая метка</Label>
+                    <Input
+                      value={item.special_label || ""}
+                      maxLength={80}
+                      onChange={(event) =>
+                        updateItem(index, {
+                          special_label: event.target.value,
+                        })
+                      }
+                      placeholder="Например: Фестиваль тюльпанов"
+                      className="mt-1"
+                    />
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Можно написать любую метку. Если оставить пустой,
+                      появится «Особая дата».
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs">Связанная программа</Label>
+                    <select
+                      value={item.special_tour_slug || ""}
+                      onChange={(event) =>
+                        updateItem(index, {
+                          special_tour_slug: event.target.value,
+                        })
+                      }
+                      className="mt-1 h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
+                    >
+                      <option value="">Без перехода на другой тур</option>
+                      {specialTourOptions.map((tour) => (
+                        <option key={tour.slug} value={tour.slug}>
+                          {tour.title || tour.slug}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {item.special_tour_slug && (
+                    <div className="lg:col-span-2">
+                      <Label className="text-xs">Текст кнопки</Label>
+                      <Input
+                        value={item.special_cta_label || ""}
+                        maxLength={80}
+                        onChange={(event) =>
+                          updateItem(index, {
+                            special_cta_label: event.target.value,
+                          })
+                        }
+                        placeholder="Смотреть специальную программу"
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
               <div>
                 <Label className="text-xs">Цена</Label>
@@ -3434,6 +3763,7 @@ function ChainsField({
   value,
   onChange,
   tourSlug,
+  tours = [],
   tourCurrency,
   tourPrice,
   tourAdditionalPrice = "",
@@ -3527,6 +3857,8 @@ function ChainsField({
             <MemoDatesField
               value={chain.dates || []}
               onChange={(dates) => updateItem(index, { dates })}
+              tours={tours}
+              currentTourSlug={tourSlug}
               defaultCurrency={tourCurrency}
               defaultPrice={tourPrice}
               defaultAdditionalPrice={tourAdditionalPrice}

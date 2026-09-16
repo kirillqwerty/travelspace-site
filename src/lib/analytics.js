@@ -229,7 +229,7 @@ export function initAttribution() {
   if (!storage.getItem("attr_landing_page")) {
     storage.setItem(
       "attr_landing_page",
-      window.location.pathname + window.location.search,
+      window.location.pathname + window.location.search + window.location.hash,
     );
   }
   if (document.referrer && !storage.getItem("attr_referrer")) {

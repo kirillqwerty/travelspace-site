@@ -21,6 +21,7 @@ import {
   savePendingLeadConversion,
 } from "@/lib/analytics";
 import { isValidPhone, maskPhone } from "@/lib/phoneMask";
+import { getSpecialDateLabel } from "@/lib/tourSpecialDates";
 
 function parseDateTime(value) {
   if (!value) return Number.MAX_SAFE_INTEGER;
@@ -166,7 +167,7 @@ export default function LeadForm({
       const attribution = getAttribution();
       const currentPage =
         typeof window !== "undefined"
-          ? window.location.pathname + window.location.search
+          ? window.location.pathname + window.location.search + window.location.hash
           : null;
       const pageUrl =
         typeof window !== "undefined" ? window.location.href : null;
@@ -277,16 +278,20 @@ export default function LeadForm({
         if (!label) return;
 
         const isPromotion = isPromotionDepartureDate(d);
+        const specialLabel =
+          typeof d === "string" ? "" : getSpecialDateLabel(d);
         const existing = seen.get(label);
 
         if (existing) {
           existing.isPromotion = existing.isPromotion || isPromotion;
+          existing.specialLabel = existing.specialLabel || specialLabel;
           return;
         }
 
         seen.set(label, {
           label,
           isPromotion,
+          specialLabel,
         });
       });
 
@@ -427,6 +432,11 @@ export default function LeadForm({
                         акция
                       </span>
                     )}
+                    {selectedDateOption?.specialLabel && (
+                      <span className="max-w-[8rem] shrink-0 truncate rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                        {selectedDateOption.specialLabel}
+                      </span>
+                    )}
                   </span>
                 ) : (
                   <SelectValue placeholder="Без выбора даты" />
@@ -444,6 +454,11 @@ export default function LeadForm({
                       {option.isPromotion && (
                         <span className="shrink-0 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600">
                           акция
+                        </span>
+                      )}
+                      {option.specialLabel && (
+                        <span className="max-w-[9rem] shrink-0 truncate rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                          {option.specialLabel}
                         </span>
                       )}
                     </span>
