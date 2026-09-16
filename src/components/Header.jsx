@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Menu, X, ChevronDown, Plus, Minus, LogOut } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSiteData } from "@/lib/useSiteData";
 import { TourMenuTitle } from "@/lib/tourTitle";
@@ -11,6 +11,7 @@ import socialViber from "../assets/social-viber.png";
 import socialWhatsapp from "../assets/social-whatsapp.png";
 import {
   getTourLandingPath,
+  getTourSectionPath,
   getTourTransportType,
   getTransportFromHash,
   TOUR_TRANSPORT_TYPES,
@@ -353,7 +354,7 @@ export default function Header() {
                     >
                       <div className="w-[min(440px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-2xl">
                         <NavLink
-                          to={navItem.to}
+                          to={getTourSectionPath(navItem.transportType)}
                           onClick={() => setToursOpen(null)}
                           className="block rounded-xl px-4 py-2.5 text-sm font-semibold text-[#C2410C] hover:bg-orange-50"
                         >
@@ -571,42 +572,25 @@ export default function Header() {
                 {mobileNav.map((n) =>
                   n.dropdown ? (
                     <div key={n.to}>
-                      <div className="flex items-center gap-1">
-                        <Link
-                          to={n.to}
-                          onClick={closeMenu}
-                          className="flex-1 rounded-xl px-2 py-2.5 text-[16px] font-medium text-neutral-900 hover:bg-neutral-100"
-                        >
-                          {n.label}
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setMobileToursOpen((value) =>
-                              value === n.transportType
-                                ? null
-                                : n.transportType,
-                            )
-                          }
-                          className="grid size-10 place-items-center rounded-xl text-neutral-500 hover:bg-neutral-100"
-                          aria-label={`Показать туры: ${n.label}`}
-                          aria-expanded={mobileToursOpen === n.transportType}
-                          aria-controls={`mobile-tours-${n.transportType}`}
-                          data-testid={`mobile-nav-tours-toggle-${n.transportType}`}
-                        >
-                          {mobileToursOpen === n.transportType ? (
-                            <Minus className="size-4" />
-                          ) : (
-                            <Plus className="size-4" />
-                          )}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMobileToursOpen((value) => value === n.transportType ? null : n.transportType)}
+                        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-2 py-2.5 text-left text-[16px] font-medium text-neutral-900 transition-colors hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700"
+                        aria-expanded={mobileToursOpen === n.transportType}
+                        aria-controls={`mobile-tours-${n.transportType}`}
+                        data-testid={`mobile-nav-tours-toggle-${n.transportType}`}
+                      >
+                        <span>{n.label}</span>
+                        <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-neutral-100 text-neutral-700">
+                          <ChevronDown className={`size-5 transition-transform duration-200 motion-reduce:transition-none ${mobileToursOpen === n.transportType ? "rotate-180" : ""}`} />
+                        </span>
+                      </button>
                       {mobileToursOpen === n.transportType && (
                           <div
                             id={`mobile-tours-${n.transportType}`}
                             className="animate-in fade-in slide-in-from-top-1 overflow-hidden duration-200"
                           >
-                            <div data-testid="mobile-article-list" className="max-h-[60dvh] overflow-y-auto overscroll-contain flex flex-col gap-0.5 pl-3 py-1">
+                            <div data-testid={`mobile-tour-list-${n.transportType}`} className="max-h-[60dvh] overflow-y-auto overscroll-contain flex flex-col gap-0.5 pl-3 py-1">
                               {tourLinksByTransport[n.transportType]?.length ? (
                                 tourLinksByTransport[n.transportType].map(
                                   (item) => (
@@ -643,12 +627,10 @@ export default function Header() {
                           type="button"
                           onClick={() => setMobileArticlesOpen((v) => !v)}
                           className="size-10 rounded-xl grid place-items-center text-neutral-500 hover:bg-neutral-100"
+                          aria-label={mobileArticlesOpen ? "Свернуть статьи блога" : "Показать статьи блога"}
+                          aria-expanded={mobileArticlesOpen}
                         >
-                          {mobileArticlesOpen ? (
-                            <Minus className="size-4" />
-                          ) : (
-                            <Plus className="size-4" />
-                          )}
+                          <ChevronDown aria-hidden="true" className={`size-5 text-neutral-700 transition-transform duration-200 motion-reduce:transition-none ${mobileArticlesOpen ? "rotate-180" : ""}`} />
                         </button>
                       </div>
                       {mobileArticlesOpen && (

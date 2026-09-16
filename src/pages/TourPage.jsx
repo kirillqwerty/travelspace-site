@@ -42,6 +42,7 @@ import {
 import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
 import TourCard from "@/components/TourCard";
+import TourYoutubeBlock from "@/components/TourYoutubeBlock";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
@@ -1416,6 +1417,40 @@ export default function TourPage() {
   const [roomSlide, setRoomSlide] = useState(0);
   const [tourGallerySlide, setTourGallerySlide] = useState(0);
   const [programSlideByKey, setProgramSlideByKey] = useState({});
+  const [openProgramDays, setOpenProgramDays] = useState([]);
+  const programRef = useRef(null);
+
+  useEffect(() => {
+    if (!tour?.program?.length) return;
+    setOpenProgramDays([`day-${tour.program[0]?.day || 1}-0`]);
+    const openLinkedDay = () => {
+      let candidates;
+      try { candidates = getAnchorCandidates(window.location.hash); } catch { return; }
+      const index = tour.program.findIndex((day, i) =>
+        candidates.includes(normalizeTourAnchor(day.anchor)) ||
+        candidates.includes(`day-${day.day || i + 1}-${i}`),
+      );
+      if (index >= 0) {
+        const key = `day-${tour.program[index].day || index + 1}-${index}`;
+        setOpenProgramDays((prev) => prev.includes(key) ? prev : [...prev, key]);
+      }
+    };
+    openLinkedDay();
+    window.addEventListener("hashchange", openLinkedDay);
+    return () => window.removeEventListener("hashchange", openLinkedDay);
+  }, [tour?.slug, tour?.program]);
+
+  useEffect(() => {
+    const target = programRef.current;
+    if (!target || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      trackEvent("tour_program_view", { tour_slug: slug });
+      observer.disconnect();
+    }, { threshold: 0.1 });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [slug, tour]);
   const [roomCardSlideById, setRoomCardSlideById] = useState({});
   const [roomScrollerHints, setRoomScrollerHints] = useState({});
   const roomScrollerRefs = useRef({});
@@ -2138,18 +2173,36 @@ export default function TourPage() {
               data-testid="tour-program"
             >
               <TourAnchorMarker anchor={getTourSectionAnchor(tour, "program")} />
-              <p className="overline text-[#C2410C]">Программа тура</p>
-
-              <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
-                Программа тура
-              </h2>
+              <div ref={programRef} className="mb-5 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <p className="overline text-[#C2410C]">Ваш маршрут по дням</p>
+                  <h2 className="font-heading text-3xl sm:text-4xl mt-2">Программа тура</h2>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-600">
+                    Посмотрите, как пройдёт путешествие: нажмите на день, чтобы узнать подробности.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-12 shrink-0 rounded-full border border-orange-200 bg-orange-50 px-5 py-3 text-sm font-semibold text-[#9A3412] transition-colors hover:border-orange-300 hover:bg-orange-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-700"
+                  onClick={() => {
+                    const expand = openProgramDays.length !== tour.program.length;
+                    setOpenProgramDays(expand ? tour.program.map((day, i) => `day-${day.day || i + 1}-${i}`) : []);
+                    trackEvent("tour_program_toggle_all", { tour_slug: slug, expanded: expand });
+                  }}
+                >
+                  {openProgramDays.length === tour.program.length ? "Свернуть программу" : "Раскрыть всю программу"}
+                </button>
+              </div>
 
               <Accordion
                 type="multiple"
-                defaultValue={[
-                  `day-${tour.program[0]?.day || 1}-0`,
-                ]}
-                className="divide-y divide-neutral-200 border-y border-neutral-200"
+                value={openProgramDays}
+                onValueChange={(values) => {
+                  const opened = values.find((value) => !openProgramDays.includes(value));
+                  if (opened) trackEvent("tour_program_day_open", { tour_slug: slug, day_key: opened });
+                  setOpenProgramDays(values);
+                }}
+                className="space-y-3"
               >
                 {tour.program.map((d, index) => {
                   const programKey = `${d.day || index + 1}-${index}`;
@@ -2171,16 +2224,25 @@ export default function TourPage() {
                     <AccordionItem
                       key={programKey}
                       value={`day-${programKey}`}
-                      className="border-0 px-1"
+                      className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white px-4 transition-colors data-[state=open]:border-orange-200 data-[state=open]:bg-orange-50/30 sm:px-6"
                     >
                       <TourAnchorMarker anchor={d.anchor} />
-                      <AccordionTrigger className="text-left py-5 hover:no-underline">
-                        <div className="flex items-baseline gap-4 sm:gap-5">
-                          <span className="font-heading text-xl sm:text-2xl text-[#C2410C] font-bold tabular-nums w-28 shrink-0 whitespace-nowrap">
+                      <AccordionTrigger className="gap-3 py-5 text-left hover:no-underline [&>svg]:h-5 [&>svg]:w-5 [&>svg]:text-[#C2410C]">
+                        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:gap-5">
+                          <span className="w-fit shrink-0 rounded-lg bg-orange-50 px-3 py-1.5 text-sm font-bold tabular-nums text-[#9A3412] sm:mt-0.5">
                             {getProgramDayTitle(d)}
                           </span>
-
-                          <span className="font-medium text-lg">{d.title}</span>
+                          <div className="min-w-0 flex-1">
+                            <span className="block break-words text-lg font-semibold leading-6 text-neutral-900 sm:text-xl sm:leading-7">{d.title || "План дня"}</span>
+                            {!openProgramDays.includes(`day-${programKey}`) && (
+                              <span className="mt-2 block text-sm font-normal leading-6 text-neutral-600 line-clamp-2">
+                                {firstSeoText(d.description).slice(0, 150)}{firstSeoText(d.description).length > 150 ? "…" : ""}
+                              </span>
+                            )}
+                            <span className="mt-2 block text-xs font-medium text-[#9A3412]">
+                              {openProgramDays.includes(`day-${programKey}`) ? "Подробности дня · нажмите, чтобы свернуть" : "Прочесть всю программу дня"}
+                            </span>
+                          </div>
                         </div>
                       </AccordionTrigger>
 
@@ -2348,7 +2410,9 @@ export default function TourPage() {
           {Array.isArray(tour.videos) &&
             tour.videos.some((video) => getYoutubeVideoId(video?.url)) && (
               <section data-testid="tour-videos">
-                <TourAnchorMarker anchor={getTourSectionAnchor(tour, "videos")} />
+                {!getYoutubeVideoId(tour.youtube_url) && (
+                  <TourAnchorMarker anchor={getTourSectionAnchor(tour, "videos")} />
+                )}
                 <p className="overline text-[#C2410C]">Видео</p>
                 <h2 className="font-heading mt-2 mb-6 text-3xl sm:text-4xl">
                   Посмотрите, как проходит тур
@@ -3005,6 +3069,10 @@ export default function TourPage() {
               </div>
             </div>
           )}
+
+          <TourYoutubeBlock value={tour.youtube_url} title={tour.youtube_title}>
+            <TourAnchorMarker anchor={getTourSectionAnchor(tour, "videos")} />
+          </TourYoutubeBlock>
 
           {tour.important_info?.length > 0 && (
             <div className="rounded-2xl bg-neutral-950 text-white p-6 sm:p-8">

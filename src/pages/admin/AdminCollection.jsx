@@ -53,6 +53,8 @@ import { RICH_TEXT_ICONS, richTextToPlain } from "@/lib/richText";
 import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
 import MarkdownBoldButton, { useMarkdownBold } from "@/components/admin/MarkdownBoldButton";
 import TourTitleField from "@/components/admin/TourTitleField";
+import LazyYoutubeEmbed from "@/components/LazyYoutubeEmbed";
+import { getYoutubeVideoId } from "@/lib/youtube";
 import { invalidateSiteData } from "@/lib/useSiteData";
 import {
   getTourTransportType,
@@ -487,6 +489,8 @@ const TOUR_EXTRA_KEYS = [
   "related_tour_slugs",
   "related_tours_title",
   "videos",
+  "youtube_title",
+  "youtube_url",
 ];
 
 const firstDefined = (...values) =>
@@ -950,6 +954,8 @@ const normalizeRecord = (record = {}, collectionName) => {
     related_tours_title:
       record.related_tours_title ||
       "Туры, которые вас также могут заинтересовать",
+    youtube_title: record.youtube_title || "",
+    youtube_url: record.youtube_url || "",
     videos: Array.isArray(record.videos)
       ? record.videos.map((video) => ({
           id: video?.id || uid(),
@@ -1443,6 +1449,8 @@ function EditDialog({
             ),
           ]
         : [];
+      payload.youtube_title = String(form.youtube_title || "").trim();
+      payload.youtube_url = String(form.youtube_url || "").trim();
       payload.videos = Array.isArray(form.videos)
         ? form.videos
             .map((video) => ({
@@ -2446,6 +2454,45 @@ function TourExtraFields({ form, setForm, tours = [] }) {
         onChange={updateProgram}
         tourSlug={tourSlug}
       />
+
+      <div className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50/50 p-4 sm:p-5">
+        <div className="space-y-2">
+          <Label htmlFor="tour-youtube-title">Заголовок блока с YouTube-видео</Label>
+          <Input
+            id="tour-youtube-title"
+            value={form.youtube_title || ""}
+            onChange={(event) => update("youtube_title", event.target.value)}
+            placeholder="Видео о туре"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="tour-youtube-url">Ссылка или код YouTube-видео</Label>
+          <Textarea
+            id="tour-youtube-url"
+            value={form.youtube_url || ""}
+            onChange={(event) => update("youtube_url", event.target.value)}
+            rows={3}
+            placeholder="Ссылка YouTube, ID видео или стандартный <iframe> код"
+            aria-describedby="tour-youtube-hint"
+          />
+          <p id="tour-youtube-hint" className="text-xs leading-5 text-neutral-500">
+            Видео загружается только после нажатия посетителя и не блокирует первоначальную загрузку страницы.
+            Оставьте ссылку пустой, чтобы скрыть весь блок.
+          </p>
+          {form.youtube_url?.trim() && !getYoutubeVideoId(form.youtube_url) && (
+            <p role="status" className="text-sm text-red-700">Не удалось определить YouTube-видео. Проверьте ссылку или код.</p>
+          )}
+        </div>
+        {getYoutubeVideoId(form.youtube_url) && (
+          <div className="max-w-xl">
+            <LazyYoutubeEmbed
+              key={getYoutubeVideoId(form.youtube_url)}
+              value={form.youtube_url}
+              title={form.youtube_title?.trim() || "Видео о туре"}
+            />
+          </div>
+        )}
+      </div>
 
       <TourVideosField value={form.videos || []} onChange={updateVideos} />
 
