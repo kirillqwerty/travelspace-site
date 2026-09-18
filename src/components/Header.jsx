@@ -1,6 +1,8 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, X, ChevronDown, LogOut } from "lucide-react";
+import MobileBackLink from "@/components/MobileBackLink";
 import { Button } from "@/components/ui/button";
 import { useSiteData } from "@/lib/useSiteData";
 import { TourMenuTitle } from "@/lib/tourTitle";
@@ -141,7 +143,8 @@ export default function Header() {
     type: "telegram",
   });
   const [leadOpen, setLeadOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [hasScrolled, setScrolled] = useState(false);
+  const scrolled = hasScrolled || location.pathname.startsWith("/hotels/") || location.pathname.startsWith("/blog/");
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
@@ -245,7 +248,7 @@ export default function Header() {
                   </span>
                 </div>
 
-                <a
+                <ResponsiveLink
                   className="ml-4 flex shrink-0 items-center"
                   href="https://www.instagram.com/travelspace.by/"
                   target="_blank"
@@ -255,7 +258,7 @@ export default function Header() {
                     <span className="animate-pulse text-[#FB923C]">●</span>
                     <span>На связи в Instagram 24/7</span>
                   </div>
-                </a>
+                </ResponsiveLink>
               </div>
             </div>
         )}
@@ -522,6 +525,15 @@ export default function Header() {
 
           {/* MOBILE */}
           <div className="ml-auto flex items-center gap-2 lg:hidden">
+            {location.pathname !== "/" && !location.pathname.startsWith("/hotels/") && (
+              <MobileBackLink
+                fallback={location.pathname.startsWith("/tours/") ? "/tours" : location.pathname.startsWith("/blog/") ? "/blog" : "/"}
+                label={location.pathname.startsWith("/tours/") ? "Вернуться к списку туров" : location.pathname.startsWith("/blog/") ? "Вернуться в блог" : "Вернуться на главную"}
+                title="Назад"
+                className={`grid size-10 place-items-center rounded-full transition ${scrolled ? "bg-white text-neutral-900 shadow" : "border border-white/20 bg-white/10 text-white"}`}
+                data-testid="mobile-page-back"
+              />
+            )}
             <button
               onClick={() => setOpen(true)}
               aria-label="Меню"

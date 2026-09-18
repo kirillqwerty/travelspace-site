@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import { useSiteData } from "@/lib/useSiteData";
 import {
   Phone,
@@ -164,22 +165,22 @@ export default function Contacts() {
               ></iframe>
             </div>
             <div className="flex flex-col gap-2 border-t border-neutral-200 p-3 sm:flex-row">
-              <a
+              <ResponsiveLink
                 href={map.mapUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium hover:border-[#C2410C] hover:text-[#C2410C]"
               >
                 <ExternalLink className="size-4" /> Открыть на карте
-              </a>
-              <a
+              </ResponsiveLink>
+              <ResponsiveLink
                 href={map.routeUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-[#C2410C] px-4 py-2 text-sm font-medium text-white hover:bg-[#9A3412]"
               >
                 <Navigation className="size-4" /> Построить маршрут
-              </a>
+              </ResponsiveLink>
             </div>
           </div>
         </div>

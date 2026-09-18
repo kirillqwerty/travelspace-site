@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSiteData } from "@/lib/useSiteData";
@@ -191,13 +192,13 @@ export default function Footer() {
               <div>
                 <p>Тел.:</p>
                 {footerPhones.map((item) => (
-                  <a
+                  <ResponsiveLink
                     key={item.link || item.phone}
                     href={`tel:${phoneTel(item.link || item.phone)}`}
                     className="block hover:text-[#F97316]"
                   >
                     A1/MTS: {item.phone} · {item.label}
-                  </a>
+                  </ResponsiveLink>
                 ))}
               </div>
             </div>
@@ -206,12 +207,12 @@ export default function Footer() {
               <Mail className="mt-1 size-4 shrink-0 text-[#F97316]" />
               <div>
                 <p>Эл. почта:</p>
-                <a
+                <ResponsiveLink
                   href={`mailto:${settings?.email || "info@travel-space.by"}`}
                   className="hover:text-[#F97316]"
                 >
                   {settings?.email || "info@travel-space.by"}
-                </a>
+                </ResponsiveLink>
               </div>
             </div>
 
@@ -244,13 +245,13 @@ export default function Footer() {
               <p>{settings?.work_hours || "По будням с 11:00 до 19:00"}</p>
               <p>
                 На связи в{" "}
-                <a
+                <ResponsiveLink
                   className="text-[#F97316] transition hover:-translate-y-0.5 hover:opacity-90"
                   href="https://www.instagram.com/travelspace.by/"
                   target="_blank"
                 >
                   instagram{" "}
-                </a>
+                </ResponsiveLink>
                 24/7
               </p>
             </div>
@@ -285,7 +286,7 @@ export default function Footer() {
                   }
 
                   return (
-                    <a
+                    <ResponsiveLink
                       key={item.type}
                       href={item.href}
                       {...getExternalLinkProps(item.href)}
@@ -294,19 +295,19 @@ export default function Footer() {
                       className={buttonClassName}
                     >
                       {icon}
-                    </a>
+                    </ResponsiveLink>
                   );
                 })}
               </div>
 
-              <a
+              <ResponsiveLink
                 href="/public-contract.pdf"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-white/25 px-6 py-3 text-base font-bold leading-none transition hover:border-[#F97316] hover:text-[#F97316]"
               >
                 Публичный договор
-              </a>
+              </ResponsiveLink>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download, FileText, Loader2, RefreshCw } from "lucide-react";
@@ -79,9 +80,9 @@ export default function AdminTourPdfProgram() {
           </Button>
           {pdfUrl && (
             <Button asChild className="bg-[#C2410C] text-white hover:bg-[#9A3412]">
-              <a href={pdfUrl} target="_blank" rel="noreferrer">
+              <ResponsiveLink href={pdfUrl} target="_blank" rel="noreferrer">
                 <Download className="mr-1 size-4" /> Скачать PDF
-              </a>
+              </ResponsiveLink>
             </Button>
           )}
         </div>

@@ -62,9 +62,10 @@ export function publicNavigationUrl(event, location = window.location) {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return null;
   const link = event.target?.closest?.("a[href]");
   if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self")) return null;
+  if (link.dataset?.navigationBack === "history") return null;
   const url = new URL(link.href, location.href);
   if (url.origin !== location.origin || cleanPagePath(url.pathname) === cleanPagePath(location.pathname)) return null;
-  if (!/^\/(?:$|tours(?:\/[^/]+)?\/?$|blog(?:\/[^/]+)?\/?$|about\/?$|contacts\/?$|faq\/?$|promotions\/?$|reviews\/?$|agencies\/?$|payment\/?$|legal\/?$)/.test(url.pathname)) return null;
+  if (!/^\/(?:$|tours(?:\/[^/]+)?\/?$|hotels\/[^/]+\/?$|blog(?:\/[^/]+)?\/?$|about\/?$|contacts\/?$|faq\/?$|promotions\/?$|reviews\/?$|agencies\/?$|payment\/?$|legal\/?$)/.test(url.pathname)) return null;
   return url.href;
 }
 

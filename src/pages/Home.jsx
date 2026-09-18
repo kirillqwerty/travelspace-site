@@ -29,10 +29,7 @@ import {
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import { getInitialCollection, getPageBootstrap } from "@/lib/pageBootstrap";
-import {
-  runAfterFirstInteraction,
-  runAfterPageIdle,
-} from "@/lib/deferredLoad";
+import { runAfterPageIdle } from "@/lib/deferredLoad";
 import TourCard from "@/components/TourCard";
 import { mediaUrl, optimizedMediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
@@ -215,21 +212,26 @@ export default function Home() {
 
     if (!canUseVideo) return undefined;
 
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      // On phones the video and even its metadata stay out of the initial
-      // request graph. Lighthouse performs no interaction, so the background
-      // cannot compete with FCP/LCP or consume a visitor's data unexpectedly.
-      let cancelIdleVideo;
-      const cancelInteraction = runAfterFirstInteraction(() => {
-        cancelIdleVideo = runAfterPageIdle(() => setShowHeroVideo(true), 1500);
-      });
-      return () => {
-        cancelInteraction();
-        cancelIdleVideo?.();
-      };
-    }
+    const mobileViewport = window.matchMedia("(max-width: 767px)");
+    let cancelIdleVideo;
+    const updateVideo = () => {
+      cancelIdleVideo?.();
+      // Mobile uses the photo only: do not mount a video or request metadata.
+      if (mobileViewport.matches) {
+        setShowHeroVideo(false);
+        return;
+      }
+      cancelIdleVideo = runAfterPageIdle(() => {
+        if (!mobileViewport.matches) setShowHeroVideo(true);
+      }, 2500);
+    };
 
-    return runAfterPageIdle(() => setShowHeroVideo(true), 2500);
+    updateVideo();
+    mobileViewport.addEventListener("change", updateVideo);
+    return () => {
+      cancelIdleVideo?.();
+      mobileViewport.removeEventListener("change", updateVideo);
+    };
   }, []);
 
   useEffect(() => {
@@ -270,7 +272,11 @@ export default function Home() {
         className="home-hero"
         data-testid="hero-section"
       >
-        <div className="absolute inset-0 bg-neutral-950" />
+        <div
+          className="home-hero-backdrop"
+          style={{ "--mobile-home-image": `url("${process.env.PUBLIC_URL}/mobile-hero-sunset-v2.webp")` }}
+          aria-hidden="true"
+        />
         {showHeroVideo && (
           <video
             ref={videoRef}
@@ -288,8 +294,7 @@ export default function Home() {
           </video>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/30 to-black/70" />
-        <div className="absolute inset-0 bg-orange-950/5" />
+        <div className="home-hero-shade" aria-hidden="true" />
 
         <div className="home-hero-content">
           <h1 className="font-heading">

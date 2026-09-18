@@ -1,4 +1,5 @@
 import ArticleContentEditor from "@/components/admin/ArticleContentEditor";
+import HotelProfileFields from "@/components/admin/HotelProfileFields";
 import { getArticleBlocks, articleBlockText } from "@/lib/articleContent";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -694,6 +695,7 @@ const normalizeRoomDatePriceRecord = (price = {}, room = {}) => {
 };
 
 const normalizeRoomRecord = (room = {}) => ({
+  ...room,
   id: room.id || uid(),
   number: room.number || "",
   title: room.title || "",
@@ -722,6 +724,7 @@ const normalizeRoomRecord = (room = {}) => ({
 });
 
 const normalizeHotelRecord = (h = {}) => ({
+  ...h,
   id: h.id || uid(),
   name: h.name || "",
   anchor_slug: h.anchor_slug || h.anchor || h.slug || "",
@@ -825,6 +828,7 @@ const normalizeRecord = (record = {}, collectionName) => {
 
   return {
     ...(isNew ? {} : { id: record.id }),
+    ...(record._hotels_revision ? { _hotels_revision: record._hotels_revision } : {}),
 
     title: record.title || "",
     title_highlighted:
@@ -1294,6 +1298,7 @@ function EditDialog({
       if (f.altKey) knownKeys.add(f.altKey);
     });
     knownKeys.add("id");
+    knownKeys.add("_hotels_revision");
 
     if (collectionName === "tours") {
       TOUR_EXTRA_KEYS.forEach((key) => knownKeys.add(key));
@@ -1501,7 +1506,7 @@ function EditDialog({
       await onSave(normalizeRecordImages(payload));
     } catch (e) {
       console.error("Save error:", e);
-      toast.error(e?.message || "Ошибка сохранения");
+      toast.error(e?.response?.data?.detail || e?.message || "Ошибка сохранения");
     } finally {
       setSaving(false);
     }
@@ -4071,51 +4076,14 @@ function ChainHotelsField({ value, dates, tourSlug, onChange }) {
               </div>
             </div>
 
-            <RichTextarea
-              value={item.description || ""}
-              onChange={(value) => updateItem(index, { description: value })}
-              placeholder="Описание отеля"
-            />
-
-            <ImageListField
-              label="Фото отеля"
-              value={item.images || (item.image ? [item.image] : [])}
-              onChange={(images) =>
-                updateItem(index, {
-                  images,
-                  image: images[0] || "",
-                })
-              }
-              altValue={item.image_alts || []}
-              onAltChange={(image_alts) => updateItem(index, { image_alts })}
-              onItemsChange={(images, image_alts) =>
-                updateItem(index, {
-                  images,
-                  image: images.find(Boolean) || "",
-                  image_alts,
-                })
-              }
-            />
-
-            <div className="grid sm:grid-cols-2 gap-2">
-              <Input
-                value={item.meal || ""}
-                onChange={(e) => updateItem(index, { meal: e.target.value })}
-                placeholder="Питание"
-              />
-              <Input
-                value={item.location || ""}
-                onChange={(e) =>
-                  updateItem(index, { location: e.target.value })
-                }
-                placeholder="Расположение"
-              />
-            </div>
-
-            <MemoRoomsField
-              value={item.rooms || []}
+            <HotelProfileFields
+              value={item}
               dates={dates}
-              onChange={(rooms) => updateItem(index, { rooms })}
+              onChange={(patch) => updateItem(index, patch)}
+              RichEditor={RichTextarea}
+              ImagesEditor={ImageListField}
+              RoomsEditor={MemoRoomsField}
+              ListEditor={StringListField}
             />
           </div>
         ))}
@@ -4931,3 +4899,5 @@ const MemoRoomsField = memo(RoomsField);
 const MemoRoomDatePricesField = memo(RoomDatePricesField);
 const MemoRoomUnavailableDatesField = memo(RoomUnavailableDatesField);
 const MemoFaqField = memo(FaqField);
+
+export { RichTextarea, ImageListField, RoomsField, StringListField, normalizeRecord };

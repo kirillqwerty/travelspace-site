@@ -26,6 +26,7 @@ import {
 } from "@/lib/pageBootstrap";
 import { useSiteData } from "@/lib/useSiteData";
 import { runAfterInteractionOrTimeout } from "@/lib/deferredLoad";
+import { installMobileReturnNavigation } from "@/lib/mobileReturn";
 
 const Toaster = lazy(() =>
   import("@/components/ui/sonner").then((module) => ({
@@ -36,6 +37,8 @@ const Toaster = lazy(() =>
 const Home = lazy(() => import(/* webpackChunkName: "home" */ "@/pages/Home"));
 const Catalog = lazy(() => import("@/pages/Catalog"));
 const TourPage = lazy(() => import("@/pages/TourPage"));
+const HotelPage = lazy(() => import("@/pages/HotelPage"));
+const AdminHotels = lazy(() => import("@/pages/admin/AdminHotels"));
 const TourLanding = lazy(() => import("@/pages/TourLanding"));
 const About = lazy(() => import("@/pages/About"));
 const Contacts = lazy(() => import("@/pages/Contacts"));
@@ -90,6 +93,11 @@ function RouteAnalytics() {
   return null;
 }
 
+function MobileReturnNavigation() {
+  useEffect(() => installMobileReturnNavigation(), []);
+  return null;
+}
+
 function DeferredToaster() {
   const [visible, setVisible] = useState(false);
 
@@ -126,7 +134,7 @@ function PublicPage({ children }) {
     const article = /^\/blog\/[^/]+\/?$/.test(pathname);
     // Detail pages release the server document only after their data is ready.
     if (
-      !article &&
+      !article && !/^\/hotels\/[^/]+\/?$/.test(pathname) &&
       (!tour || isTourLandingSlug(tour[1], getInitialSiteData()?.settings))
     ) {
       completePageMount();
@@ -175,6 +183,7 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <ScrollToTop />
+            <MobileReturnNavigation />
             <RouteAnalytics />
             <MarketingScripts />
             <PhoneClickAnalytics />
@@ -184,6 +193,7 @@ export default function App() {
             <Route path="/" element={<PublicPage><Home /></PublicPage>} />
             <Route path="/tours" element={<PublicPage><Catalog /></PublicPage>} />
             <Route path="/tours/:slug" element={<PublicPage><TourSlugRoute /></PublicPage>} />
+            <Route path="/hotels/:slug" element={<PublicPage><HotelPage /></PublicPage>} />
             <Route path="/thanks" element={<PublicPage><Thanks /></PublicPage>} />
             <Route path="/links" element={<PublicPage><TravelLinks /></PublicPage>} />
             <Route path="/directions" element={<Navigate to="/tours" replace />} />
@@ -204,6 +214,7 @@ export default function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="leads" element={<AdminLeads />} />
               <Route path="tours" element={<AdminCollection name="tours" />} />
+              <Route path="hotels" element={<AdminHotels />} />
               <Route path="tours/:tourId/pdf-program" element={<AdminTourPdfProgram />} />
               <Route path="directions" element={<Navigate to="/admin/tours" replace />} />
               <Route path="specialists" element={<AdminCollection name="specialists" />} />

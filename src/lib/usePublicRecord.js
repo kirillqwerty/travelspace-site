@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { completePageMount, getPageBootstrap, invalidatePageBootstrap } from "@/lib/pageBootstrap";
 
 function initialState(kind, slug) {
-  const path = `${kind === "tours" ? "/tours" : "/blog"}/${slug}`;
+  const path = `${kind === "articles" ? "/blog" : `/${kind}`}/${slug}`;
   const page = getPageBootstrap(path);
   return { key: `${kind}/${slug}`, record: page?.record?.slug === slug ? page.record : null,
     notFound: page?.status === 404, failed: false };

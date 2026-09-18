@@ -117,11 +117,12 @@ function buildStructuredGraph({ canonicalUrl, canonicalPath, title, description,
 
   if (!/^https?:\/\//i.test(canonicalPath) && canonicalPath !== "/") {
     const segments = canonicalPath.split("/").filter(Boolean);
+    if (segments[0] === "hotels") segments.splice(0, 1);
     const items = [
       { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
     ];
     segments.forEach((segment, index) => {
-      const partialPath = `/${segments.slice(0, index + 1).join("/")}`;
+      const partialPath = canonicalPath.startsWith("/hotels/") ? canonicalPath : `/${segments.slice(0, index + 1).join("/")}`;
       items.push({
         "@type": "ListItem",
         position: index + 2,

@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import {
   Fragment,
   useCallback,
@@ -43,6 +44,7 @@ import LeadForm from "@/components/LeadForm";
 import LeadDialog from "@/components/LeadDialog";
 import TourCard from "@/components/TourCard";
 import TourYoutubeBlock from "@/components/TourYoutubeBlock";
+import TourFaqAccordion from "@/components/TourFaqAccordion";
 import { useSiteData } from "@/lib/useSiteData";
 import { mediaUrl } from "@/lib/media";
 import PageSeo from "@/components/PageSeo";
@@ -51,11 +53,6 @@ import { usePublicRecord } from "@/lib/usePublicRecord";
 import { canonicalUrl, firstSeoText } from "@/components/Seo";
 import { trackEvent, trackTourView } from "@/lib/analytics";
 import { RichText, RichInline } from "@/lib/richText";
-import {
-  getTourTransportType,
-  TOUR_TRANSPORT_TYPES,
-} from "@/lib/tourTransport";
-import { getDirectionLandingForTour } from "@/lib/seoLandings";
 import {
   getYoutubeEmbedUrl,
   getYoutubeThumbnail,
@@ -1756,11 +1753,6 @@ export default function TourPage() {
     touristType: "Групповой тур",
     provider: { "@id": "https://travelspace.by/#organization" },
   };
-  const categoryLanding =
-    getTourTransportType(tour) === TOUR_TRANSPORT_TYPES.AIR
-      ? { path: "/tours/avia-iz-minska", label: "Авиа туры" }
-      : { path: "/tours/avtobusnye-iz-minska", label: "Автобусные туры" };
-  const directionLanding = getDirectionLandingForTour(tour);
 
   return (
     <div data-testid="tour-page">
@@ -1795,17 +1787,6 @@ export default function TourPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/5 sm:from-black/85 sm:via-black/35 sm:to-black/15" />
 
           <div className="relative min-h-[620px] lg:min-h-[680px] section-container flex flex-col justify-end pt-28 lg:pt-36 pb-10 text-white">
-            <nav aria-label="Хлебные крошки" className="mb-5 flex flex-wrap items-center gap-2 text-sm text-white/80">
-              <Link to="/" className="hover:text-white">Главная</Link>
-              <span aria-hidden="true">/</span>
-              <Link to={categoryLanding.path} className="hover:text-white">{categoryLanding.label}</Link>
-              {directionLanding && (
-                <>
-                  <span aria-hidden="true">/</span>
-                  <Link to={directionLanding.path} className="hover:text-white">{directionLanding.label}</Link>
-                </>
-              )}
-            </nav>
             <div className="flex flex-wrap gap-2 mb-4">
               {(tour.badges || []).map((b) => (
                 <Badge
@@ -1876,21 +1857,22 @@ export default function TourPage() {
                 )}
               </div>
 
+              <div className="flex w-full gap-2 lg:contents" data-testid="tour-hero-actions">
               {dates.length > 0 && (
                 <Button
                   type="button"
                   onClick={() => setPricesOpen(true)}
-                  className="rounded-full bg-sky-500 px-6 py-6 text-white hover:bg-sky-600"
+                  className="h-12 min-w-0 flex-1 rounded-full bg-sky-500 px-3 py-0 text-xs text-white hover:bg-sky-600 lg:h-9 lg:flex-none lg:px-6 lg:py-6 lg:text-sm"
                   data-testid="tour-hero-dates-btn"
                 >
-                  <WalletCards className="mr-2 size-4" /> Даты и цены
+                  <WalletCards className="size-4 lg:mr-2" /> Даты и цены
                 </Button>
               )}
 
               <Button
                 asChild
                 variant="outline"
-                className="rounded-full border-white/30 bg-white/15 px-6 py-6 text-white backdrop-blur-md hover:bg-white hover:text-neutral-900"
+                className="h-12 min-w-0 flex-1 rounded-full border-white/30 bg-white/15 px-3 py-0 text-xs text-white backdrop-blur-md hover:bg-white hover:text-neutral-900 lg:h-9 lg:flex-none lg:px-6 lg:py-6 lg:text-sm"
                 data-testid="tour-hero-program-download"
               >
                 <a
@@ -1898,9 +1880,12 @@ export default function TourPage() {
                   download
                   aria-label={`Скачать PDF-программу тура «${tour.title}»`}
                 >
-                  <Download className="mr-2 size-4" /> Скачать PDF-программу
+                  <Download className="size-4 lg:mr-2" />
+                  <span className="lg:hidden">Скачать PDF</span>
+                  <span className="hidden lg:inline">Скачать PDF-программу</span>
                 </a>
               </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -2004,11 +1989,13 @@ export default function TourPage() {
   lg:py-20
   grid
   lg:grid-cols-[minmax(0,1fr)_420px]
-  gap-10
+  gap-14
+  lg:gap-10
 "
+        data-testid="tour-detail-layout"
       >
         {/* <div className="lg:col-span-8 space-y-14"> */}
-        <div className="min-w-0 space-y-14">
+        <div className="contents min-w-0 [&>*]:min-w-0 lg:block lg:space-y-14">
           <div id="about-tour" className="scroll-mt-32">
             <TourAnchorMarker anchor={getTourSectionAnchor(tour, "about")} />
             <p className="overline text-[#C2410C]">О туре</p>
@@ -2816,6 +2803,11 @@ export default function TourPage() {
                                   {h.location && <span>{h.location}</span>}
                                 </div>
 
+                                {h.hotel_page_slug && h.page_enabled !== false && (
+                                  <ResponsiveLink as={Link} target="_blank" to={`/hotels/${h.hotel_page_slug}`} className="mt-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2.5 text-sm font-medium text-[#C2410C] transition hover:bg-orange-50" data-testid="tour-hotel-page-link">
+                                    Подробнее об отеле <ArrowRight className="size-4" />
+                                  </ResponsiveLink>
+                                )}
                                 {h.rooms?.length > 0 && (
                                   <div className="mt-5">
                                     {(() => {
@@ -3096,7 +3088,7 @@ export default function TourPage() {
           )}
 
           {relatedTours.length > 0 && (
-            <section data-testid="tour-related-tours">
+            <section className="order-2 lg:order-none" data-testid="tour-related-tours">
               <TourAnchorMarker anchor={getTourSectionAnchor(tour, "related")} />
               <p className="overline text-[#C2410C]">Другие программы</p>
               <h2 className="font-heading mt-2 mb-6 text-3xl sm:text-4xl">
@@ -3115,39 +3107,9 @@ export default function TourPage() {
           )}
 
           {tour.faq?.length > 0 && (
-            <div id="faq" className="scroll-mt-32" data-testid="tour-faq">
+            <div id="faq" className="order-3 scroll-mt-32 lg:order-none" data-testid="tour-faq">
               <TourAnchorMarker anchor={getTourSectionAnchor(tour, "faq")} />
-              <p className="overline text-[#C2410C]">FAQ</p>
-
-              <h2 className="font-heading text-3xl sm:text-4xl mt-2 mb-6">
-                Ответы на популярные вопросы
-              </h2>
-
-              <Accordion
-                type="single"
-                collapsible
-                className="divide-y divide-neutral-200 border-y border-neutral-200"
-              >
-                {tour.faq.map((item, index) => (
-                  <AccordionItem
-                    key={`${item.question}-${index}`}
-                    value={`faq-${index}`}
-                    className="border-0"
-                  >
-                    <AccordionTrigger className="py-2.5 text-left hover:no-underline">
-                      {item.question}
-                    </AccordionTrigger>
-
-                    <AccordionContent forceMount className="pb-2.5 text-neutral-700 leading-relaxed">
-                      <RichText
-                        text={item.answer}
-                        className="space-y-3"
-                        paragraphClassName="text-sm leading-7"
-                      />
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+              <TourFaqAccordion key={tour.slug || slug} items={tour.faq} />
             </div>
           )}
 
@@ -3166,7 +3128,7 @@ export default function TourPage() {
           )}
         </div>
         {/* <aside className="lg:col-span-4 space-y-6"> */}
-        <aside className="w-full lg:w-[420px] space-y-6">
+        <aside className="order-1 w-full space-y-6 lg:order-none lg:w-[420px]" data-testid="tour-booking-sidebar">
           <div
             className="
     rounded-2xl
@@ -3424,14 +3386,14 @@ export default function TourPage() {
                   )}
 
                   {selectedRoom.room.video_url && (
-                    <a
+                    <ResponsiveLink
                       href={selectedRoom.room.video_url}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex w-fit max-w-full rounded-full bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
                     >
                       Посмотреть на YouTube
-                    </a>
+                    </ResponsiveLink>
                   )}
 
                   {selectedRoom.room.gallery?.length > 0 && (

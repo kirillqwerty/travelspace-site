@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import { Fragment } from "react";
 import { normalizeMarkdownLinks, tokenizeRichText, tokensToPlain, isSafeRichUrl } from "./richTextTokens";
 
@@ -43,7 +44,7 @@ function renderTokens(tokens, keyPrefix, links) {
     if (token.type === "icon") return renderRichIcon(token.text, key);
     const children = renderTokens(token.children, key, token.type === "link" ? false : links);
     if (token.type === "link") return links && isSafeRichUrl(token.href)
-      ? <a key={key} href={token.href} target="_blank" rel="noopener noreferrer" className="text-[#C2410C] no-underline hover:text-[#9A3412] [overflow-wrap:anywhere]" style={{ fontWeight: "inherit" }}>{children}</a>
+      ? <ResponsiveLink key={key} href={token.href} target="_blank" rel="noopener noreferrer" className="text-[#C2410C] no-underline hover:text-[#9A3412] [overflow-wrap:anywhere]" style={{ fontWeight: "inherit" }}>{children}</ResponsiveLink>
       : <Fragment key={key}>{children}</Fragment>;
     if (token.type === "bold") return <strong key={key} className="font-bold text-inherit">{children}</strong>;
     if (token.type === "underline") return <u key={key} className="underline underline-offset-4">{children}</u>;

@@ -26,7 +26,7 @@ export default function PageSeo({
   const { settings } = useSiteData();
   // Detail records own their metadata, just as in the server HTML. Global
   // defaults must not overwrite a tour's title or its publication settings.
-  const pageConfig = ["tour", "article"].includes(pageKey) ? {} : getPageConfig(settings, pageKey);
+  const pageConfig = ["tour", "article", "hotel"].includes(pageKey) ? {} : getPageConfig(settings, pageKey);
   const serverSeo = getPageBootstrap(path)?.seo;
 
   const faq = validFaqItems(pageConfig.faq_items);

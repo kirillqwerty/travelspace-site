@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import PageSeo from "@/components/PageSeo";
 import StaticPageIntro from "@/components/StaticPageIntro";
 
@@ -43,14 +44,14 @@ export default function Legal() {
           договоре оказания туристических услуг.
         </p>
         <p>
-          <a
+          <ResponsiveLink
             href="/public-contract.pdf"
             target="_blank"
             rel="noreferrer"
             className="not-prose inline-flex items-center justify-center rounded-full bg-[#C2410C] px-6 py-3 text-sm font-bold text-white no-underline transition hover:bg-[#9A3412]"
           >
             Открыть публичный договор
-          </a>
+          </ResponsiveLink>
         </p>
 
         <h2 className="font-heading text-2xl mt-10">

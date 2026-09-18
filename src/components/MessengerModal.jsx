@@ -1,3 +1,4 @@
+import ResponsiveLink from "@/components/ResponsiveLink";
 import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -353,7 +354,7 @@ export default function MessengerModal({
                 }
 
                 return (
-                  <a
+                  <ResponsiveLink
                     key={direction.slug}
                     href={href}
                     onClick={() => {
@@ -365,18 +366,18 @@ export default function MessengerModal({
                     {...getMessengerLinkProps(href)}
                   >
                     {content}
-                  </a>
+                  </ResponsiveLink>
                 );
               })}
             </div>
 
             <div className="pt-2 border-t border-neutral-100">
-              <a
+              <ResponsiveLink
                 href={`tel:${normalizePhoneDigits(officePhone)}`}
                 className="inline-flex items-center gap-2 text-sm text-neutral-700 hover:text-[#C2410C]"
               >
                 <Phone className="size-4" /> Или позвоните в офис
-              </a>
+              </ResponsiveLink>
             </div>
           </div>
         )}

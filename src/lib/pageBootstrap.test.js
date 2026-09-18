@@ -72,4 +72,7 @@ test("public links request a complete document, but same-page anchors stay local
   const download = linkEvent("/tours/two");
   download.target.setAttribute("download", "program.pdf");
   expect(publicNavigationUrl(download, location)).toBeNull();
+  const back = linkEvent("/tours/two");
+  back.target.dataset.navigationBack = "history";
+  expect(publicNavigationUrl(back, location)).toBeNull();
 });

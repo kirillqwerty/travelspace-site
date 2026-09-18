@@ -59,6 +59,7 @@ export default function StickyMobileBar() {
       <div
         className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-3 py-2.5 grid grid-cols-2 gap-2"
         data-testid="sticky-mobile-bar"
+        style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))" }}
       >
         {currentTourPhone ? (
           <a
