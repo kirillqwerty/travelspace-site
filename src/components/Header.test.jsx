@@ -3,7 +3,9 @@ import { createRoot } from "react-dom/client";
 import Header from "./Header";
 
 jest.mock("@/lib/useSiteData", () => ({ useSiteData: () => ({
-  settings: {}, articles: [], tours: [
+  settings: {}, articles: [
+    { slug: "peterburg-guide", title: "Главные места Санкт-Петербурга", title_highlighted: "Главные места **Санкт-Петербурга**", active: true },
+  ], tours: [
     { slug: "bus-trip", title: "Поездка автобусом", transport_type: "bus" },
     { slug: "air-trip", title: "Поездка самолётом", transport_type: "air" },
   ],
@@ -59,4 +61,11 @@ test("desktop all tours links lead to the visible catalog", async () => {
   expect(container.querySelector('#desktop-tours-bus a').getAttribute("href")).toBe("/#avtobusnie-tury");
   await act(async () => container.querySelector('[data-testid="nav-tours-air"]').click());
   expect(container.querySelector('#desktop-tours-air a').getAttribute("href")).toBe("/#avia-tury");
+});
+
+test("mobile blog menu renders the editor-selected words", async () => {
+  await act(async () => container.querySelector('[data-testid="mobile-menu-open"]').click());
+  await act(async () => container.querySelector('[aria-label="Показать статьи блога"]').click());
+  const article = container.querySelector('[data-testid="mobile-article-list"] a[href="/blog/peterburg-guide"]');
+  expect(article.querySelector("strong").textContent).toBe("Санкт-Петербурга");
 });

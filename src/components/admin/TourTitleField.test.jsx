@@ -43,3 +43,29 @@ test("highlights a selected word, previews it and preserves it after save/reopen
     container.remove();
   }
 });
+
+test("uses the same safe highlighting editor for article titles", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  let latest;
+  function Editor() {
+    const [article, setArticle] = useState({ title: "Гид по Санкт-Петербургу" });
+    latest = article;
+    return <TourTitleField tour={article} onChange={setArticle} mode="article" />;
+  }
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => root.render(<Editor />));
+    const input = container.querySelector('[aria-label="Заголовок статьи на сайте"]');
+    input.focus();
+    input.setSelectionRange(7, 23);
+    await act(async () => container.querySelector("button").click());
+    expect(latest.title).toBe("Гид по Санкт-Петербургу");
+    expect(latest.title_highlighted).toBe("Гид по **Санкт-Петербургу**");
+    expect(container.querySelector('[data-testid="article-title-preview"] strong').textContent).toBe("Санкт-Петербургу");
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});

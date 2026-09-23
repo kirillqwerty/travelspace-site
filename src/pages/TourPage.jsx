@@ -1467,13 +1467,22 @@ export default function TourPage() {
       );
   }, [tour, tours]);
   const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
+  const dateChains = useMemo(() => {
+    if (!tour || tour.show_chain_dates !== false) return chains;
+    return [{
+      id: "main-dates",
+      title: "",
+      dates: sortDatesByStart((tour.dates || []).filter((date) => date.status !== "hidden" && isDateActual(date))),
+      hotels: [],
+    }];
+  }, [tour, chains]);
   const mapEmbedUrl = useMemo(
     () => safeMapEmbedUrl(tour?.map_embed),
     [tour?.map_embed],
   );
   const upcomingDates = useMemo(
-    () => getUpcomingDatesFromChains(chains),
-    [chains],
+    () => getUpcomingDatesFromChains(dateChains),
+    [dateChains],
   );
   const promotionDates = useMemo(
     () => upcomingDates.filter(isPromotionDate),
@@ -2503,7 +2512,7 @@ export default function TourPage() {
                         </div>
                       )}
 
-                      {chain.dates?.length > 0 && (
+                      {tour.show_chain_dates !== false && chain.dates?.length > 0 && (
                         <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-3 sm:p-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#C2410C]">
                             Даты заездов
@@ -3267,7 +3276,7 @@ export default function TourPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
             <div className="space-y-4">
-              {chains.map((chain, chainIndex) => (
+              {dateChains.map((chain, chainIndex) => (
                 <div key={chain.id || chainIndex}>
                   {chain.title && <DateDialogChainTitle title={chain.title} />}
 

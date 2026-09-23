@@ -34,7 +34,52 @@ export function tourTitleFields(value) {
 }
 
 export function TourMenuTitle({ tour }) {
-  return parseTourTitle(getTourTitleDraft(tour)).parts.map((part, index) =>
+  return <HighlightedTitle record={tour} />;
+}
+
+const renderHighlightedParts = (parts) =>
+  parts.map((part, index) =>
     part.bold ? <strong key={index} className="font-extrabold text-[#C2410C]">{part.text}</strong> : part.text,
   );
+
+const highlightTermsInText = (text, terms) => {
+  const source = String(text || "");
+  const normalizedSource = source.toLocaleLowerCase("ru");
+  const normalizedTerms = terms
+    .map((term) => String(term || "").trim())
+    .filter(Boolean)
+    .map((term) => ({ source: term, normalized: term.toLocaleLowerCase("ru") }));
+  const parts = [];
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    const next = normalizedTerms
+      .map((term) => ({ ...term, index: normalizedSource.indexOf(term.normalized, cursor) }))
+      .filter((term) => term.index >= 0)
+      .sort((left, right) => left.index - right.index || right.normalized.length - left.normalized.length)[0];
+    if (!next) {
+      parts.push({ text: source.slice(cursor), bold: false });
+      break;
+    }
+    if (next.index > cursor) {
+      parts.push({ text: source.slice(cursor, next.index), bold: false });
+    }
+    const end = next.index + next.normalized.length;
+    parts.push({ text: source.slice(next.index, end), bold: true });
+    cursor = end;
+  }
+
+  return parts.length ? parts : [{ text: source, bold: false }];
+};
+
+export function HighlightedTitle({ record, text }) {
+  const parsed = parseTourTitle(getTourTitleDraft(record));
+  const displayText = text == null ? parsed.title : String(text);
+  const parts = displayText === parsed.title
+    ? parsed.parts
+    : highlightTermsInText(
+        displayText,
+        parsed.parts.filter((part) => part.bold).map((part) => part.text),
+      );
+  return renderHighlightedParts(parts);
 }

@@ -1,5 +1,4 @@
 import ArticleContentEditor from "@/components/admin/ArticleContentEditor";
-import HotelProfileFields from "@/components/admin/HotelProfileFields";
 import { getArticleBlocks, articleBlockText } from "@/lib/articleContent";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -45,6 +44,7 @@ import {
   Check,
   Calendar as CalendarIcon,
   FileText,
+  ListOrdered,
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadImage, usePendingUploads, hasPendingUploads, normalizeImageItems, normalizeRecordImages } from "@/lib/imageUpload";
@@ -54,6 +54,7 @@ import { RICH_TEXT_ICONS, richTextToPlain } from "@/lib/richText";
 import MarkdownLinkButton from "@/components/admin/MarkdownLinkButton";
 import MarkdownBoldButton, { useMarkdownBold } from "@/components/admin/MarkdownBoldButton";
 import TourTitleField from "@/components/admin/TourTitleField";
+import TourOrderDialog from "@/components/admin/TourOrderDialog";
 import LazyYoutubeEmbed from "@/components/LazyYoutubeEmbed";
 import { getYoutubeVideoId } from "@/lib/youtube";
 import { invalidateSiteData } from "@/lib/useSiteData";
@@ -288,7 +289,7 @@ const SCHEMAS = {
         label: "SEO / Open Graph фото для ссылки",
         type: "image",
       },
-      { key: "order", label: "Порядок", type: "number" },
+      { key: "order", type: "hidden", defaultValue: "" },
       {
         key: "active",
         label:
@@ -347,7 +348,13 @@ const SCHEMAS = {
     description: (a) => a.published_at,
     image: (a) => a.cover,
     fields: [
-      { key: "title", label: "Заголовок", type: "text" },
+      {
+        key: "title",
+        label: "Заголовок",
+        type: "article-title",
+        placeholder: "Например: Главные достопримечательности Санкт-Петербурга",
+      },
+      { key: "title_highlighted", type: "hidden", defaultValue: "" },
       {
         key: "slug",
         label: "URL (slug)",
@@ -482,6 +489,7 @@ const TOUR_EXTRA_KEYS = [
   "section_anchors",
   "program",
   "use_hotel_chains",
+  "show_chain_dates",
   "chains",
   "dates",
   "hotels",
@@ -929,6 +937,7 @@ const normalizeRecord = (record = {}, collectionName) => {
     // New tour structure: chain -> hotels -> rooms.
     // Old dates/hotels are converted into one default chain for compatibility.
     use_hotel_chains: useHotelChains,
+    show_chain_dates: record.show_chain_dates !== false,
     chains: normalizeChains(record),
 
     // Keep old fields only for compatibility with old public components/data.
@@ -980,6 +989,7 @@ export default function AdminCollection({ name }) {
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState(null);
+  const [tourOrderOpen, setTourOrderOpen] = useState(false);
 
   const load = useCallback(async () => {
     console.log("AdminCollection load started:", `/admin/${name}`);
@@ -1086,22 +1096,54 @@ export default function AdminCollection({ name }) {
     }
   };
 
+  const onSaveTourOrder = async (groups) => {
+    try {
+      const response = await api.put("/admin/tours/order", {
+        bus: groups[TOUR_TRANSPORT_TYPES.BUS] || [],
+        air: groups[TOUR_TRANSPORT_TYPES.AIR] || [],
+      });
+      setItems(response.data);
+      invalidateSiteData();
+      toast.success("Порядок туров сохранён");
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.detail ||
+          error?.message ||
+          "Не удалось сохранить порядок туров",
+      );
+      throw error;
+    }
+  };
+
   return (
     <div data-testid={`admin-collection-${name}`}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-3xl">{TITLES[name]}</h1>
           <p className="text-sm text-neutral-500 mt-1">
             Управление содержимым раздела «{TITLES[name]}».
           </p>
         </div>
-        <Button
-          onClick={() => setEditing(normalizeRecord({}, name))}
-          className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white"
-          data-testid="admin-add-btn"
-        >
-          <Plus className="size-4 mr-1" /> Добавить
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {name === "tours" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTourOrderOpen(true)}
+              className="rounded-full"
+              data-testid="admin-tour-order-btn"
+            >
+              <ListOrdered className="size-4" /> Порядок туров
+            </Button>
+          )}
+          <Button
+            onClick={() => setEditing(normalizeRecord({}, name))}
+            className="rounded-full bg-[#C2410C] hover:bg-[#9A3412] text-white"
+            data-testid="admin-add-btn"
+          >
+            <Plus className="size-4 mr-1" /> Добавить
+          </Button>
+        </div>
       </div>
 
       <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1231,6 +1273,15 @@ export default function AdminCollection({ name }) {
         onClose={() => setEditing(null)}
         onSave={onSave}
       />
+
+      {name === "tours" && (
+        <TourOrderDialog
+          open={tourOrderOpen}
+          tours={items}
+          onOpenChange={setTourOrderOpen}
+          onSave={onSaveTourOrder}
+        />
+      )}
     </div>
   );
 }
@@ -1370,10 +1421,15 @@ function EditDialog({
         payload.departure_cities[0] || form.departure_city || "";
 
       payload.use_hotel_chains = form.use_hotel_chains === true;
+      payload.show_chain_dates = form.show_chain_dates !== false;
 
       if (payload.use_hotel_chains) {
-        // In chain mode all actual dates live inside their chain.
-        payload.dates = [];
+        // A tour may use hotel links while displaying its common dates. This
+        // prevents duplicated schedules for tours that do not use chains as
+        // their public date source.
+        payload.dates = payload.show_chain_dates
+          ? []
+          : (Array.isArray(form.dates) ? form.dates : []).map(normalizeDateForSave);
         payload.hotels = [];
         payload.chains = (Array.isArray(form.chains) ? form.chains : []).map(
           (chain) => ({
@@ -1395,7 +1451,9 @@ function EditDialog({
       }
 
       const allPayloadDates = payload.use_hotel_chains
-        ? payload.chains.flatMap((chain) => chain.dates || [])
+        ? (payload.show_chain_dates
+            ? payload.chains.flatMap((chain) => chain.dates || [])
+            : payload.dates)
         : payload.dates;
       const linkedSpecialTourSlugs = allPayloadDates
         .filter((date) => date.special_active && date.special_tour_slug)
@@ -1603,6 +1661,8 @@ function EditDialog({
                   <ArticleContentEditor value={form.content_blocks} onChange={(content_blocks) => setForm((previous) => ({ ...previous, content_blocks, content: articleBlockText(content_blocks) }))} TextEditor={RichTextarea} ImageEditor={ImageInput} />
                 ) : f.type === "tour-title" ? (
                   <TourTitleField tour={form} onChange={updateTourTitle} placeholder={f.placeholder} />
+                ) : f.type === "article-title" ? (
+                  <TourTitleField tour={form} onChange={updateTourTitle} placeholder={f.placeholder} mode="article" />
                 ) : f.type === "switch" ? (
                   <div className="mt-1 flex items-center gap-2">
                     <Switch
@@ -2063,80 +2123,6 @@ const slugify = (text = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const cleanHotelAnchorSlug = (value = "") => {
-  const map = {
-    а: "a",
-    б: "b",
-    в: "v",
-    г: "g",
-    д: "d",
-    е: "e",
-    ё: "e",
-    ж: "zh",
-    з: "z",
-    и: "i",
-    й: "y",
-    к: "k",
-    л: "l",
-    м: "m",
-    н: "n",
-    о: "o",
-    п: "p",
-    р: "r",
-    с: "s",
-    т: "t",
-    у: "u",
-    ф: "f",
-    х: "h",
-    ц: "ts",
-    ч: "ch",
-    ш: "sh",
-    щ: "sch",
-    ъ: "",
-    ы: "y",
-    ь: "",
-    э: "e",
-    ю: "yu",
-    я: "ya",
-  };
-
-  const rawValue = String(value || "");
-
-  const hashValue = rawValue.includes("#")
-    ? rawValue.split("#").pop()
-    : rawValue;
-
-  return String(hashValue || "")
-    .replace(/^hotel-/i, "")
-    .toLowerCase()
-    .replace(/[а-яё]/g, (char) => map[char] || char)
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9._-]+/g, "")
-    .replace(/-{2,}/g, "-");
-};
-
-const getHotelAnchorHash = (hotel = {}) => {
-  const slug = cleanHotelAnchorSlug(
-    hotel.anchor_slug || hotel.anchor || hotel.slug || hotel.name || hotel.id,
-  );
-
-  return slug ? `#${slug}` : "";
-};
-
-const getHotelAnchorPath = (tourSlug, hotel = {}) => {
-  const hash = getHotelAnchorHash(hotel);
-  return hash ? `/tours/${tourSlug || "slug-tura"}${hash}` : "";
-};
-
-const buildHotelAnchorUrl = (tourSlug, hotel = {}) => {
-  const path = getHotelAnchorPath(tourSlug, hotel);
-  if (!path) return "";
-
-  return typeof window !== "undefined"
-    ? `${window.location.origin}${path}`
-    : path;
-};
-
 const copyToClipboard = (value) => {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     return navigator.clipboard.writeText(value);
@@ -2527,18 +2513,48 @@ function TourExtraFields({ form, setForm, tours = [] }) {
       </div>
 
       {form.use_hotel_chains ? (
-        <MemoChainsField
-          value={form.chains || []}
-          onChange={updateChains}
-          tourSlug={tourSlug}
-          tours={tours}
-          tourCurrency={form.currency || "BYN"}
-          tourPrice={form.price_from || ""}
-          tourAdditionalPrice={form.additional_price || ""}
-          tourAdditionalCurrency={
-            form.additional_currency || form.currency || "BYN"
-          }
-        />
+        <>
+          <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Label className="text-sm font-semibold">Показывать даты цепочек</Label>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-500">
+                Выключите для туров, где основные даты уже заполнены отдельно. Отели останутся подключёнными, а повторяющиеся даты цепочек не появятся на странице.
+              </p>
+            </div>
+            <Switch
+              checked={form.show_chain_dates !== false}
+              onCheckedChange={(checked) => update("show_chain_dates", checked)}
+              aria-label="Показывать даты цепочек"
+            />
+          </div>
+          {form.show_chain_dates === false && (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+              <p className="mb-3 text-sm font-medium text-neutral-700">Основные даты тура</p>
+              <MemoDatesField
+                value={form.dates || []}
+                onChange={updateDates}
+                tours={tours}
+                currentTourSlug={tourSlug}
+                defaultCurrency={form.currency || "BYN"}
+                defaultPrice={form.price_from || ""}
+                defaultAdditionalPrice={form.additional_price || ""}
+                defaultAdditionalCurrency={form.additional_currency || form.currency || "BYN"}
+              />
+            </div>
+          )}
+          <MemoChainsField
+            value={form.chains || []}
+            onChange={updateChains}
+            tourSlug={tourSlug}
+            tours={tours}
+            tourCurrency={form.currency || "BYN"}
+            tourPrice={form.price_from || ""}
+            tourAdditionalPrice={form.additional_price || ""}
+            tourAdditionalCurrency={
+              form.additional_currency || form.currency || "BYN"
+            }
+          />
+        </>
       ) : (
         <div className="rounded-2xl border border-neutral-200 bg-white p-4">
           <p className="mb-3 text-sm text-neutral-600">
@@ -3821,6 +3837,16 @@ function ChainsField({
   tourAdditionalPrice = "",
   tourAdditionalCurrency = "BYN",
 }) {
+  const [hotelCatalog, setHotelCatalog] = useState([]);
+  const [hotelsLoading, setHotelsLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    api.get("/admin/hotels")
+      .then((response) => { if (active) setHotelCatalog(response.data || []); })
+      .catch(() => { if (active) toast.error("Не удалось загрузить список отелей"); })
+      .finally(() => { if (active) setHotelsLoading(false); });
+    return () => { active = false; };
+  }, []);
   const items = value.length
     ? value
     : [
@@ -3922,8 +3948,8 @@ function ChainsField({
 
             <MemoChainHotelsField
               value={chain.hotels || []}
-              dates={chain.dates || []}
-              tourSlug={tourSlug}
+              hotels={hotelCatalog}
+              loading={hotelsLoading}
               onChange={(hotels) => updateItem(index, { hotels })}
             />
           </div>
@@ -3942,161 +3968,71 @@ function ChainsField({
   );
 }
 
-function ChainHotelsField({ value, dates, tourSlug, onChange }) {
-  const [copiedHotelId, setCopiedHotelId] = useState("");
-  const items = value.length
-    ? value
-    : [
-        {
-          id: uid(),
-          name: "",
-          anchor_slug: "",
-          description: "",
-          images: [],
-          image: "",
-          meal: "",
-          location: "",
-          rooms: [],
-          active: true,
-        },
-      ];
+function ChainHotelsField({ value = [], hotels = [], loading = false, onChange }) {
+  const [selectedId, setSelectedId] = useState("");
 
-  const copyHotelLink = useCallback(
-    async (hotel, fallbackId) => {
-      const link = buildHotelAnchorUrl(tourSlug, hotel);
-      if (!link) return;
-
-      try {
-        await copyToClipboard(link);
-        setCopiedHotelId(fallbackId);
-        window.setTimeout(() => {
-          setCopiedHotelId((current) =>
-            current === fallbackId ? "" : current,
-          );
-        }, 1800);
-      } catch (error) {
-        console.error("Hotel admin link copy failed", error);
-        toast.error("Не удалось скопировать ссылку");
-      }
-    },
-    [tourSlug],
-  );
-
-  const updateItem = (index, patch) => {
-    const next = [...items];
-    next[index] = { ...next[index], ...patch };
-    onChange(next);
+  const connectedIds = new Set(value.map((item) => String(item.hotel_id || item.id)));
+  const available = hotels.filter((hotel) => !connectedIds.has(String(hotel.id)));
+  const connect = () => {
+    const hotel = hotels.find((item) => String(item.id) === selectedId);
+    if (!hotel) return;
+    onChange([...value, { id: hotel.id, hotel_id: hotel.id }]);
+    setSelectedId("");
   };
-
-  const addItem = () =>
-    onChange([
-      ...items,
-      {
-        id: uid(),
-        name: "",
-        anchor_slug: "",
-        description: "",
-        image: "",
-        meal: "",
-        location: "",
-        rooms: [],
-        active: true,
-      },
-    ]);
-
-  const removeItem = (index) => onChange(items.filter((_, i) => i !== index));
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-3">
-      <Label>Отели этой цепочки</Label>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Label>Подключённые отели</Label>
+          <p className="mt-1 text-xs leading-5 text-neutral-500">
+            Здесь отель только подключается к туру. Создание, содержание и окончательное удаление доступны в разделе «Отели».
+          </p>
+        </div>
+        <Link to="/admin/hotels" className="shrink-0 text-xs font-medium text-[#C2410C] hover:text-[#9A3412]">
+          Открыть раздел «Отели»
+        </Link>
+      </div>
 
-      <div className="mt-2 space-y-3">
-        {items.map((item, index) => (
-          <div
-            key={item.id || index}
-            className="rounded-xl border border-neutral-200 p-3 space-y-3"
-          >
-            <div className="flex gap-2">
-              <Input
-                value={item.name || ""}
-                onChange={(e) => updateItem(index, { name: e.target.value })}
-                placeholder="Название отеля"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => removeItem(index)}
-              >
-                <X className="size-4" />
-              </Button>
+      <div className="mt-3 space-y-2">
+        {!value.length && (
+          <p className="rounded-xl border border-dashed px-4 py-5 text-center text-sm text-neutral-500">
+            К этой цепочке пока не подключён ни один отель.
+          </p>
+        )}
+        {value.map((item, index) => (
+          <div key={item.hotel_id || item.id || index} className="flex items-center gap-3 rounded-xl border border-neutral-200 p-3">
+            {(item.images?.[0] || item.image) ? (
+              <img src={mediaUrl(item.images?.[0] || item.image)} alt="" className="size-12 shrink-0 rounded-lg object-cover" loading="lazy" />
+            ) : (
+              <div className="grid size-12 shrink-0 place-items-center rounded-lg bg-neutral-100 text-xs text-neutral-400">Фото</div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{item.name || "Отель"}</p>
+              <p className="truncate text-xs text-neutral-500">{item.location || `${item.rooms?.length || 0} номеров`}</p>
             </div>
-
-            <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-3">
-              <Label className="text-xs">
-                Якорь для прямой ссылки на отель
-              </Label>
-              <Input
-                value={item.anchor_slug || ""}
-                onChange={(e) =>
-                  updateItem(index, {
-                    anchor_slug: cleanHotelAnchorSlug(e.target.value),
-                  })
-                }
-                placeholder="Например: sweet-house"
-                className="mt-1 bg-white"
-              />
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="min-w-0 text-xs text-neutral-500">
-                  Ссылку можно отправить клиенту:{" "}
-                  <span className="break-all font-mono text-[#C2410C]">
-                    {getHotelAnchorPath(tourSlug, item) ||
-                      `/tours/${tourSlug || "slug-tura"}#hotel-sweet-house`}
-                  </span>
-                </p>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => copyHotelLink(item, item.id || String(index))}
-                  className={`h-9 shrink-0 rounded-full px-3 text-xs ${
-                    copiedHotelId === (item.id || String(index))
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-orange-200 text-[#C2410C] hover:bg-orange-50"
-                  }`}
-                >
-                  {copiedHotelId === (item.id || String(index)) ? (
-                    <Check className="mr-1 size-3.5" />
-                  ) : (
-                    <Copy className="mr-1 size-3.5" />
-                  )}
-                  {copiedHotelId === (item.id || String(index))
-                    ? "Скопировано"
-                    : "Копировать"}
-                </Button>
-              </div>
-            </div>
-
-            <HotelProfileFields
-              value={item}
-              dates={dates}
-              onChange={(patch) => updateItem(index, patch)}
-              RichEditor={RichTextarea}
-              ImagesEditor={ImageListField}
-              RoomsEditor={MemoRoomsField}
-              ListEditor={StringListField}
-            />
+            <Button type="button" variant="outline" className="shrink-0" onClick={() => onChange(value.filter((_, current) => current !== index))}>
+              <X className="mr-1 size-4" /> Отключить
+            </Button>
           </div>
         ))}
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-2"
-        onClick={addItem}
-      >
-        <Plus className="size-4 mr-1" /> Добавить отель
-      </Button>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <select
+          aria-label="Выберите отель для подключения"
+          className="h-10 min-w-0 flex-1 rounded-md border bg-white px-3 text-sm"
+          value={selectedId}
+          disabled={loading || !available.length}
+          onChange={(event) => setSelectedId(event.target.value)}
+        >
+          <option value="">{loading ? "Загрузка отелей…" : available.length ? "Выберите существующий отель" : "Все отели уже подключены"}</option>
+          {available.map((hotel) => <option key={hotel.id} value={hotel.id}>{hotel.name}{hotel.location ? ` — ${hotel.location}` : ""}</option>)}
+        </select>
+        <Button type="button" variant="outline" disabled={!selectedId} onClick={connect}>
+          <Plus className="mr-1 size-4" /> Подключить
+        </Button>
+      </div>
     </div>
   );
 }

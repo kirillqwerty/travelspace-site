@@ -2,7 +2,9 @@ import { isTourShownInCatalog } from "./tourVisibility";
 
 export function upcomingTourDates(tour, today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Minsk" })) {
   const dates = tour.use_hotel_chains
-    ? (tour.chains || []).filter((chain) => chain.active !== false).flatMap((chain) => chain.dates || [])
+    ? (tour.show_chain_dates === false
+        ? (tour.dates || [])
+        : (tour.chains || []).filter((chain) => chain.active !== false).flatMap((chain) => chain.dates || []))
     : [...(tour.dates || []), ...(tour.chains || []).filter((chain) => chain.active !== false).flatMap((chain) => chain.dates || [])];
   return dates.filter((date) => date.status !== "hidden" && date.status !== "sold_out" && String(date.start || "").slice(0, 10) >= today).sort((a, b) => String(a.start).localeCompare(String(b.start)));
 }

@@ -5,7 +5,7 @@ import { Menu, X, ChevronDown, LogOut } from "lucide-react";
 import MobileBackLink from "@/components/MobileBackLink";
 import { Button } from "@/components/ui/button";
 import { useSiteData } from "@/lib/useSiteData";
-import { TourMenuTitle } from "@/lib/tourTitle";
+import { HighlightedTitle, TourMenuTitle } from "@/lib/tourTitle";
 import logoBlack from "../assets/logo-travelspace-black.webp";
 import logoWhite from "../assets/logo-travelspace-white.webp";
 import socialTelegram from "../assets/social-telegram.png";
@@ -190,6 +190,7 @@ export default function Header() {
       .map((item) => ({
         slug: item.slug,
         label: item.title,
+        article: item,
       }));
   }, [articles]);
 
@@ -445,7 +446,7 @@ export default function Header() {
                               }`
                             }
                           >
-                            {item.label}
+                            <HighlightedTitle record={item.article} />
                           </NavLink>
                         ))}
                       </div>
@@ -658,7 +659,7 @@ export default function Header() {
                                   onClick={closeMenu}
                                   className="rounded-lg px-2 py-2 text-sm text-neutral-700 hover:bg-orange-50 hover:text-[#C2410C]"
                                 >
-                                  {item.label}
+                                  <HighlightedTitle record={item.article} />
                                 </NavLink>
                               ))}
                             </div>

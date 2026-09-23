@@ -9,6 +9,7 @@ import { canonicalUrl, firstSeoText } from "@/components/Seo";
 import { mediaUrl } from "@/lib/media";
 import ArticleBody from "@/components/ArticleBody";
 import { RichText } from "@/lib/richText";
+import { HighlightedTitle } from "@/lib/tourTitle";
 import {
   getDirectionLandingForTour,
   TOUR_LANDINGS,
@@ -118,7 +119,7 @@ export default function Article() {
       </Link>
       {a.published_at && <p className="text-xs text-neutral-500 mt-6">{a.published_at}</p>}
       <h1 className="font-heading text-4xl sm:text-5xl mt-2">
-        {articleH1}
+        <HighlightedTitle record={a} text={articleH1} />
       </h1>
       {a.excerpt && (
         <RichText text={a.excerpt} className="mt-5 text-lg leading-8 text-neutral-600" />

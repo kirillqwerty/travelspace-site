@@ -6,6 +6,7 @@ import PageSeo from "@/components/PageSeo";
 import StaticPageIntro from "@/components/StaticPageIntro";
 import { getInitialSiteData } from "@/lib/pageBootstrap";
 import { richTextToPlain } from "@/lib/richText";
+import { HighlightedTitle } from "@/lib/tourTitle";
 
 function articlePreviewImage(article) {
   return (
@@ -93,7 +94,7 @@ export default function Blog() {
                   {formatDate(a.published_at)}
                 </p>
                 <h3 className="font-heading text-xl mt-2 group-hover:text-[#C2410C] transition-colors line-clamp-3">
-                  {a.title}
+                  <HighlightedTitle record={a} />
                 </h3>
                 <p className="text-sm text-neutral-600 mt-2 line-clamp-3">
                   {articleExcerpt(a)}
