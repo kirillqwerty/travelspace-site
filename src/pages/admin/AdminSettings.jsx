@@ -1772,13 +1772,6 @@ function SeoHubToursField({ hub, stored = {}, tours = [], onChange }) {
     const status = statusForTour(tour);
     return (
       <div
-        draggable
-        onDragStart={(event) => {
-          setDraggedTourId(tourId);
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain", tourId);
-        }}
-        onDragEnd={() => setDraggedTourId("")}
         onDragOver={selected ? (event) => event.preventDefault() : undefined}
         onDrop={selected ? (event) => dropIntoSelected(event, index) : undefined}
         className={`flex items-center gap-2 rounded-lg border bg-white p-2 shadow-sm transition ${
@@ -1787,7 +1780,11 @@ function SeoHubToursField({ hub, stored = {}, tours = [], onChange }) {
             : "border-neutral-200"
         }`}
       >
-        <GripVertical className="size-4 shrink-0 cursor-grab text-neutral-400" />
+        <span draggable onDragStart={(event) => {
+          setDraggedTourId(tourId);
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", tourId);
+        }} onDragEnd={() => setDraggedTourId("")} className="shrink-0 cursor-grab"><GripVertical className="size-4 text-neutral-400" /></span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-neutral-900">
             {tour.title || tour.slug}

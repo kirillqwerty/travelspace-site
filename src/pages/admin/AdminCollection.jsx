@@ -1429,7 +1429,9 @@ function EditDialog({
         // their public date source.
         payload.dates = payload.show_chain_dates
           ? []
-          : (Array.isArray(form.dates) ? form.dates : []).map(normalizeDateForSave);
+          : (Array.isArray(form.dates) && form.dates.length
+              ? form.dates
+              : getActiveChainDates(form.chains)).map(normalizeDateForSave);
         payload.hotels = [];
         payload.chains = (Array.isArray(form.chains) ? form.chains : []).map(
           (chain) => ({
@@ -2523,7 +2525,13 @@ function TourExtraFields({ form, setForm, tours = [] }) {
             </div>
             <Switch
               checked={form.show_chain_dates !== false}
-              onCheckedChange={(checked) => update("show_chain_dates", checked)}
+              onCheckedChange={(checked) => setForm((previous) => ({
+                ...previous,
+                show_chain_dates: checked,
+                dates: !checked && !(previous.dates || []).length
+                  ? getActiveChainDates(previous.chains)
+                  : previous.dates,
+              }))}
               aria-label="Показывать даты цепочек"
             />
           </div>
@@ -2737,20 +2745,17 @@ function RelatedToursField({
             return (
               <div
                 key={slug}
-                draggable
-                onDragStart={() => setDraggedSlug(slug)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
                   move(draggedSlug, slug);
                   setDraggedSlug("");
                 }}
-                onDragEnd={() => setDraggedSlug("")}
                 className={`flex items-center gap-3 rounded-lg border bg-white p-3 ${
                   draggedSlug === slug ? "opacity-50" : ""
                 }`}
               >
-                <span className="cursor-grab text-neutral-400">☰</span>
+                <span draggable onDragStart={() => setDraggedSlug(slug)} onDragEnd={() => setDraggedSlug("")} className="cursor-grab text-neutral-400" title="Перетащить тур">☰</span>
                 <span className="min-w-0 flex-1 text-sm">
                   {tour?.title || `${slug} (тур не найден)`}
                 </span>
@@ -2915,8 +2920,6 @@ function ImageListField({
         {items.map((item, index) => (
           <div
             key={index}
-            draggable={!!item}
-            onDragStart={() => setDraggedIndex(index)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -2928,7 +2931,6 @@ function ImageListField({
               moveItem(draggedIndex, index);
               setDraggedIndex(null);
             }}
-            onDragEnd={() => setDraggedIndex(null)}
             className={`flex flex-col sm:flex-row gap-2 items-start rounded-xl transition ${
               draggedIndex === index ? "opacity-50 ring-2 ring-[#C2410C]" : ""
             }`}
@@ -2936,6 +2938,9 @@ function ImageListField({
             <div className="flex w-full sm:w-auto items-center gap-2">
               <button
                 type="button"
+                draggable={!!item}
+                onDragStart={() => setDraggedIndex(index)}
+                onDragEnd={() => setDraggedIndex(null)}
                 className="cursor-grab rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-500 active:cursor-grabbing"
                 title="Перетащить фото"
               >

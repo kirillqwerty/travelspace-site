@@ -86,8 +86,16 @@ export default function HotelProfileFields({ value, onChange, dates = [], RichEd
       {text("seo_description", "Описание для поиска")}
       {text("seo_canonical_url", "Основной адрес (canonical)", "Обычно оставляют пустым")}
       <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
-        {[['active', 'Показывать отель и его номера в туре', true], ['page_enabled', 'Отдельная страница отеля и кнопка в туре', true], ['seo_noindex', 'Запретить индексацию страницы', false], ['seo_nofollow', 'Запретить переход поисковых роботов по ссылкам', false]].map(([key, label, fallback]) =>
-          <label key={key} className="flex items-center gap-3 text-sm"><Switch checked={value[key] ?? fallback} onCheckedChange={(next) => onChange({ [key]: next })} />{label}</label>)}
+        {[
+          ["active", "Показывать отель и его номера в туре", true, "Включает отель в турах; при выключении его страница тоже недоступна."],
+          ["page_enabled", "Отдельная страница отеля и кнопка в туре", true, "Создаёт страницу отеля и ссылку на неё из тура."],
+          ["seo_noindex", "Запретить индексацию страницы", false, "Просит поисковики не показывать страницу отеля в поиске."],
+          ["seo_nofollow", "Запретить переход поисковых роботов по ссылкам", false, "Просит роботов не обходить ссылки с этой страницы."],
+        ].map(([key, label, fallback, hint]) =>
+          <label key={key} className="flex items-start gap-3 text-sm">
+            <Switch className="mt-0.5 shrink-0" checked={value[key] ?? fallback} onCheckedChange={(next) => onChange({ [key]: next })} />
+            <span className="min-w-0"><span className="block">{label}</span><span className="mt-1 block text-xs leading-5 text-neutral-500">{hint}</span></span>
+          </label>)}
       </div>
     </TabsContent>
   </Tabs>;

@@ -1273,7 +1273,7 @@ function buildLegacyChain(tour) {
   return [
     {
       id: "legacy-chain",
-      title: "Основное расписание",
+      title: "",
       dates,
       hotels: hotels.map((hotel) => ({
         ...hotel,
@@ -1287,12 +1287,15 @@ function getTourChains(tour) {
   const chains = Array.isArray(tour.chains) ? tour.chains : [];
 
   if (chains.length) {
+    const mainDates = tour.show_chain_dates === false
+      ? sortDatesByStart((tour.dates || []).filter((date) => date.status !== "hidden" && isDateActual(date)))
+      : [];
     return chains
       .filter((chain) => chain?.active !== false)
       .map((chain, index) => ({
         ...chain,
         title: resolveChainTitle(chain, index),
-        dates: sortDatesByStart(
+        dates: mainDates.length ? mainDates : sortDatesByStart(
           (chain.dates || []).filter(
             (d) => d.status !== "hidden" && isDateActual(d),
           ),
@@ -1467,12 +1470,17 @@ export default function TourPage() {
       );
   }, [tour, tours]);
   const chains = useMemo(() => (tour ? getTourChains(tour) : []), [tour]);
+  const showHotelChainDates = (tour?.chains || []).length > 0 && tour.show_chain_dates !== false;
   const dateChains = useMemo(() => {
     if (!tour || tour.show_chain_dates !== false) return chains;
+    const mainDates = (tour.dates || []).filter((date) => date.status !== "hidden" && isDateActual(date));
+    const dates = mainDates.length
+      ? mainDates
+      : chains.flatMap((chain) => chain.dates || []);
     return [{
       id: "main-dates",
       title: "",
-      dates: sortDatesByStart((tour.dates || []).filter((date) => date.status !== "hidden" && isDateActual(date))),
+      dates: sortDatesByStart(dates),
       hotels: [],
     }];
   }, [tour, chains]);
@@ -2512,7 +2520,7 @@ export default function TourPage() {
                         </div>
                       )}
 
-                      {tour.show_chain_dates !== false && chain.dates?.length > 0 && (
+                      {showHotelChainDates && chain.dates?.length > 0 && (
                         <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-3 sm:p-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[#C2410C]">
                             Даты заездов

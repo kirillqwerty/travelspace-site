@@ -80,12 +80,13 @@ function isPromotionDate(date) {
 function getTourDates(tour) {
   const legacyDates = Array.isArray(tour?.dates) ? tour.dates : [];
   const chainDates = Array.isArray(tour?.chains)
-    ? tour.chains.flatMap((chain) =>
+    ? tour.chains.filter((chain) => chain?.active !== false).flatMap((chain) =>
         Array.isArray(chain?.dates) ? chain.dates : [],
       )
     : [];
 
-  return [...legacyDates, ...chainDates];
+  if (tour?.show_chain_dates === false) return legacyDates.length ? legacyDates : chainDates;
+  return tour?.use_hotel_chains ? (chainDates.length ? chainDates : legacyDates) : (legacyDates.length ? legacyDates : chainDates);
 }
 
 function getPromotionDates(tour) {

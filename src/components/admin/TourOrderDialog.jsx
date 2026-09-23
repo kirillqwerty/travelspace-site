@@ -168,18 +168,7 @@ export default function TourOrderDialog({ open, tours = [], onOpenChange, onSave
                       return (
                         <div
                           key={id}
-                          draggable={!saving}
                           aria-grabbed={isDragging}
-                          onDragStart={(event) => {
-                            setDraggedTourId(id);
-                            setDropTargetTourId("");
-                            event.dataTransfer.effectAllowed = "move";
-                            event.dataTransfer.setData("text/plain", id);
-                          }}
-                          onDragEnd={() => {
-                            setDraggedTourId("");
-                            setDropTargetTourId("");
-                          }}
                           onDragEnter={() => {
                             if (draggedTourId && draggedTourId !== id) {
                               setDropTargetTourId(id);
@@ -210,12 +199,17 @@ export default function TourOrderDialog({ open, tours = [], onOpenChange, onSave
                           }`}
                           data-testid={`tour-order-item-${id}`}
                         >
-                          <GripVertical
-                            className={`size-5 cursor-grab transition-colors active:cursor-grabbing ${
-                              isDragging ? "animate-pulse text-orange-600" : "text-neutral-400"
-                            }`}
-                            aria-hidden="true"
-                          />
+                          <span draggable={!saving} onDragStart={(event) => {
+                            setDraggedTourId(id);
+                            setDropTargetTourId("");
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", id);
+                          }} onDragEnd={() => {
+                            setDraggedTourId("");
+                            setDropTargetTourId("");
+                          }} className="cursor-grab active:cursor-grabbing" aria-label={`Перетащить тур «${tour.title || tour.slug}»`}>
+                            <GripVertical className={`size-5 transition-colors ${isDragging ? "animate-pulse text-orange-600" : "text-neutral-400"}`} aria-hidden="true" />
+                          </span>
                           <span className="grid size-7 place-items-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-600">{index + 1}</span>
                           <div className="flex min-w-0 items-center gap-3">
                             {tour.hero_image && <img src={mediaUrl(tour.hero_image)} alt="" className="hidden size-11 shrink-0 rounded-lg object-cover sm:block" loading="lazy" />}

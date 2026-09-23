@@ -60,22 +60,12 @@ function isPromotionDepartureDate(date) {
 function collectTourDates(tour) {
   if (!tour) return [];
 
-  const dates = [];
-
-  if (Array.isArray(tour.dates)) {
-    dates.push(...tour.dates);
-  }
-
-  if (Array.isArray(tour.chains)) {
-    tour.chains.forEach((chain) => {
-      if (chain?.active === false) return;
-      if (Array.isArray(chain?.dates)) {
-        dates.push(...chain.dates);
-      }
-    });
-  }
-
-  return dates;
+  const mainDates = Array.isArray(tour.dates) ? tour.dates : [];
+  const chainDates = Array.isArray(tour.chains)
+    ? tour.chains.filter((chain) => chain?.active !== false).flatMap((chain) => Array.isArray(chain?.dates) ? chain.dates : [])
+    : [];
+  if (tour.show_chain_dates === false) return mainDates.length ? mainDates : chainDates;
+  return tour.use_hotel_chains ? (chainDates.length ? chainDates : mainDates) : (mainDates.length ? mainDates : chainDates);
 }
 
 /**
@@ -116,6 +106,7 @@ export default function LeadForm({
     tour: tour || "",
     tour_slug: tour_slug || "",
     date: date || "",
+    travelers_count: "",
     comment: "",
     consent: true,
     company: "",
@@ -181,6 +172,7 @@ export default function LeadForm({
         tour_slug: selectedTourSlug,
         region: region || null,
         date: form.date || null,
+        travelers_count: form.travelers_count ? Number(form.travelers_count) : null,
         comment: form.comment || null,
         consent: form.consent,
         form_type: variant,
@@ -222,6 +214,7 @@ export default function LeadForm({
         tour: tour || "",
         tour_slug: tour_slug || "",
         date: date || "",
+        travelers_count: "",
         comment: "",
         consent: true,
         company: "",
@@ -468,6 +461,12 @@ export default function LeadForm({
             </Select>
           </div>
         )}
+      {variant !== "agency" && (
+        <div>
+          <Label htmlFor="lf-travelers-count">Количество человек</Label>
+          <Input id="lf-travelers-count" type="number" min="1" max="100" inputMode="numeric" value={form.travelers_count} onChange={(e) => update("travelers_count", e.target.value)} placeholder="Например, 2" className="mt-1" />
+        </div>
+      )}
       {selectedHotel && (
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
           <p className="text-sm">

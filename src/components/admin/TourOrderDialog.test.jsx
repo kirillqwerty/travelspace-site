@@ -53,11 +53,11 @@ test("saves the changed order for both sections", async () => {
     };
     const firstCard = document.querySelector('[data-testid="tour-order-item-bus-1"]');
     const secondCard = document.querySelector('[data-testid="tour-order-item-bus-2"]');
-    await dispatchDrag(firstCard, "dragstart");
+    await dispatchDrag(firstCard.querySelector('[draggable="true"]'), "dragstart");
     expect(firstCard.className).toContain("ring-orange-200");
     await dispatchDrag(secondCard, "dragenter");
     expect(secondCard.className).toContain("ring-orange-100");
-    await dispatchDrag(firstCard, "dragend");
+    await dispatchDrag(firstCard.querySelector('[draggable="true"]'), "dragend");
     expect(firstCard.className).not.toContain("ring-orange-200");
 
     await act(async () => {
