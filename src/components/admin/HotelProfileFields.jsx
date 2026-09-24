@@ -15,7 +15,7 @@ function SectionIntro({ title, description }) {
 
 // Every field remains controlled by the parent editor. forceMount keeps image,
 // room and rich-text controls mounted while an administrator switches tabs.
-export default function HotelProfileFields({ value, onChange, dates = [], RichEditor, ImagesEditor, RoomsEditor, ListEditor, showName = false }) {
+export default function HotelProfileFields({ value, onChange, dates = [], RichEditor, ImagesEditor, ImageInput, RoomsEditor, ListEditor, showName = false }) {
   const text = (key, label, placeholder = "") => <label className="block space-y-1" key={key}><span className="text-xs font-medium">{label}</span><Input value={value[key] || ""} onChange={(e) => onChange({ [key]: e.target.value })} placeholder={placeholder} /></label>;
   const rich = (key, label) => <div className="space-y-1" key={key}><Label>{label}</Label><RichEditor value={value[key] || ""} onChange={(next) => onChange({ [key]: next })} placeholder={label} /></div>;
 
@@ -84,6 +84,11 @@ export default function HotelProfileFields({ value, onChange, dates = [], RichEd
       {value.hotel_page_slug && <p className="break-all rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-500">/hotels/{value.hotel_page_slug}</p>}
       {text("seo_title", "SEO-заголовок")}
       {text("seo_description", "Описание для поиска")}
+      <div className="space-y-2">
+        <Label>Фото для ссылки на отель (SEO / Open Graph)</Label>
+        <ImageInput value={value.seo_image || ""} onChange={(seo_image) => onChange({ seo_image })} />
+        <p className="text-xs leading-5 text-neutral-500">Показывается при отправке ссылки на отель в мессенджерах и соцсетях. Если не задано, используется главное фото отеля.</p>
+      </div>
       {text("seo_canonical_url", "Основной адрес (canonical)", "Обычно оставляют пустым")}
       <div className="space-y-3 rounded-xl border border-neutral-200 p-4">
         {[

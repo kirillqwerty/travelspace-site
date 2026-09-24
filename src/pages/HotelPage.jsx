@@ -82,7 +82,7 @@ function StayDates({ connection, onSelectDate }) {
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-[#C2410C]">Даты и стоимость</p>
         <h2 className="mt-2 font-heading text-xl font-semibold leading-snug text-neutral-900 sm:text-2xl">{connection.tour_title}</h2>
       </div>
-      {connection.tour_slug && <Link to={`/tours/${connection.tour_slug}`} className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-[#C2410C] hover:text-[#9A3412]">Программа тура<ArrowRight className="size-4" /></Link>}
+      {connection.tour_slug && <Link to={`/tours/${connection.tour_slug}#program`} className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-[#C2410C] hover:text-[#9A3412]">Программа тура<ArrowRight className="size-4" /></Link>}
     </div>
     {dates.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {dates.map((date, index) => <button key={date.id || `${date.start}-${index}`} type="button" onClick={() => onSelectDate?.(date)} className="flex min-w-0 flex-col gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-4 text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C]">

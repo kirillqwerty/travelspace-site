@@ -41,6 +41,7 @@ test("hotel page switches connected tours without requesting data again", async 
   const option = [...container.querySelectorAll("button")].find((button) => button.textContent.includes("Новый год в Петербурге"));
   await act(async () => option.click());
   expect([...container.querySelectorAll("a")].some((link) => link.getAttribute("href") === "/tours/new-year#hotel-hotel-1")).toBe(true);
+  expect([...container.querySelectorAll("a")].find((link) => link.textContent.includes("Программа тура")).getAttribute("href")).toBe("/tours/new-year#program");
   const selectedDates = container.querySelector('[data-testid="hotel-selected-dates"]');
   expect(selectedDates.textContent).toContain("29.12.2099 — 03.01.2100");
   expect(selectedDates.textContent).not.toContain("01.01.2099 — 05.01.2099");

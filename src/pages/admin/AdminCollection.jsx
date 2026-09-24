@@ -3223,7 +3223,7 @@ function ImageInput({ value, onChange }) {
 
           <p className="text-xs text-neutral-500">
             Можно перетащить фото или выбрать через проводник. Фото сжимается и
-            сохраняется на сервер, в тур записывается только URL.
+            сохраняется на сервер, в настройках остаётся только URL.
           </p>
         </div>
       </div>
@@ -4841,4 +4841,4 @@ const MemoRoomDatePricesField = memo(RoomDatePricesField);
 const MemoRoomUnavailableDatesField = memo(RoomUnavailableDatesField);
 const MemoFaqField = memo(FaqField);
 
-export { RichTextarea, ImageListField, RoomsField, StringListField, normalizeRecord };
+export { RichTextarea, ImageListField, ImageInput, RoomsField, StringListField, normalizeRecord };

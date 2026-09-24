@@ -4,6 +4,7 @@ import HotelProfileFields from "./HotelProfileFields";
 
 const RichEditor = ({ value, onChange, placeholder }) => <textarea aria-label={placeholder} value={value} onChange={(event) => onChange(event.target.value)} />;
 const ImagesEditor = ({ onItemsChange }) => <button type="button" onClick={() => onItemsChange(["/hotel.webp"], ["Фасад отеля"])}>Добавить тестовое фото</button>;
+const ImageInput = ({ onChange }) => <button type="button" onClick={() => onChange("/hotel-preview.webp")}>Загрузить SEO-фото</button>;
 const RoomsEditor = ({ onChange }) => <button type="button" onClick={() => onChange([{ id: "room-1", title: "Двухместный" }])}>Добавить тестовый номер</button>;
 const ListEditor = ({ label, value, onChange }) => <button type="button" onClick={() => onChange([...value, label])}>{label}</button>;
 const selectTab = (container, label) => {
@@ -24,6 +25,7 @@ test("splits the hotel editor into tabs without losing controlled field updates"
       onChange={(patch) => setHotel((previous) => ({ ...previous, ...patch }))}
       RichEditor={RichEditor}
       ImagesEditor={ImagesEditor}
+      ImageInput={ImageInput}
       RoomsEditor={RoomsEditor}
       ListEditor={ListEditor}
     />;
@@ -53,6 +55,10 @@ test("splits the hotel editor into tabs without losing controlled field updates"
     expect(container.querySelector('input[value="Smile"]')).not.toBeNull();
     expect(latest.images).toEqual(["/hotel.webp"]);
     expect(latest.rooms).toHaveLength(1);
+
+    await act(async () => selectTab(container, "Страница и SEO"));
+    await act(async () => [...container.querySelectorAll("button")].find((button) => button.textContent === "Загрузить SEO-фото").click());
+    expect(latest.seo_image).toBe("/hotel-preview.webp");
   } finally {
     await act(async () => root.unmount());
     container.remove();

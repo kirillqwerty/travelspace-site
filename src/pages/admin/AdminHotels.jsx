@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import HotelProfileFields from "@/components/admin/HotelProfileFields";
-import { RichTextarea, ImageListField, RoomsField, StringListField } from "./AdminCollection";
+import { RichTextarea, ImageListField, ImageInput, RoomsField, StringListField } from "./AdminCollection";
 
 const message = (error) => error?.response?.data?.detail || "Не удалось сохранить изменения. Попробуйте ещё раз.";
 
@@ -108,7 +108,7 @@ export default function AdminHotels() {
               {editing.connections?.length > 0 && <p className="mt-1 text-xs leading-5 text-neutral-600">{editing.connections.map((connection) => connection.tour_title).join(" · ")}</p>}
               <p className="mt-2 text-xs text-neutral-500">Привязки и даты задаются в <ResponsiveLink as={Link} className="text-[#C2410C]" to="/admin/tours" target="_blank">настройках туров</ResponsiveLink>. Изменения описания, фото и номеров применяются ко всем привязкам.</p>
             </div>
-            <HotelProfileFields showName value={editing} dates={dates} onChange={(patch) => setEditing((previous) => ({ ...previous, ...patch }))} RichEditor={RichTextarea} ImagesEditor={ImageListField} RoomsEditor={RoomsField} ListEditor={StringListField} />
+            <HotelProfileFields showName value={editing} dates={dates} onChange={(patch) => setEditing((previous) => ({ ...previous, ...patch }))} RichEditor={RichTextarea} ImagesEditor={ImageListField} ImageInput={ImageInput} RoomsEditor={RoomsField} ListEditor={StringListField} />
           </fieldset>
           </div>
           <div className="shrink-0 border-t bg-white p-4">{error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}<div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={saving || uploading} onClick={() => setEditing(null)}>Отмена</Button><Button type="submit" disabled={saving || uploading} className="bg-[#C2410C] text-white hover:bg-[#9A3412]">{saving ? "Сохраняем…" : uploading ? "Загружаем фото…" : "Сохранить отель"}</Button></div></div>
